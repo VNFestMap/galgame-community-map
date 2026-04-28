@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>全国Galgame同好会地图 - 视觉小说同好组织导航</title>
+    <meta
+      name="description"
+      content="全国Galgame同好会地图，聚合展示全国各省、高校及海外地区的视觉小说同好组织信息，支持地图选省、全局搜索、联系方式复制与快速查找同好。"
+    />
+    <meta
+      name="keywords"
+      content="全国Galgame同好会地图,视觉小说,Galgame,同好会,高校社团,地图导航,同好社群"
+    />
+    <meta name="author" content="全国Galgame同好会地图" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="theme-color" content="#9b59b6" />
+    <meta name="theme-color" content="#9b59b6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#2c0a2c" media="(prefers-color-scheme: dark)" />
+    <meta name="format-detection" content="telephone=no,email=no,address=no" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdmirror.com" crossorigin />
+    
+    <link rel="preload" href="https://cdn.jsdmirror.com/npm/d3@7.9.0/dist/d3.min.js" as="script" fetchpriority="high" />
+    <link rel="preload" href="./china.min.js" as="script" fetchpriority="high" />
+    <link rel="preload" href="./app.js" as="script" fetchpriority="high" />
+    <link rel="dns-prefetch" href="https://cdn.jsdmirror.com" />
+    <link rel="dns-prefetch" href="https://count.getloli.com" />
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
+    <link rel="preload" href="./styles.css" as="style" />
+    <link rel="preload" href="./BanG_Dream!_logo.svg" as="image" fetchpriority="high" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="seo-header">
+      <h1>全国Galgame同好会地图</h1>
+      <p>
+        提供全国各省、高校及海外地区 Galgame / 视觉小说同好组织信息导航，帮助同好快速找到可加入的社群组织。
+      </p>
+    </header>
+
+    <main id="map" role="main">
+      <svg id="mapSvg"></svg>
+      
+      <section id="introCard" class="md3-card">
+        <button id="introCloseBtn" class="intro-action-btn" type="button">收起</button>
+        <button id="introExpandBtn" class="intro-expand-btn" type="button">简介</button>
+        <h2 id="introTitle" class="card-title">全国Galgame同好会地图</h2>
+        <img id="introLogo" src="./VNF.png" alt="VNFest 视觉小说高校学园祭" width="640" height="196" fetchpriority="high" decoding="async" />
+        <p class="card-body">
+          本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，
+          支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。
+        </p>
+        <p class="card-body">
+          数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。
+        </p>
+        <label class="md3-switch" for="invertCtrlSwitch">
+          <input id="invertCtrlSwitch" type="checkbox" />
+          <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+          <span id="invertCtrlLabel" class="md3-switch-label">反转操作（默认关）</span>
+        </label>
+        <label class="md3-switch" for="themeSwitch">
+          <input id="themeSwitch" type="checkbox" />
+          <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+          <span id="themeSwitchLabel" class="md3-switch-label">暗黑模式（跟随系统）</span>
+        </label>
+
+        <div class="intro-links">
+          <a class="github-link" href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank" rel="noopener noreferrer">
+            <img src="https://github.githubassets.com/favicons/favicon.svg" alt="GitHub" />
+            <span>开源仓库</span>
+          </a>
+          <button id="feedbackModalBtn" class="feedback-link" type="button">
+            反馈与提交同好会信息
+          </button>
+        </div>
+ <p class="card-body gpl-text" style="margin-top: 12px; font-size: 12px;">
+          本项目基于 
+          <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank" rel="noopener noreferrer">china-bandori-maps</a> 
+          二次开发，遵循 
+          <a href="./LICENSE" target="_blank">GPLv3 开源协议</a>。
+        </p>
+
+      </section>
+      </section>
+
+      <section id="selectedCard" class="md3-card">
+        <h2 id="selectedTitle" class="card-title">全国Galgame同好会数据</h2>
+        <p id="selectedProvince" class="card-value">加载中...</p>
+        <p id="selectedMeta" class="card-body">正在获取最新数据</p>
+        <div id="listTools" class="list-tools">
+          <div class="search-row">
+            <button id="globalSearchBtn" class="search-mode-btn" type="button">
+              <span class="search-icon">⌕</span>
+              <span class="search-label">全局搜索</span>
+            </button>
+            <input id="searchInput" class="md3-input" type="search" placeholder="搜索组织名 / 群号" />
+          </div>
+          <div class="tool-row">
+            <label class="tool-label" for="typeFilter">类型</label>
+            <select id="typeFilter" class="md3-select">
+              <option value="all">全部</option>
+              <option value="region">地区高校联合</option>
+              <option value="school">高校同好会</option>
+              <option value="vnfest">视觉小说学园祭</option>
+            </select>
+          </div>
+          <div id="sortBar" class="sort-bar">
+            <button class="sort-btn active" type="button" data-sort="default">默认</button>
+            <button class="sort-btn" type="button" data-sort="time_desc">登记时间 ↓</button>
+            <button class="sort-btn" type="button" data-sort="name_asc">首字母 A→Z</button>
+            <button class="sort-btn" type="button" data-sort="type_asc">类型 A→Z</button>
+          </div>
+        </div>
+        <div id="groupList" class="group-list"></div>
+      </section>
+
+      <button id="overseasToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">海外同好会</button>
+      <button id="nonRegionalToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn secondary-toggle-btn" type="button">国内同好会</button>
+      <button id="calendarToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn tertiary-toggle-btn" type="button">Galgame活动日历</button>
+      <div id="mobileSheetHandle" class="mobile-sheet-handle" aria-hidden="true">
+        <span class="mobile-sheet-bar"></span>
+      </div>
+
+      <section id="controlCard" class="md3-card">
+        <h2 class="card-title">地图控件</h2>
+        <div class="control-row">
+          <button id="zoomInBtn" class="md3-btn" type="button">放大</button>
+          <button id="zoomOutBtn" class="md3-btn" type="button">缩小</button>
+          <button id="resetViewBtn" class="md3-btn md3-btn-tonal" type="button">重置</button>
+        </div>
+      </section>
+
+      <div id="badgeBubble" class="map-bubble" aria-live="polite"></div>
+
+      <div id="feedbackModal" class="feedback-modal" aria-hidden="true">
+        <div class="feedback-modal-card" role="dialog" aria-modal="true">
+          <button id="feedbackModalClose" class="feedback-modal-close" type="button">×</button>
+          <img src="./qrcode.webp" alt="反馈群二维码" class="feedback-modal-image" loading="lazy" />
+          <a href="#" target="_blank" rel="noopener noreferrer" class="feedback-modal-link">
+            前往加群链接
+          </a>
+        </div>
+      </div>
+
+      <div id="easterModal" class="easter-modal" aria-hidden="true">
+        <div class="easter-modal-card" role="dialog" aria-modal="true">
+          <button id="easterModalClose" class="easter-modal-close" type="button">×</button>
+          <h3 class="easter-title">彩蛋</h3>
+          <p id="easterText" class="easter-text"></p>
+        </div>
+      </div>
+
+      <div id="calendarModal" class="calendar-modal" aria-hidden="true">
+        <div class="calendar-modal-card" role="dialog" aria-modal="true">
+          <button id="calendarModalClose" class="calendar-modal-close" type="button">×</button>
+          <div class="calendar-modal-scroll">
+            <div class="calendar-header">
+              <button id="calendarPrevBtn" class="calendar-nav-btn" type="button">‹</button>
+              <h3 id="calendarTitle" class="calendar-title">Galgame活动日历</h3>
+              <button id="calendarNextBtn" class="calendar-nav-btn" type="button">›</button>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+            <div id="calendarEventList" class="calendar-event-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="eventPosterModal" class="event-poster-modal" aria-hidden="true">
+        <div class="event-poster-card" role="dialog" aria-modal="true">
+          <button id="eventPosterClose" class="event-poster-close" type="button">×</button>
+          <div class="event-poster-scroll">
+            <h3 id="eventPosterTitle" class="event-poster-title"></h3>
+            <img id="eventPosterImage" class="event-poster-image" alt="活动宣传图" loading="lazy" />
+            <p id="eventPosterText" class="event-poster-text"></p>
+          </div>
+        </div>
+      </div>
+
+      <button id="refreshApiBtn" class="context-refresh-btn" type="button">刷新数据</button>
+      <div id="tooltip"></div>
+    </main>
+
+    <footer id="siteFooter">
+      <a href="#" target="_blank">Visual Novel Festival</a>
+    </footer>
+
+    <!-- 🔴 关键！这些 script 标签必须存在！ -->
+    <script defer src="https://cdn.jsdmirror.com/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script defer src="./china.min.js"></script>
+    <script defer src="./app.js"></script>
+    <script defer src="./calendar.js"></script>
+  </body>
+</html>

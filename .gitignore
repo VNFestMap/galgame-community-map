@@ -1,0 +1,28 @@
+# 备份文件
+*.bak
+
+# Python 临时文件
+*.pyc
+*.pyo
+__pycache__/
+
+# 编辑器配置
+.vscode/
+.idea/
+*.swp
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 原始数据（CSV/Excel，不上传）
+*.csv
+*.xlsx
+副本-*.csv
+副本-*.xlsx
+
+# 临时脚本
+convert_*.py
+update_*.py
+excel_*.py
+deepseek_*.py
