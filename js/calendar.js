@@ -8,7 +8,7 @@
   };
 
   const ADMIN_TOKEN = 'ciallo';
-  const EVENTS_FILE = './galgame_events.json';
+  const EVENTS_FILE = './data/events.json';
 
   // DOM 元素缓存
   let elements = {};
@@ -78,7 +78,7 @@
 
     try {
       const eventsToSave = state.events.map(({ parsedDate, ...rest }) => rest);
-      const response = await fetch('./api_events.php', {
+      const response = await fetch('./api/events.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

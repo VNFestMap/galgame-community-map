@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$dataFile = __DIR__ . '/publications.json';
+$dataFile = __DIR__ . '/../data/publications.json';
 $adminToken = 'ciallo';
 
 function checkAuth() {
