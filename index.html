@@ -1,255 +1,519 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
+<head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>全国Galgame同好会地图 - 视觉小说同好组织导航</title>
-    <meta
-      name="description"
-      content="全国Galgame同好会地图，聚合展示全国各省、高校及海外地区的视觉小说同好组织信息，支持地图选省、全局搜索、联系方式复制与快速查找同好。"
-    />
-    <meta
-      name="keywords"
-      content="全国Galgame同好会地图,视觉小说,Galgame,同好会,高校社团,地图导航,同好社群"
-    />
+    <meta name="description" content="全国Galgame同好会地图，聚合展示全国各省、高校及海外地区的视觉小说同好组织信息，支持地图选省、全局搜索、联系方式复制与快速查找同好。" />
+    <meta name="keywords" content="全国Galgame同好会地图,视觉小说,Galgame,同好会,高校社团,地图导航,同好社群" />
     <meta name="author" content="全国Galgame同好会地图" />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <meta name="theme-color" content="#9b59b6" />
     <meta name="theme-color" content="#9b59b6" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#2c0a2c" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#2c0a2c" media="prefers-color-scheme: dark" />
     <meta name="format-detection" content="telephone=no,email=no,address=no" />
+    
+    <!-- Preconnect & Preload -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdmirror.com" crossorigin />
-    
-    <link rel="preload" href="https://cdn.jsdmirror.com/npm/d3@7.9.0/dist/d3.min.js" as="script" fetchpriority="high" />
-    <link rel="preload" href="./china.min.js" as="script" fetchpriority="high" />
-    <link rel="preload" href="./app.js" as="script" fetchpriority="high" />
     <link rel="dns-prefetch" href="https://cdn.jsdmirror.com" />
     <link rel="dns-prefetch" href="https://count.getloli.com" />
-    <link
-      rel="preload"
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap"
-      as="style"
-      onload="this.onload=null;this.rel='stylesheet'"
-    />
-    <noscript>
-      <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-      />
-    </noscript>
+    
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="https://cdn.jsdmirror.com/npm/d3@7.9.0/dist/d3.min.js" as="script" fetchpriority="high" />
     <link rel="preload" href="./styles.css" as="style" />
-    <link rel="preload" href="./BanG_Dream!_logo.svg" as="image" fetchpriority="high" />
+    
+    <!-- 字体 -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    </noscript>
+    
+    <!-- 样式表 -->
     <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
+</head>
+<body>
+    <!-- SEO 隐藏标题 -->
     <header class="seo-header">
-      <h1>全国Galgame同好会地图</h1>
-      <p>
-        提供全国各省、高校及海外地区 Galgame / 视觉小说同好组织信息导航，帮助同好快速找到可加入的社群组织。
-      </p>
+        <h1>全国Galgame同好会地图</h1>
+        <p>提供全国各省、高校及海外地区 Galgame / 视觉小说同好组织信息导航，帮助同好快速找到可加入的社群组织。</p>
     </header>
 
+    <!-- 主地图容器 -->
     <main id="map" role="main">
-      <svg id="mapSvg"></svg>
-      
-      <section id="introCard" class="md3-card">
-        <button id="introCloseBtn" class="intro-action-btn" type="button">收起</button>
-        <button id="introExpandBtn" class="intro-expand-btn" type="button">简介</button>
-        <h2 id="introTitle" class="card-title">全国Galgame同好会地图</h2>
-        <img id="introLogo" src="./VNF.png" alt="VNFest 视觉小说高校学园祭" width="640" height="196" fetchpriority="high" decoding="async" />
-        <p class="card-body">
-          本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，
-          支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。
-        </p>
-        <p class="card-body">
-          数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。
-        </p>
-        <label class="md3-switch" for="invertCtrlSwitch">
-          <input id="invertCtrlSwitch" type="checkbox" />
-          <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
-          <span id="invertCtrlLabel" class="md3-switch-label">反转操作（默认关）</span>
-        </label>
-        <label class="md3-switch" for="themeSwitch">
-          <input id="themeSwitch" type="checkbox" />
-          <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
-          <span id="themeSwitchLabel" class="md3-switch-label">暗黑模式（跟随系统）</span>
-        </label>
+        <svg id="mapSvg"></svg>
+        
+        <!-- 简介卡片 -->
+        <section id="introCard" class="md3-card">
+            <button id="introCloseBtn" class="intro-action-btn" type="button">收起</button>
+            <button id="introExpandBtn" class="intro-expand-btn" type="button">简介</button>
+            <h2 id="introTitle" class="card-title">全国Galgame同好会地图</h2>
+            <img id="introLogo" src="./VNF.png" alt="VNFest 视觉小说高校学园祭" width="640" height="196" fetchpriority="high" decoding="async" />
+            <p class="card-body">本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。</p>
+            <p class="card-body">数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。</p>
+            
+            <!-- 开关控制区 -->
+            <label class="md3-switch" for="invertCtrlSwitch">
+                <input id="invertCtrlSwitch" type="checkbox" />
+                <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+                <span id="invertCtrlLabel" class="md3-switch-label">反转操作（默认关）</span>
+            </label>
+            <label class="md3-switch" for="themeSwitch">
+                <input id="themeSwitch" type="checkbox" />
+                <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+                <span id="themeSwitchLabel" class="md3-switch-label">暗黑模式（跟随系统）</span>
+            </label>
 
-        <div class="intro-links">
-          <a class="github-link" href="https://github.com/kokubunshu/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer">
-            <img src="https://github.githubassets.com/favicons/favicon.svg" alt="GitHub" />
-            <span>开源仓库</span>
-          </a>
-          <button id="submitClubBtn" class="feedback-link" type="button" onclick="window.open('./submit.html', '_blank')">
-            📝 提交同好会信息
-          </button>
-        </div>
-        <p class="card-body gpl-text" style="margin-top: 12px; font-size: 12px;">
-          本项目基于 
-          <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank" rel="noopener noreferrer">china-bandori-maps</a> 
-          二次开发，遵循 
-          <a href="./LICENSE" target="_blank">GPLv3 开源协议</a>。
-        </p>
-      </section>
+            <!-- 链接区 -->
+            <div class="intro-links">
+                <div class="submit-buttons">
+                    <a class="submit-btn" href="https://github.com/kokubunshu/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer">
+                        <span>📦</span> 开源仓库
+                    </a>
+                    <button id="submitClubBtn" class="submit-btn primary" type="button">
+                        📝 提交同好会信息
+                    </button>
+                    <button id="submitEventBtn" class="submit-btn" type="button">
+                        📅 添加活动信息
+                    </button>
+                    <div class="lang-switch-group">
+    <button id="langZhBtn" class="lang-btn">
+        <span class="lang-icon">🇨🇳</span>
+        <span class="lang-text">中文</span>
+    </button>
+    <button id="langJaBtn" class="lang-btn">
+        <span class="lang-icon">🇯🇵</span>
+        <span class="lang-text">日本語</span>
+    </button>
+</div>
+                </div>
+                <p class="card-body gpl-text" style="margin-top: 8px; font-size: 11px; text-align: center;">
+                    基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a>
+                </p>
+            </div>
+        </section>
 
-      <section id="selectedCard" class="md3-card">
-        <h2 id="selectedTitle" class="card-title">全国Galgame同好会数据</h2>
-        <p id="selectedProvince" class="card-value">加载中...</p>
-        <p id="selectedMeta" class="card-body">正在获取最新数据</p>
-        <div id="listTools" class="list-tools">
-          <div class="search-row">
-            <button id="globalSearchBtn" class="search-mode-btn" type="button">
-              <span class="search-icon">⌕</span>
-              <span class="search-label">全局搜索</span>
+        <!-- 详情卡片（移动端抽屉） -->
+        <section id="selectedCard" class="md3-card">
+            <div id="mobileSheetHandle" class="mobile-sheet-handle">
+                <div class="mobile-sheet-bar"></div>
+            </div>
+            
+            <!-- 标题栏 + 控件（移动端） -->
+            <div class="drawer-header">
+                <div class="drawer-title-area">
+                    <h2 id="selectedTitle" class="card-title">全国Galgame同好会数据</h2>
+                    <p id="selectedProvince" class="card-value">加载中...</p>
+                    <p id="selectedMeta" class="card-body">正在获取最新数据</p>
+                </div>
+                <div class="drawer-controls" id="drawerControls">
+                    <button class="drawer-control-btn" id="drawerZoomInBtn" title="放大">
+                        <span>+</span>
+                    </button>
+                    <button class="drawer-control-btn" id="drawerZoomOutBtn" title="缩小">
+                        <span>−</span>
+                    </button>
+                    <button class="drawer-control-btn" id="drawerResetBtn" title="重置">
+                        <span>⟳</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 列表工具栏 -->
+            <div id="listTools" class="list-tools">
+                <div class="search-row">
+                    <button id="globalSearchBtn" class="search-mode-btn" type="button">
+                        <span class="search-icon">⌕</span>
+                        <span class="search-label">全局搜索</span>
+                    </button>
+                    <input id="searchInput" class="md3-input" type="search" placeholder="搜索组织名 / 群号" />
+                </div>
+                <div class="tool-row">
+                    <label class="tool-label" for="typeFilter">类型</label>
+                    <select id="typeFilter" class="md3-select">
+                        <option value="all">全部</option>
+                        <option value="region">地区高校联合</option>
+                        <option value="school">高校同好会</option>
+                        <option value="vnfest">视觉小说学园祭</option>
+                    </select>
+                </div>
+                <div id="sortBar" class="sort-bar">
+                    <button class="sort-btn active" type="button" data-sort="default">默认</button>
+                    <button class="sort-btn" type="button" data-sort="time_desc">登记时间 ↓</button>
+                    <button class="sort-btn" type="button" data-sort="name_asc">首字母 A→Z</button>
+                    <button class="sort-btn" type="button" data-sort="type_asc">类型 A→Z</button>
+                </div>
+            </div>
+            <div id="groupList" class="group-list"></div>
+        </section>
+
+        <!-- 侧边按钮组 - 桌面端显示 -->
+        <button id="chinaToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn active" type="button">中国同好会</button>
+        <button id="japanToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">日本同好会</button>
+        <button id="otherToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">其他同好会</button>
+        <button id="calendarToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">活动日历</button>
+        <button id="publicationToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">刊物投稿</button>
+
+        <!-- 移动端悬浮菜单 -->
+        <div class="fab-menu" id="fabMenu">
+            <div class="fab-menu-items" id="fabMenuItems">
+                <button class="fab-menu-item" id="fabChina">
+                    <span>🇨🇳</span>
+                    <span class="fab-label">中国</span>
+                </button>
+                <button class="fab-menu-item" id="fabJapan">
+                    <span>🇯🇵</span>
+                    <span class="fab-label">日本</span>
+                </button>
+                <button class="fab-menu-item" id="fabOther">
+                    <span>🌍</span>
+                    <span class="fab-label">其他</span>
+                </button>
+                <button class="fab-menu-item" id="fabCalendar">
+                    <span>📅</span>
+                    <span class="fab-label">日历</span>
+                </button>
+                <button class="fab-menu-item" id="fabPublication">
+                    <span>📖</span>
+                    <span class="fab-label">刊物</span>
+                </button>
+            </div>
+            <button class="fab-main" id="fabMainBtn">
+                <span class="fab-icon-plus">+</span>
+                <span class="fab-icon-close">✕</span>
             </button>
-            <input id="searchInput" class="md3-input" type="search" placeholder="搜索组织名 / 群号" />
-          </div>
-          <div class="tool-row">
-            <label class="tool-label" for="typeFilter">类型</label>
-            <select id="typeFilter" class="md3-select">
-              <option value="all">全部</option>
-              <option value="region">地区高校联合</option>
-              <option value="school">高校同好会</option>
-              <option value="vnfest">视觉小说学园祭</option>
+        </div>
+
+        <!-- 控制卡片（桌面端） -->
+        <section id="controlCard" class="md3-card">
+            <h2 class="card-title">地图控件</h2>
+            <div class="control-row">
+                <button id="zoomInBtn" class="md3-btn" type="button">放大 +</button>
+                <button id="zoomOutBtn" class="md3-btn" type="button">缩小 -</button>
+                <button id="resetViewBtn" class="md3-btn md3-btn-tonal" type="button">重置</button>
+            </div>
+        </section>
+
+        <!-- 地图气泡 -->
+        <div id="badgeBubble" class="map-bubble" aria-live="polite"></div>
+
+        <!-- 反馈弹窗 -->
+        <div id="feedbackModal" class="feedback-modal" aria-hidden="true">
+            <div class="feedback-modal-card" role="dialog" aria-modal="true">
+                <button id="feedbackModalClose" class="feedback-modal-close" type="button">×</button>
+                <img src="./qrcode.webp" alt="反馈群二维码" class="feedback-modal-image" loading="lazy" />
+                <a href="#" target="_blank" rel="noopener noreferrer" class="feedback-modal-link">前往加群链接</a>
+            </div>
+        </div>
+
+        <!-- 彩蛋弹窗 -->
+        <div id="easterModal" class="easter-modal" aria-hidden="true">
+            <div class="easter-modal-card" role="dialog" aria-modal="true">
+                <button id="easterModalClose" class="easter-modal-close" type="button">×</button>
+                <h3 class="easter-title">🎉 彩蛋</h3>
+                <p id="easterText" class="easter-text"></p>
+            </div>
+        </div>
+
+        <!-- 日历弹窗 -->
+        <div id="calendarModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" role="dialog" aria-modal="true">
+                <button id="calendarModalClose" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <div class="calendar-header">
+                        <button id="calendarPrevBtn" class="calendar-nav-btn" type="button">‹</button>
+                        <h3 id="calendarTitle" class="calendar-title">Galgame活动日历</h3>
+                        <button id="calendarNextBtn" class="calendar-nav-btn" type="button">›</button>
+                    </div>
+                    <div id="calendarGrid" class="calendar-grid"></div>
+                    <div id="calendarEventList" class="calendar-event-list"></div>
+                    
+                    <!-- 添加活动按钮（管理员模式显示） -->
+                    <button id="calendarAddEventBtn" class="md3-btn" style="margin-top: 20px; width: 100%; display: none;">➕ 添加活动</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 刊物弹窗 -->
+        <div id="publicationModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" style="max-width: 650px;">
+                <button id="publicationModalClose" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <h3 class="calendar-title" style="margin-top: 30px;">📖 同好会刊物制作列表</h3>
+                    <div id="publicationList" class="publication-list"></div>
+                    <button id="addPublicationBtn" class="md3-btn" style="margin-top: 20px; width: 100%; display: none;">➕ 添加刊物</button>
+                </div>
+            </div>
+        </div>
+
+<!-- 刊物编辑弹窗 -->
+<div id="publicationEditorModal" class="calendar-modal" aria-hidden="true">
+    <div class="calendar-modal-card" style="max-width: 500px;">
+        <button id="publicationEditorClose" class="calendar-modal-close" type="button">×</button>
+        <div class="calendar-modal-scroll">
+            <h3 id="publicationEditorTitle" class="calendar-title" style="margin-top: 30px;">添加刊物</h3>
+            <input type="hidden" id="pubEditId">
+            <div style="margin: 16px 0 12px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">同好会名称 *</label>
+                <input type="text" id="pubClubName" class="md3-input" placeholder="例：复旦大学九日九视觉小说同好会" style="width: 100%;">
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">刊物名称 *</label>
+                <input type="text" id="pubName" class="md3-input" placeholder="例：《旮之旯》" style="width: 100%;">
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">制作状况 *</label>
+                <select id="pubStatus" class="md3-select" style="width: 100%;">
+                    <option value="planning">📋 策划中</option>
+                    <option value="writing">✍️ 征稿中</option>
+                    <option value="editing">🔧 编辑中</option>
+                    <option value="publishing">📢 即将发布</option>
+                    <option value="completed">✅ 已发布</option>
+                    <option value="suspended">⏸️ 暂停</option>
+                </select>
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">投稿账号/邮箱 *</label>
+                <input type="text" id="pubSubmitContact" class="md3-input" placeholder="例：example@qq.com 或 @username" style="width: 100%;">
+                <small style="color: #999; font-size: 11px;">QQ号、邮箱、Discord账号等联系方式</small>
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">投稿链接 <span class="optional">(可选)</span></label>
+                <input type="url" id="pubSubmitLink" class="md3-input" placeholder="https://..." style="width: 100%;">
+                <small style="color: #999; font-size: 11px;">备用投稿链接</small>
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">截止日期</label>
+                <input type="date" id="pubDeadline" class="md3-input" style="width: 100%;">
+            </div>
+            <div style="margin: 12px 0;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">刊物介绍</label>
+                <textarea id="pubDescription" class="md3-input" rows="3" placeholder="刊物介绍、征稿要求等..." style="width: 100%; resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button id="pubSaveBtn" class="md3-btn" style="flex: 1;">保存</button>
+                <button id="pubDeleteBtn" class="md3-btn" style="flex: 1; background: #e74c3c; display: none;">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <!-- 活动编辑器弹窗（管理员） -->
+        <div id="eventEditorModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" style="max-width: 500px;" role="dialog" aria-modal="true">
+                <button id="eventEditorCancelBtn" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <h3 id="eventEditorTitle" class="calendar-title" style="margin-top: 30px;">添加活动</h3>
+                    <input type="hidden" id="eventEditorId">
+                    <div style="margin: 16px 0 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">活动名称 *</label>
+                        <input type="text" id="eventEditorName" class="md3-input" placeholder="例：樱之诗·春之祭典" style="width: 100%;">
+                    </div>
+                    <div style="margin: 12px 0;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">活动日期 *</label>
+                        <input type="date" id="eventEditorDate" class="md3-input" style="width: 100%;">
+                    </div>
+                    <div style="margin: 12px 0;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">活动简介</label>
+                        <textarea id="eventEditorRawText" class="md3-input" rows="2" placeholder="简短的活动介绍..." style="width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <div style="margin: 12px 0;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">宣传图文件名</label>
+                        <input type="text" id="eventEditorImage" class="md3-input" placeholder="例：sakura_event.jpg（放在 images/ 目录下）" style="width: 100%;">
+                    </div>
+                    <div style="margin: 12px 0;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">活动链接</label>
+                        <input type="url" id="eventEditorLink" class="md3-input" placeholder="https://..." style="width: 100%;">
+                    </div>
+                    <div style="margin: 12px 0;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">详细介绍</label>
+                        <textarea id="eventEditorDescription" class="md3-input" rows="4" placeholder="详细的活动内容、参与方式等..." style="width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <div style="margin: 12px 0; display: flex; align-items: center; gap: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="eventEditorOfficial"> 官方活动
+                        </label>
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 20px;">
+                        <button id="eventEditorSaveBtn" class="md3-btn" style="flex: 1;">保存</button>
+                        <button id="eventEditorDeleteBtn" class="md3-btn md3-btn-tonal" style="flex: 1; background: #e74c3c; color: white; display: none;">删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 活动详情弹窗 -->
+        <div id="eventDetailModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" style="max-width: 480px;" role="dialog" aria-modal="true">
+                <button id="eventDetailClose" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <h3 id="eventDetailTitle" class="event-poster-title" style="margin-bottom: 12px;"></h3>
+                    <p id="eventDetailDate" style="color: var(--md-primary); font-size: 14px; margin-bottom: 16px;"></p>
+                    <img id="eventDetailImage" class="event-poster-image" alt="活动宣传图" style="display: none;" loading="lazy" />
+                    <p id="eventDetailDescription" class="event-poster-text" style="margin: 16px 0; line-height: 1.8;"></p>
+                    <a id="eventDetailLink" href="#" target="_blank" rel="noopener noreferrer" class="feedback-modal-link" style="display: none; text-decoration: none; text-align: center;">🔗 访问活动页面</a>
+                    <div style="display: flex; gap: 12px; margin-top: 20px;">
+                        <button id="eventDetailEditBtn" class="md3-btn" style="flex: 1; display: none;">✏️ 编辑</button>
+                        <button id="eventDetailDeleteBtn" class="md3-btn" style="flex: 1; background: #e74c3c; display: none;">🗑️ 删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 同好会详情弹窗 -->
+        <div id="clubDetailModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" role="dialog" aria-modal="true">
+                <button id="clubDetailClose" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <h3 id="clubDetailName" class="event-poster-title" style="margin-bottom: 20px;"></h3>
+                    <div id="clubDetailContent" style="line-height: 1.8;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理员浮动按钮 -->
+        <button id="floatingAdminBtn" class="floating-admin-btn" title="管理员模式（需开发者模式）">👑</button>
+        <button id="addClubBtn" class="floating-admin-btn" style="bottom: 152px; display: none;">➕</button>
+
+        <!-- 管理员编辑面板 -->
+        <div id="adminPanel" class="admin-panel">
+            <h3 id="adminPanelTitle">编辑同好会</h3>
+            <input type="hidden" id="editId">
+            
+            <!-- 国家选择 -->
+            <select id="editCountry">
+                <option value="china">🇨🇳 中国</option>
+                <option value="japan">🇯🇵 日本</option>
             </select>
-          </div>
-          <div id="sortBar" class="sort-bar">
-            <button class="sort-btn active" type="button" data-sort="default">默认</button>
-            <button class="sort-btn" type="button" data-sort="time_desc">登记时间 ↓</button>
-            <button class="sort-btn" type="button" data-sort="name_asc">首字母 A→Z</button>
-            <button class="sort-btn" type="button" data-sort="type_asc">类型 A→Z</button>
-          </div>
-        </div>
-        <div id="groupList" class="group-list"></div>
-      </section>
-
-      <button id="overseasToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">海外同好会</button>
-      <button id="nonRegionalToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn secondary-toggle-btn" type="button">国内同好会</button>
-      <button id="calendarToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn tertiary-toggle-btn" type="button">Galgame活动日历</button>
-      <div id="mobileSheetHandle" class="mobile-sheet-handle" aria-hidden="true">
-        <span class="mobile-sheet-bar"></span>
-      </div>
-
-      <section id="controlCard" class="md3-card">
-        <h2 class="card-title">地图控件</h2>
-        <div class="control-row">
-          <button id="zoomInBtn" class="md3-btn" type="button">放大</button>
-          <button id="zoomOutBtn" class="md3-btn" type="button">缩小</button>
-          <button id="resetViewBtn" class="md3-btn md3-btn-tonal" type="button">重置</button>
-        </div>
-      </section>
-
-      <div id="badgeBubble" class="map-bubble" aria-live="polite"></div>
-
-      <div id="feedbackModal" class="feedback-modal" aria-hidden="true">
-        <div class="feedback-modal-card" role="dialog" aria-modal="true">
-          <button id="feedbackModalClose" class="feedback-modal-close" type="button">×</button>
-          <img src="./qrcode.webp" alt="反馈群二维码" class="feedback-modal-image" loading="lazy" />
-          <a href="#" target="_blank" rel="noopener noreferrer" class="feedback-modal-link">
-            前往加群链接
-          </a>
-        </div>
-      </div>
-
-      <div id="easterModal" class="easter-modal" aria-hidden="true">
-        <div class="easter-modal-card" role="dialog" aria-modal="true">
-          <button id="easterModalClose" class="easter-modal-close" type="button">×</button>
-          <h3 class="easter-title">彩蛋</h3>
-          <p id="easterText" class="easter-text"></p>
-        </div>
-      </div>
-
-      <div id="calendarModal" class="calendar-modal" aria-hidden="true">
-        <div class="calendar-modal-card" role="dialog" aria-modal="true">
-          <button id="calendarModalClose" class="calendar-modal-close" type="button">×</button>
-          <div class="calendar-modal-scroll">
-            <div class="calendar-header">
-              <button id="calendarPrevBtn" class="calendar-nav-btn" type="button">‹</button>
-              <h3 id="calendarTitle" class="calendar-title">Galgame活动日历</h3>
-              <button id="calendarNextBtn" class="calendar-nav-btn" type="button">›</button>
+            
+            <!-- 中国省份下拉 -->
+            <div id="provinceGroup">
+                <select id="editProvince">
+                    <option value="">请选择省份</option>
+                    <optgroup label="直辖市">
+                        <option>北京市</option><option>天津市</option><option>上海市</option><option>重庆市</option>
+                    </optgroup>
+                    <optgroup label="省份">
+                        <option>广东省</option><option>江苏省</option><option>浙江省</option><option>四川省</option>
+                        <option>湖北省</option><option>湖南省</option><option>安徽省</option><option>福建省</option>
+                        <option>山东省</option><option>河南省</option><option>河北省</option><option>陕西省</option>
+                        <option>辽宁省</option><option>吉林省</option><option>黑龙江省</option><option>江西省</option>
+                        <option>广西壮族自治区</option><option>海南省</option><option>山西省</option><option>云南省</option>
+                        <option>贵州省</option><option>甘肃省</option><option>青海省</option><option>台湾省</option>
+                    </optgroup>
+                    <optgroup label="自治区">
+                        <option>内蒙古自治区</option><option>新疆维吾尔自治区</option>
+                        <option>宁夏回族自治区</option><option>西藏自治区</option>
+                    </optgroup>
+                    <optgroup label="特别行政区">
+                        <option>香港特别行政区</option><option>澳门特别行政区</option>
+                    </optgroup>
+                    <optgroup label="其他">
+                        <option>海外</option>
+                    </optgroup>
+                </select>
             </div>
-            <div id="calendarGrid" class="calendar-grid"></div>
-            <div id="calendarEventList" class="calendar-event-list"></div>
-          </div>
-        </div>
-      </div>
-
-      <div id="eventPosterModal" class="event-poster-modal" aria-hidden="true">
-        <div class="event-poster-card" role="dialog" aria-modal="true">
-          <button id="eventPosterClose" class="event-poster-close" type="button">×</button>
-          <div class="event-poster-scroll">
-            <h3 id="eventPosterTitle" class="event-poster-title"></h3>
-            <img id="eventPosterImage" class="event-poster-image" alt="活动宣传图" loading="lazy" />
-            <p id="eventPosterText" class="event-poster-text"></p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 同好会详情弹窗 -->
-      <div id="clubDetailModal" class="calendar-modal" aria-hidden="true">
-        <div class="calendar-modal-card" role="dialog" aria-modal="true">
-          <button id="clubDetailClose" class="calendar-modal-close" type="button">×</button>
-          <div class="calendar-modal-scroll">
-            <h3 id="clubDetailName" class="event-poster-title" style="margin-bottom: 20px;"></h3>
-            <div id="clubDetailContent" style="line-height: 1.8;">
-              <!-- 动态内容 -->
+            
+            <!-- 日本都道府县下拉 -->
+            <div id="prefectureGroup" style="display: none;">
+                <select id="editPrefecture">
+                    <option value="">请选择都道府县</option>
+                    <optgroup label="北海道·东北">
+                        <option>北海道</option><option>青森县</option><option>岩手县</option>
+                        <option>宫城县</option><option>秋田县</option><option>山形县</option>
+                        <option>福岛县</option>
+                    </optgroup>
+                    <optgroup label="关东">
+                        <option>东京都</option><option>神奈川县</option><option>埼玉县</option>
+                        <option>千叶县</option><option>茨城县</option><option>栃木县</option>
+                        <option>群马县</option>
+                    </optgroup>
+                    <optgroup label="中部">
+                        <option>爱知县</option><option>静冈县</option><option>岐阜县</option>
+                        <option>长野县</option><option>新潟县</option><option>富山县</option>
+                        <option>石川县</option><option>福井县</option><option>山梨县</option>
+                    </optgroup>
+                    <optgroup label="关西·近畿">
+                        <option>大阪府</option><option>京都府</option><option>兵库县</option>
+                        <option>奈良县</option><option>滋贺县</option><option>和歌山县</option>
+                        <option>三重县</option>
+                    </optgroup>
+                    <optgroup label="中国·四国">
+                        <option>广岛县</option><option>冈山县</option><option>山口县</option>
+                        <option>岛根县</option><option>鸟取县</option><option>香川县</option>
+                        <option>德岛县</option><option>爱媛县</option><option>高知县</option>
+                    </optgroup>
+                    <optgroup label="九州·冲绳">
+                        <option>福冈县</option><option>佐贺县</option><option>长崎县</option>
+                        <option>熊本县</option><option>大分县</option><option>宫崎县</option>
+                        <option>鹿儿岛县</option><option>冲绳县</option>
+                    </optgroup>
+                </select>
             </div>
-          </div>
+            
+            <input type="text" id="editName" placeholder="组织名称 *">
+            <select id="editType">
+                <option value="school">高校同好会</option>
+                <option value="region">地区高校联合</option>
+                <option value="vnfest">视觉小说学园祭</option>
+            </select>
+            <input type="text" id="editInfo" placeholder="联系方式 *">
+            <textarea id="editRemark" rows="4" placeholder="详细介绍..."></textarea>
+            <input type="text" id="editSchool" placeholder="学校/组织">
+            <div class="admin-panel-buttons">
+                <button id="adminCancelBtn" class="btn-secondary">取消</button>
+                <button id="adminSaveBtn" class="btn-primary">保存</button>
+                <button id="adminDeleteBtn" class="btn-danger" style="display: none;">删除</button>
+            </div>
         </div>
-      </div>
 
-      <!-- 刷新按钮（只保留一个） -->
-      <button id="refreshApiBtn" class="context-refresh-btn" type="button">刷新数据</button>
-      <div id="tooltip"></div>
-
-      <!-- 管理员模式相关代码 -->
-      <!-- 管理员浮动按钮 -->
-      <button id="floatingAdminBtn" class="floating-admin-btn" title="管理员模式">👑</button>
-
-      <!-- 添加同好会按钮（管理员模式下显示） -->
-      <button id="addClubBtn" class="floating-admin-btn" style="bottom: 140px; background: #27ae60; display: none;">➕</button>
-
-      <!-- 主题选择器（开发者模式下显示） -->
-      <div class="theme-selector" id="themeSelector" style="display: none;">
-        <div class="theme-dot theme-red" data-theme="red" title="红色主题"></div>
-        <div class="theme-dot theme-blue" data-theme="blue" title="蓝色主题"></div>
-        <div class="theme-dot theme-green" data-theme="green" title="绿色主题"></div>
-        <div class="theme-dot theme-purple" data-theme="purple" title="紫色主题"></div>
-        <div class="theme-dot theme-orange" data-theme="orange" title="橙色主题"></div>
-      </div>
-
-      <!-- 管理员编辑面板 -->
-      <div id="adminPanel" class="admin-panel">
-        <h3 id="adminPanelTitle">编辑同好会</h3>
-        <input type="hidden" id="editId">
-        <input type="text" id="editName" placeholder="组织名称">
-        <input type="text" id="editProvince" placeholder="省份">
-        <select id="editType">
-          <option value="school">高校同好会</option>
-          <option value="region">地区高校联合</option>
-          <option value="vnfest">视觉小说学园祭</option>
-        </select>
-        <input type="text" id="editInfo" placeholder="联系方式">
-        <textarea id="editRemark" rows="4" placeholder="详细介绍..."></textarea>
-        <input type="text" id="editSchool" placeholder="学校/组织">
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-          <button id="adminCancelBtn" class="btn-secondary">取消</button>
-          <button id="adminSaveBtn" class="btn-primary">保存</button>
-          <button id="adminDeleteBtn" class="btn-secondary" style="background: #e74c3c; color: white;">删除</button>
+        <!-- 主题选择器 -->
+        <div class="theme-selector" id="themeSelector">
+            <div class="theme-dot theme-red" data-theme="red" title="红色主题"></div>
+            <div class="theme-dot theme-blue" data-theme="blue" title="蓝色主题"></div>
+            <div class="theme-dot theme-green" data-theme="green" title="绿色主题"></div>
+            <div class="theme-dot theme-purple" data-theme="purple" title="紫色主题"></div>
+            <div class="theme-dot theme-orange" data-theme="orange" title="橙色主题"></div>
         </div>
-      </div>
+
+        <!-- 右键刷新按钮 -->
+        <button id="refreshApiBtn" class="context-refresh-btn" type="button">🔄 刷新数据</button>
+        
+        <!-- 工具提示 -->
+        <div id="tooltip"></div>
     </main>
 
+    <!-- 页脚 -->
     <footer id="siteFooter">
-      <a href="#" target="_blank">Visual Novel Festival</a>
+        <a href="#" target="_blank">Visual Novel Festival</a>
     </footer>
 
     <!-- 脚本文件 -->
     <script defer src="https://cdn.jsdmirror.com/npm/d3@7.9.0/dist/d3.min.js"></script>
-    <script defer src="./china.min.js"></script>
+    <script defer src="./china.js"></script>
+    <script defer src="./japan.js"></script>
     <script defer src="./app.js"></script>
     <script defer src="./calendar.js"></script>
-  </body>
+    
+    <script>
+        // 补充按钮事件 - 提交页面跳转
+        document.addEventListener('DOMContentLoaded', function() {
+            const submitClubBtn = document.getElementById('submitClubBtn');
+            const submitEventBtn = document.getElementById('submitEventBtn');
+            
+            if (submitClubBtn) {
+                submitClubBtn.addEventListener('click', function() {
+                    window.open('./submit.html', '_blank');
+                });
+            }
+            
+            if (submitEventBtn) {
+                submitEventBtn.addEventListener('click', function() {
+                    window.open('./submit_event.html', '_blank');
+                });
+            }
+        });
+    </script>
+</body>
 </html>

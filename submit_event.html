@@ -1,0 +1,328 @@
+<!-- submit_event.html - 活动信息提交页面 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>提交活动信息 - 全国视觉小说同好会地图</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .form-card {
+            background: white;
+            border-radius: 28px;
+            padding: 32px 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 28px;
+            font-size: 14px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .required {
+            color: #e74c3c;
+            margin-left: 4px;
+        }
+        
+        .optional {
+            color: #999;
+            font-weight: normal;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 14px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: #fafafa;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #9b59b6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(155, 89, 182, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 90px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #28a745;
+        }
+        
+        .error-msg {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .info-box {
+            background: #f0f0f0;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .info-box a {
+            color: #9b59b6;
+            text-decoration: none;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 16px;
+            text-align: center;
+            font-size: 13px;
+            color: #9b59b6;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 480px) {
+            .form-card {
+                padding: 24px 20px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-card">
+            <h1>
+                📅 提交活动信息
+            </h1>
+            <p class="subtitle">分享你所在同好会的活动，让更多人参与 ✨</p>
+            
+            <div id="successMsg" class="success-msg">
+                ✅ 提交成功！感谢你的分享，管理员审核后会在日历中显示。
+            </div>
+            <div id="errorMsg" class="error-msg">
+                ❌ 提交失败，请稍后重试或联系管理员。
+            </div>
+            
+            <form id="submitForm">
+                <div class="form-group">
+                    <label>活动名称 <span class="required">*</span></label>
+                    <input type="text" id="eventName" required placeholder="例：樱之诗·春季学园祭">
+                </div>
+                
+                <div class="form-group">
+                    <label>活动日期 <span class="required">*</span></label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>主办同好会 <span class="required">*</span></label>
+                    <input type="text" id="clubName" required placeholder="例：北京大学视觉小说同好会">
+                </div>
+                
+                <div class="form-group">
+                    <label>活动地点 <span class="optional">(可选)</span></label>
+                    <input type="text" id="location" placeholder="例：北京大学英杰交流中心 / 线上">
+                </div>
+                
+                <div class="form-group">
+                    <label>活动链接 <span class="optional">(可选)</span></label>
+                    <input type="url" id="eventLink" placeholder="https://...">
+                </div>
+                
+                <div class="form-group">
+                    <label>活动简介 <span class="required">*</span></label>
+                    <textarea id="description" required rows="4" placeholder="活动内容、参与方式、注意事项等..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>宣传图 <span class="optional">(可选)</span></label>
+                    <input type="text" id="imageName" placeholder="例：event_poster.jpg（上传到 images/ 目录下）">
+                    <small style="color:#999; font-size:12px;">请将图片上传到 images/ 文件夹，此处填写文件名即可</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>你的联系方式 <span class="optional">(可选)</span></label>
+                    <input type="text" id="submitter" placeholder="QQ/微信/邮箱，审核通过后可能联系你">
+                    <small style="color:#999; font-size:12px;">仅用于审核沟通，不会公开</small>
+                </div>
+                
+                <button type="submit" id="submitBtn">✉️ 提交活动信息</button>
+            </form>
+            
+            <div style="text-align: center;">
+                <a href="./index.html" class="back-link">← 返回地图首页</a>
+            </div>
+            
+            <div class="info-box">
+                ⭐ 提交后，管理员会尽快审核，审核通过的活动会显示在日历中
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 后端API地址
+        const SUBMIT_API = './submit_event_api.php';
+        
+        document.getElementById('submitForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 收集数据
+            const data = {
+                event: document.getElementById('eventName').value.trim(),
+                date: document.getElementById('eventDate').value,
+                clubName: document.getElementById('clubName').value.trim(),
+                location: document.getElementById('location').value.trim(),
+                link: document.getElementById('eventLink').value.trim(),
+                description: document.getElementById('description').value.trim(),
+                image: document.getElementById('imageName').value.trim(),
+                submitter: document.getElementById('submitter').value.trim(),
+                timestamp: new Date().toISOString(),
+                status: 'pending',
+                offical: 0
+            };
+            
+            // 验证
+            if (!data.event) {
+                alert('请填写活动名称');
+                return;
+            }
+            if (!data.date) {
+                alert('请选择活动日期');
+                return;
+            }
+            if (!data.clubName) {
+                alert('请填写主办同好会');
+                return;
+            }
+            if (!data.description) {
+                alert('请填写活动简介');
+                return;
+            }
+            
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '提交中...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(SUBMIT_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('successMsg').style.display = 'block';
+                    document.getElementById('submitForm').reset();
+                    
+                    setTimeout(() => {
+                        document.getElementById('successMsg').style.display = 'none';
+                    }, 4000);
+                } else {
+                    throw new Error(result.message || '提交失败');
+                }
+                
+            } catch (error) {
+                console.error('提交失败：', error);
+                document.getElementById('errorMsg').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('errorMsg').style.display = 'none';
+                }, 4000);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

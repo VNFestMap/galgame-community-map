@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同好会提交审核 - 管理后台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        h1 {
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 12px 24px;
+            text-align: center;
+            color: white;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .tab-btn {
+            padding: 10px 24px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .tab-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .submissions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .submission-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .submission-card.approved {
+            opacity: 0.6;
+            background: #e8f5e9;
+        }
+        
+        .submission-card.rejected {
+            opacity: 0.6;
+            background: #ffebee;
+        }
+        
+        .submission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .submission-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-pending {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status-approved {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .status-rejected {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .submission-details {
+            margin: 12px 0;
+            padding: 12px;
+            background: #f8f8f8;
+            border-radius: 12px;
+        }
+        
+        .detail-row {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #666;
+            min-width: 100px;
+            display: inline-block;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .btn-approve {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-approve:hover {
+            background: #219a52;
+            transform: translateY(-1px);
+        }
+        
+        .btn-reject {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-reject:hover {
+            background: #c0392b;
+            transform: translateY(-1px);
+        }
+        
+        .btn-delete {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-delete:hover {
+            background: #7f8c8d;
+        }
+        
+        .empty-text {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 20px;
+            color: #999;
+        }
+        
+        .refresh-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .refresh-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .country-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .country-cn {
+            background: #3498db;
+            color: white;
+        }
+        
+        .country-jp {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        @media (max-width: 640px) {
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            .detail-label {
+                min-width: 80px;
+            }
+            .action-buttons {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                📋 同好会提交审核
+            </h1>
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="pendingCount">0</div>
+                    <div class="stat-label">待审核</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="approvedCount">0</div>
+                    <div class="stat-label">已通过</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCount">0</div>
+                    <div class="stat-label">总计</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="pending">⏳ 待审核</button>
+            <button class="tab-btn" data-tab="approved">✅ 已通过</button>
+            <button class="tab-btn" data-tab="rejected">❌ 已拒绝</button>
+            <button class="refresh-btn" onclick="loadSubmissions()" style="margin-left: auto;">🔄 刷新</button>
+        </div>
+        
+        <div id="submissionsList" class="submissions-list">
+            <div class="empty-text">加载中...</div>
+        </div>
+    </div>
+    
+    <script>
+        const ADMIN_TOKEN = 'ciallo';
+        const SUBMISSIONS_FILE = './submissions.json';
+        const CHINA_API = './api.php';
+        const JAPAN_API = './api_japan.php';
+        
+        let submissions = [];
+        let currentTab = 'pending';
+        
+        // 检查管理员登录
+        function checkAuth() {
+            const token = localStorage.getItem('admin_token');
+            if (token !== ADMIN_TOKEN) {
+                const pwd = prompt('请输入管理员密码：');
+                if (pwd === ADMIN_TOKEN) {
+                    localStorage.setItem('admin_token', ADMIN_TOKEN);
+                    return true;
+                } else {
+                    alert('密码错误！');
+                    window.location.href = './index.html';
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // 加载提交记录
+        async function loadSubmissions() {
+            try {
+                const response = await fetch(SUBMISSIONS_FILE + '?t=' + Date.now());
+                if (response.ok) {
+                    submissions = await response.json();
+                    if (!Array.isArray(submissions)) submissions = [];
+                } else {
+                    submissions = [];
+                }
+            } catch (e) {
+                console.error('加载失败:', e);
+                submissions = [];
+            }
+            updateStats();
+            renderList();
+        }
+        
+        // 更新统计
+        function updateStats() {
+            const pending = submissions.filter(s => s.status === 'pending').length;
+            const approved = submissions.filter(s => s.status === 'approved').length;
+            document.getElementById('pendingCount').textContent = pending;
+            document.getElementById('approvedCount').textContent = approved;
+            document.getElementById('totalCount').textContent = submissions.length;
+        }
+        
+        // 保存提交记录到文件
+        async function saveSubmissions() {
+            try {
+                await fetch('./submit_api.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Token': ADMIN_TOKEN
+                    },
+                    body: JSON.stringify(submissions)
+                });
+            } catch (e) {
+                console.error('保存失败:', e);
+            }
+        }
+        
+        // 通过审核 - 添加到正式数据
+        async function approveSubmission(id) {
+            const index = submissions.findIndex(s => s.id === id);
+            if (index === -1) return;
+            
+            const submit = submissions[index];
+            
+            // 构建同好会数据
+            const clubData = {
+                name: submit.name,
+                school: submit.school || submit.name,
+                info: submit.info,
+                type: submit.type || 'school',
+                created_at: submit.created_at || new Date().toISOString().split('T')[0],
+                remark: submit.remark || '',
+                verified: 1,
+                country: submit.country
+            };
+            
+            // 添加地区信息
+            if (submit.country === 'japan') {
+                clubData.prefecture = submit.prefecture;
+                clubData.province = submit.prefecture;
+            } else {
+                clubData.province = submit.province;
+            }
+            
+            const apiUrl = submit.country === 'japan' ? JAPAN_API : CHINA_API;
+            const adminToken = localStorage.getItem('admin_token');
+            
+            try {
+                // 添加到正式数据库
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Token': adminToken
+                    },
+                    body: JSON.stringify(clubData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 更新状态
+                    submissions[index].status = 'approved';
+                    submissions[index].approved_at = new Date().toISOString();
+                    await saveSubmissions();
+                    alert(`✅ 已通过：${submit.name}`);
+                    loadSubmissions();
+                } else {
+                    alert('添加失败：' + (result.message || '未知错误'));
+                }
+            } catch (err) {
+                console.error('审核失败:', err);
+                alert('审核失败，请检查网络连接');
+            }
+        }
+        
+        // 拒绝
+        async function rejectSubmission(id) {
+            if (!confirm('确定拒绝这个提交吗？')) return;
+            const index = submissions.findIndex(s => s.id === id);
+            if (index !== -1) {
+                submissions[index].status = 'rejected';
+                submissions[index].rejected_at = new Date().toISOString();
+                await saveSubmissions();
+                loadSubmissions();
+            }
+        }
+        
+        // 删除
+        async function deleteSubmission(id) {
+            if (!confirm('确定删除这条记录吗？此操作不可撤销！')) return;
+            submissions = submissions.filter(s => s.id !== id);
+            await saveSubmissions();
+            loadSubmissions();
+        }
+        
+        // 格式化日期
+        function formatDate(dateStr) {
+            if (!dateStr) return '未知';
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+        }
+        
+        // 渲染列表
+        function renderList() {
+            const filtered = submissions.filter(s => s.status === currentTab);
+            const container = document.getElementById('submissionsList');
+            
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-text">📭 暂无记录</div>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(item => {
+                const countryTag = item.country === 'japan' 
+                    ? '<span class="country-tag country-jp">🇯🇵 日本</span>' 
+                    : '<span class="country-tag country-cn">🇨🇳 中国</span>';
+                
+                return `
+                    <div class="submission-card ${item.status}">
+                        <div class="submission-header">
+                            <div>
+                                <span class="submission-name">${escapeHtml(item.name)}</span>
+                                ${countryTag}
+                            </div>
+                            <span class="status-badge status-${item.status}">
+                                ${item.status === 'pending' ? '⏳ 待审核' : (item.status === 'approved' ? '✅ 已通过' : '❌ 已拒绝')}
+                            </span>
+                        </div>
+                        <div class="submission-details">
+                            <div class="detail-row">
+                                <span class="detail-label">📍 地区：</span>${escapeHtml(item.country === 'japan' ? item.prefecture : item.province)}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">📞 联系方式：</span>${escapeHtml(item.info)}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">🏷️ 类型：</span>${getTypeText(item.type)}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">📅 成立时间：</span>${escapeHtml(item.created_at || '未填写')}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">📝 备注：</span><br>${escapeHtml(item.remark || '无')}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">📧 提交者：</span>${escapeHtml(item.submitter || '匿名')}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">⏰ 提交时间：</span>${formatDate(item.submitted_at)}
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            ${item.status === 'pending' ? `
+                                <button class="btn-approve" onclick="approveSubmission(${item.id})">✓ 通过并添加到数据库</button>
+                                <button class="btn-reject" onclick="rejectSubmission(${item.id})">✗ 拒绝</button>
+                            ` : ''}
+                            <button class="btn-delete" onclick="deleteSubmission(${item.id})">🗑️ 删除记录</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function getTypeText(type) {
+            const types = {
+                'school': '高校同好会',
+                'region': '地区高校联合',
+                'vnfest': '视觉小说学园祭'
+            };
+            return types[type] || type || '高校同好会';
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        // 切换标签
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTab = btn.dataset.tab;
+                renderList();
+            });
+        });
+        
+        // 初始化
+        if (checkAuth()) {
+            loadSubmissions();
+        }
+    </script>
+</body>
+</html>
