@@ -26,3 +26,18 @@ convert_*.py
 update_*.py
 excel_*.py
 deepseek_*.py
+
+# 敏感配置文件
+config.php
+.env
+.env.local
+.env.*.local
+
+# 不要忽略模板文件
+!config.example.php
+!.env.example
+
+# 其他敏感
+*.key
+*.pem
+.secrets/

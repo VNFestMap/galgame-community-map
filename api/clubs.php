@@ -10,8 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$dataFile = __DIR__ . '/galgame_clubs.json';
-$adminToken = 'ciallo';
+$dataFile = __DIR__ . '/../data/clubs.json';
+// 加载配置
+require_once __DIR__ . '/../config.php';
+
+// 使用配置中的 token
+$adminToken = ADMIN_TOKEN;
 
 function checkAuth() {
     global $adminToken;

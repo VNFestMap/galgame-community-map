@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$dataFile = __DIR__ . '/japan_clubs.json';
+$dataFile = __DIR__ . '/../data/clubs_japan.json';
 $adminToken = 'ciallo';
 
 function checkAuth() {

@@ -8,8 +8,8 @@
 const CONFIG = {
   BASE_WIDTH: 960,
   BASE_HEIGHT: 700,
-  API_URL: './galgame_clubs.json',
-  FALLBACK_URLS: ['./galgame_clubs.json'],
+  API_URL: './data/clubs.json',
+  FALLBACK_URLS: ['./data/clubs.json'],
   POLYMERIZATION_URL: ''
 };
 
@@ -42,7 +42,14 @@ const State = {
 
 let adminMode = false;
 let currentEditClubId = null;
-const ADMIN_PASSWORD = 'ciallo';
+let ADMIN_PASSWORD = '';
+
+// 页面加载时获取配置
+fetch('./api/get_config.php')
+    .then(res => res.json())
+    .then(config => {
+        ADMIN_PASSWORD = config.admin_token;
+    });
 
 function isAdminMode() {
     return localStorage.getItem('admin_token') === ADMIN_PASSWORD;
@@ -1849,7 +1856,7 @@ function switchToJapanMap() {
 
 async function loadJapanData() {
   try {
-    const resp = await fetch('./japan_clubs.json', { cache: 'no-store' });
+    const resp = await fetch('./data/clubs_japan.json', { cache: 'no-store' });
     if (resp.ok) {
       const json = await resp.json();
       if (json?.data && Array.isArray(json.data)) {
@@ -1897,7 +1904,7 @@ async function reloadBandoriData() {
   let rows = [], source = 'none';
   
   try {
-    const resp = await fetch('./galgame_clubs.json', { cache: 'no-store' });
+    const resp = await fetch('./data/clubs.json', { cache: 'no-store' });
     if (resp.ok) {
       const json = await resp.json();
       if (json?.data && Array.isArray(json.data)) {
@@ -2400,7 +2407,7 @@ async function saveClub() {
   
   const isEdit = currentEditClubId !== null;
   const adminToken = localStorage.getItem('admin_token');
-  const apiUrl = country === 'japan' ? './api_japan.php' : './api.php';
+  const apiUrl = country === 'japan' ? './api/clubs_japan.php' : './api/clubs.php';
   
   try {
     let response;
@@ -2451,7 +2458,7 @@ async function deleteClub() {
     if (!confirm('⚠️ 确定要删除这个同好会吗？此操作不可撤销！')) return;
     const adminToken = localStorage.getItem('admin_token');
     try {
-        const response = await fetch('./api.php', {
+        const response = await fetch('./api/clubs.php', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
             body: JSON.stringify({ id: currentEditClubId })
@@ -2537,7 +2544,7 @@ let publications = [];
 
 async function loadPublications() {
   try {
-    const resp = await fetch('./publications.json', { cache: 'no-store' });
+    const resp = await fetch('./data/publications.json', { cache: 'no-store' });
     if (resp.ok) {
       const json = await resp.json();
       publications = json.publications || [];
@@ -2682,7 +2689,7 @@ async function savePublication() {
   if (isEdit) data.id = parseInt(pubId);
   
   try {
-    const response = await fetch('./api_publications.php', {
+    const response = await fetch('./api/publications.php', {
       method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body: JSON.stringify(data)
@@ -2707,7 +2714,7 @@ async function deletePublication() {
   if (!confirm('⚠️ 确定要删除这个刊物吗？此操作不可撤销！')) return;
   const adminToken = localStorage.getItem('admin_token');
   try {
-    const response = await fetch('./api_publications.php', {
+    const response = await fetch('./api/publications.php', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body: JSON.stringify({ id: parseInt(pubId) })
@@ -3011,7 +3018,7 @@ async function init() {
 // 专门加载中国数据的函数
 async function loadChinaData() {
     try {
-        const resp = await fetch('./galgame_clubs.json', { cache: 'no-store' });
+        const resp = await fetch('./data/clubs.json', { cache: 'no-store' });
         if (resp.ok) {
             const json = await resp.json();
             if (json?.data && Array.isArray(json.data)) {
@@ -3068,7 +3075,7 @@ async function reloadBandoriData() {
 // 修改原有 loadJapanData，确保数据加载后同时构建分组
 async function loadJapanData() {
     try {
-        const resp = await fetch('./japan_clubs.json', { cache: 'no-store' });
+        const resp = await fetch('./data/clubs_japan.json', { cache: 'no-store' });
         if (resp.ok) {
             const json = await resp.json();
             if (json?.data && Array.isArray(json.data)) {

@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$dataFile = __DIR__ . '/galgame_events.json';
+$dataFile = __DIR__ . '/../data/events.json';
 $adminToken = 'ciallo';
 
 function checkAuth() {
