@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同好会管理后台 - Galgame 同好会地图</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-gradient: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 30%, #16213e 60%, #0d1b3e 100%);
+  --card-bg: rgba(255,255,255,0.06);
+  --card-border: rgba(255,255,255,0.08);
+  --card-hover-border: rgba(233,30,99,0.3);
+  --glass-blur: blur(16px);
+  --text-primary: #f0e6ff;
+  --text-secondary: rgba(240,230,255,0.65);
+  --text-muted: rgba(240,230,255,0.35);
+  --accent-pink: #e91e63;
+  --accent-purple: #9b59b6;
+  --accent-gold: #ffd700;
+  --accent-green: #4caf50;
+  --accent-orange: #ff9800;
+  --accent-blue: #64b5f6;
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.3);
+  --radius-card: 16px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+  --transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme='light'] {
+  --bg-gradient: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 30%, #e8eaf6 60%, #fce4ec 100%);
+  --card-bg: rgba(255,255,255,0.7);
+  --card-border: rgba(0,0,0,0.08);
+  --card-hover-border: rgba(233,30,99,0.2);
+  --text-primary: #1a1a2e;
+  --text-secondary: rgba(26,26,46,0.65);
+  --text-muted: rgba(26,26,46,0.35);
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+body {
+  font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  color: var(--text-primary);
+  overflow-x: hidden;
+  transition: background 0.5s ease;
+}
+
+/* Decorative background orbs */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+body::before {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(233,30,99,0.08) 0%, transparent 70%);
+  top: -200px; right: -200px;
+}
+body::after {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(155,89,182,0.08) 0%, transparent 70%);
+  bottom: -150px; left: -150px;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 20px 28px;
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-card);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f0e6ff, #e91e63);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-link {
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--card-border);
+  transition: var(--transition);
+}
+.header-link:hover {
+  background: rgba(233,30,99,0.15);
+  color: var(--accent-pink);
+  border-color: var(--accent-pink);
+}
+
+/* ── Club Selector ── */
+.club-selector {
+  margin-bottom: 20px;
+}
+.club-selector select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(240,230,255,0.5)' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 44px;
+}
+.club-selector select:focus {
+  border-color: var(--accent-pink);
+  box-shadow: 0 0 0 3px rgba(233,30,99,0.15);
+}
+.club-selector select option {
+  background: #1a0a2e;
+  color: #f0e6ff;
+}
+
+/* ── Stats Row ── */
+.stats-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 100px;
+  padding: 16px 20px;
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-border);
+  text-align: center;
+  transition: var(--transition);
+}
+.stat-card:hover {
+  border-color: var(--card-hover-border);
+  transform: translateY(-2px);
+}
+
+.stat-card .num {
+  font-size: 30px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
+.stat-card .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  overflow-x: auto;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.04);
+}
+.tab-btn.active {
+  background: rgba(233,30,99,0.15);
+  color: var(--accent-pink);
+  box-shadow: 0 2px 8px rgba(233,30,99,0.1);
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn-glass {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--text-primary);
+  border: 1px solid var(--card-border);
+}
+.btn-glass:hover {
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
+}
+
+.btn-pink {
+  background: linear-gradient(135deg, var(--accent-pink), #c2185b);
+  color: white;
+  box-shadow: 0 4px 16px rgba(233,30,99,0.25);
+}
+.btn-pink:hover {
+  box-shadow: 0 6px 24px rgba(233,30,99,0.35);
+}
+
+.btn-approve {
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  color: white;
+  box-shadow: 0 4px 12px rgba(76,175,80,0.25);
+}
+.btn-approve:hover { box-shadow: 0 6px 20px rgba(76,175,80,0.35); }
+
+.btn-reject {
+  background: linear-gradient(135deg, #ef5350, #c62828);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239,83,80,0.25);
+}
+.btn-reject:hover { box-shadow: 0 6px 20px rgba(239,83,80,0.35); }
+
+.btn-sm {
+  padding: 5px 14px;
+  font-size: 12px;
+}
+
+/* ── List ── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-border);
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-card);
+  padding: 20px 22px;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-card);
+  transition: var(--transition);
+}
+.card:hover {
+  border-color: var(--card-hover-border);
+  transform: translateY(-1px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-body .row {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-body .row .label {
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 68px;
+  flex-shrink: 0;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.card-actions .btn {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  min-width: 80px;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badge-pending { background: rgba(255,152,0,0.15); color: var(--accent-orange); border: 1px solid rgba(255,152,0,0.2); }
+.badge-approved { background: rgba(76,175,80,0.15); color: var(--accent-green); border: 1px solid rgba(76,175,80,0.2); }
+.badge-rejected { background: rgba(239,83,80,0.15); color: #ef5350; border: 1px solid rgba(239,83,80,0.2); }
+
+.badge-role {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+}
+.badge-role.representative { background: rgba(255,215,0,0.12); color: var(--accent-gold); border: 1px solid rgba(255,215,0,0.15); }
+.badge-role.manager { background: rgba(100,181,246,0.12); color: var(--accent-blue); border: 1px solid rgba(100,181,246,0.15); }
+.badge-role.member { background: rgba(76,175,80,0.12); color: var(--accent-green); border: 1px solid rgba(76,175,80,0.15); }
+
+/* ── Feature Action Cards ── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-border);
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+.feature-card:hover {
+  border-color: var(--accent-pink);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(233,30,99,0.12);
+}
+.feature-card .icon {
+  font-size: 32px;
+  line-height: 1;
+}
+.feature-card .label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ── Member list inside cards ── */
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+.member-item:last-child { border-bottom: none; }
+
+.member-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--card-bg);
+}
+
+.member-info {
+  flex: 1;
+  min-width: 0;
+}
+.member-info .name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.member-info .detail {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  padding: 12px 28px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--text-primary);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border: 1px solid var(--card-border);
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 999;
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Loading spinner ── */
+.loading-spinner {
+  display: inline-block;
+  width: 20px; height: 20px;
+  border: 2px solid var(--card-border);
+  border-top-color: var(--accent-pink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .container { padding: 12px; }
+  .header { padding: 16px 18px; }
+  .header h1 { font-size: 18px; }
+  .stats-row { gap: 8px; }
+  .stat-card { min-width: 72px; padding: 12px; }
+  .stat-card .num { font-size: 24px; }
+  .card { padding: 16px; }
+  .feature-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .feature-card { padding: 18px 12px; }
+  .feature-card .icon { font-size: 26px; }
+  .card-actions .btn { min-width: 0; padding: 8px; font-size: 12px; }
+  .tabs { padding: 3px; }
+  .tab-btn { padding: 8px 10px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <h1>🎮 同好会管理</h1>
+    <div class="header-actions">
+      <a href="../admin/reviews.html" class="header-link">📋 审核中心</a>
+      <a href="../index.html" class="header-link">← 返回地图</a>
+    </div>
+  </div>
+
+  <!-- Club Selector -->
+  <div class="club-selector" id="clubSelectorWrap" style="display:none;">
+    <select id="clubSelector" onchange="onClubChange()">
+      <option value="">— 选择同好会 —</option>
+    </select>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="num" id="statPending">0</div><div class="label">待审核</div></div>
+    <div class="stat-card"><div class="num" id="statApproved">0</div><div class="label">已通过</div></div>
+    <div class="stat-card"><div class="num" id="statMembers">0</div><div class="label">成员</div></div>
+    <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">总计</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabBar">
+    <button class="tab-btn active" data-tab="pending">⏳ 待审核</button>
+    <button class="tab-btn" data-tab="approved">✅ 已通过</button>
+    <button class="tab-btn" data-tab="members">👥 成员</button>
+    <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-glass" onclick="loadData()">🔄 刷新</button>
+  </div>
+
+  <!-- Feature Action Cards -->
+  <div class="feature-grid" id="featureGrid">
+    <a class="feature-card" href="../index.html" target="_blank">
+      <span class="icon">🗺️</span>
+      <span>查看地图</span>
+      <span class="label">浏览所有同好会</span>
+    </a>
+    <div class="feature-card" onclick="openClubEdit()">
+      <span class="icon">📝</span>
+      <span>编辑信息</span>
+      <span class="label">修改同好会资料</span>
+    </div>
+    <div class="feature-card" onclick="switchTab('members')">
+      <span class="icon">👥</span>
+      <span>成员管理</span>
+      <span class="label">查看和管理成员</span>
+    </div>
+    <div class="feature-card" onclick="openEventManage()">
+      <span class="icon">📅</span>
+      <span>管理活动</span>
+      <span class="label">发布同好会活动</span>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div id="listContainer" class="list"><div class="empty">加载中...</div></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ====== State ======
+const ROLE_LEVEL = { visitor: 0, member: 1, manager: 2, representative: 3, super_admin: 4 };
+const ROLE_NAMES = { member: '成员', manager: '管理员', representative: '负责人' };
+
+let currentUser = null;
+let currentTab = 'pending';
+let memberships = [];       // current user's own memberships (from api)
+let allData = [];           // all membership records (from pending?status=all)
+let managedClubs = [];      // clubs the user manages
+let selectedClubId = 0;     // currently selected club id
+let clubNameMap = {};
+
+// ====== Tools ======
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : '&quot;');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '未知';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  } catch { return dateStr; }
+}
+
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.background = type === 'error' ? 'rgba(239,83,80,0.15)' : type === 'success' ? 'rgba(76,175,80,0.15)' : '';
+  el.style.borderColor = type === 'error' ? 'rgba(239,83,80,0.3)' : type === 'success' ? 'rgba(76,175,80,0.3)' : '';
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ====== Auth & Init ======
+async function loadClubNames() {
+  try {
+    const [cn, jp] = await Promise.all([
+      fetch('../data/clubs.json?t=' + Date.now()).then(r => r.json()),
+      fetch('../data/clubs_japan.json?t=' + Date.now()).then(r => r.json())
+    ]);
+    const map = {};
+    (cn.data || []).concat(jp.data || []).forEach(c => { map[c.id] = c.name || c.school || '未知'; });
+    clubNameMap = map;
+  } catch { clubNameMap = {}; }
+}
+
+async function init() {
+  const container = document.getElementById('listContainer');
+
+  // Theme sync
+  try {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') document.documentElement.setAttribute('data-theme', saved);
+    else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+  } catch {}
+
+  // Auth check
+  try {
+    const r = await fetch('../api/auth.php?action=me', { credentials: 'same-origin' });
+    const data = await r.json();
+    if (!data.logged_in) {
+      container.innerHTML = '<div class="empty">🔒 请先登录<br><br><a href="../index.html" style="color:var(--accent-pink);">前往登录</a></div>';
+      return;
+    }
+    currentUser = data;
+    const effLevel = getEffectiveLevel(data);
+    if (effLevel < ROLE_LEVEL.manager) {
+      container.innerHTML = '<div class="empty">⛔ 你没有管理权限<br><br><a href="../index.html" style="color:var(--accent-pink);">返回首页</a></div>';
+      return;
+    }
+  } catch {
+    container.innerHTML = '<div class="empty">🔒 请先登录<br><br><a href="../index.html" style="color:var(--accent-pink);">前往登录</a></div>';
+    return;
+  }
+
+  await loadClubNames();
+  await loadManagedClubs();
+  await loadData();
+}
+
+function getEffectiveLevel(user) {
+  let level = ROLE_LEVEL[user?.user?.role] ?? -1;
+  if (user?.memberships) {
+    for (const m of user.memberships) {
+      if (m.status === 'active') {
+        const l = ROLE_LEVEL[m.role] ?? -1;
+        if (l > level) level = l;
+      }
+    }
+  }
+  return level;
+}
+
+// ====== Managed Clubs ======
+async function loadManagedClubs() {
+  const sel = document.getElementById('clubSelector');
+  const wrap = document.getElementById('clubSelectorWrap');
+
+  // Get active memberships and find ones with management roles
+  managedClubs = [];
+  if (currentUser?.memberships) {
+    for (const m of currentUser.memberships) {
+      if (m.status === 'active' && (m.role === 'manager' || m.role === 'representative')) {
+        managedClubs.push(m);
+      }
+    }
+  }
+  // Super admin manages all: load from membership data
+  if (currentUser?.user?.role === 'super_admin') {
+    // For super admin, we show all clubs via the data
+    managedClubs = [{ club_id: 0, role: 'super_admin' }];
+  }
+
+  if (managedClubs.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  sel.innerHTML = '';
+  managedClubs.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.club_id;
+    const name = clubNameMap[m.club_id] || ('同好会 #' + m.club_id);
+    opt.textContent = name + ' · ' + (ROLE_NAMES[m.role] || m.role);
+    sel.appendChild(opt);
+  });
+  if (managedClubs.length === 1) {
+    sel.selectedIndex = 1; // first real option
+    selectedClubId = managedClubs[0].club_id;
+  } else {
+    // Add "all" option for multi-managers
+    const allOpt = document.createElement('option');
+    allOpt.value = '-1';
+    allOpt.textContent = '📋 所有同好会';
+    sel.insertBefore(allOpt, sel.firstChild);
+    sel.selectedIndex = 0;
+    selectedClubId = -1;
+  }
+}
+
+function onClubChange() {
+  const sel = document.getElementById('clubSelector');
+  selectedClubId = parseInt(sel.value) || 0;
+  renderList(currentTab);
+}
+
+// ====== Data Loading ======
+async function loadData() {
+  const container = document.getElementById('listContainer');
+  container.innerHTML = '<div class="empty"><span class="loading-spinner"></span>加载中...</div>';
+
+  try {
+    const r = await fetch('../api/membership.php?action=pending&status=all', { credentials: 'same-origin' });
+    const data = await r.json();
+    allData = data.success ? (data.memberships || []) : [];
+  } catch {
+    allData = [];
+    showToast('加载失败', 'error');
+  }
+
+  renderList(currentTab);
+}
+
+// ====== Render ======
+function renderList(tab) {
+  currentTab = tab;
+  updateStats();
+
+  if (tab === 'members') {
+    renderMembers();
+    return;
+  }
+  if (tab === 'settings') {
+    renderSettings();
+    return;
+  }
+
+  // Filter by selected club
+  let filtered = allData;
+  if (selectedClubId > 0) {
+    filtered = filtered.filter(s => parseInt(s.club_id) === selectedClubId);
+  }
+  // Status filter
+  if (tab === 'pending') filtered = filtered.filter(s => (s.status || 'pending') === 'pending');
+  else if (tab === 'approved') filtered = filtered.filter(s => s.status === 'approved');
+
+  const container = document.getElementById('listContainer');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty">📭 暂无记录</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(item => {
+    const clubName = clubNameMap[item.club_id] || ('同好会 #' + item.club_id);
+    const isPending = (item.status || 'pending') === 'pending';
+    return `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">${escapeHtml(item.username)} → ${escapeHtml(clubName)}</span>
+          <span class="badge badge-${item.status || 'pending'}">${statusText(item.status)}</span>
+        </div>
+        <div class="card-body">
+          <div class="row"><span class="label">👤 申请身份</span>${applyRoleText(item.apply_role)}</div>
+          <div class="row"><span class="label">💬 QQ</span>${escapeHtml(item.qq_account || '未填写')}</div>
+          <div class="row"><span class="label">🎓 学生</span>${item.is_student == 1 ? '是' : '否'}</div>
+          <div class="row"><span class="label">⏰ 申请时间</span>${formatDate(item.joined_at)}</div>
+        </div>
+        ${isPending ? `
+        <div class="card-actions">
+          <button class="btn btn-approve btn-sm" onclick="approveMembership(${item.id})">✓ 批准</button>
+          <button class="btn btn-reject btn-sm" onclick="rejectMembership(${item.id})">✗ 拒绝</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderMembers() {
+  const container = document.getElementById('listContainer');
+
+  if (!selectedClubId || selectedClubId <= 0) {
+    container.innerHTML = '<div class="empty">👆 请先在上方选择一个同好会</div>';
+    return;
+  }
+
+  container.innerHTML = '<div class="empty"><span class="loading-spinner"></span>加载成员列表...</div>';
+
+  // 获取当前用户在所选俱乐部中的角色
+  const myMembership = currentUser?.memberships?.find(m => parseInt(m.club_id) === selectedClubId && m.status === 'active');
+  const myClubRole = myMembership?.role || '';
+  const isSuperAdmin = currentUser?.user?.role === 'super_admin';
+  const currentUserId = currentUser?.user?.id;
+
+  fetch('../api/membership.php?action=members&club_id=' + selectedClubId, { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(data => {
+      const members = data.success ? (data.members || []) : [];
+      if (members.length === 0) {
+        container.innerHTML = '<div class="empty">👥 暂无成员</div>';
+        return;
+      }
+      container.innerHTML = members.map(m => {
+        const isSelf = m.user_id === currentUserId;
+        // 踢出按钮：不显示自己，且操作者有权限
+        let showKick = false;
+        if (!isSelf && (isSuperAdmin || myClubRole === 'representative' || myClubRole === 'manager')) {
+          if (isSuperAdmin) showKick = true;
+          else if (myClubRole === 'representative') showKick = m.role !== 'representative';
+          else if (myClubRole === 'manager') showKick = m.role === 'member';
+        }
+        // 角色变更按钮：不显示自己，仅 super_admin 或 representative
+        const canChangeRole = !isSelf && (isSuperAdmin || myClubRole === 'representative');
+        const showRoleUp = canChangeRole && m.role === 'member';
+        const showRoleDown = canChangeRole && m.role === 'manager';
+
+        return `
+        <div class="card">
+          <div class="member-item" style="padding:0;border:none;">
+            <img class="member-avatar" src="${escapeHtml(m.avatar_url || '')}" alt="" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 32 32%22%3E%3Crect fill=%22rgba(255,255,255,0.1)%22 width=%2232%22 height=%2232%22 rx=%2216%22/%3E%3Ctext x=%2216%22 y=%2221%22 text-anchor=%22middle%22 fill=%22rgba(255,255,255,0.3)%22 font-size=%2214%22%3E${escapeHtml((m.username||'?')[0])}%3C/text%3E%3C/svg%3E'" />
+            <div class="member-info">
+              <div class="name">${escapeHtml(m.username || '未知')}</div>
+              <div class="detail">加入于 ${formatDate(m.joined_at)}</div>
+            </div>
+            <span class="badge badge-role ${m.role}">${ROLE_NAMES[m.role] || m.role}</span>
+            <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
+              ${showRoleUp ? `<button class="btn btn-glass btn-sm" onclick="changeMemberRole(${m.id},'manager')">升为管理</button>` : ''}
+              ${showRoleDown ? `<button class="btn btn-glass btn-sm" onclick="changeMemberRole(${m.id},'member')">设为成员</button>` : ''}
+              ${showKick ? `<button class="btn btn-reject btn-sm" onclick="kickMember(${m.id},'${escapeHtml(m.username)}')">踢出</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    })
+    .catch(() => {
+      container.innerHTML = '<div class="empty">❌ 加载失败</div>';
+    });
+}
+
+function renderSettings() {
+  const container = document.getElementById('listContainer');
+  if (!selectedClubId || selectedClubId <= 0) {
+    container.innerHTML = '<div class="empty">👆 请先在上方选择一个同好会</div>';
+    return;
+  }
+  const clubName = clubNameMap[selectedClubId] || ('同好会 #' + selectedClubId);
+  container.innerHTML = `
+    <div class="card" style="text-align:center;padding:32px;">
+      <div style="font-size:40px;margin-bottom:16px;">📝</div>
+      <div style="font-size:18px;font-weight:600;margin-bottom:8px;">${escapeHtml(clubName)}</div>
+      <div style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">编辑同好会资料、管理成员角色</div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-pink" onclick="openClubEdit()">✏️ 编辑同好会信息</button>
+        <a class="btn btn-glass" href="../index.html" target="_blank" style="text-decoration:none;display:inline-flex;align-items:center;">🗺️ 在地图中查看</a>
+      </div>
+    </div>
+  `;
+}
+
+function openClubEdit() {
+  if (!selectedClubId || selectedClubId <= 0) {
+    showToast('请先选择一个同好会', 'error');
+    return;
+  }
+  // Open main page with edit panel for this club
+  window.open('../index.html?edit_club=' + selectedClubId, '_blank');
+}
+
+function openEventManage() {
+  if (!selectedClubId || selectedClubId <= 0) {
+    showToast('请先选择一个同好会', 'error');
+    return;
+  }
+  window.open('../admin/events.php', '_blank');
+}
+
+function updateStats() {
+  let filtered = allData;
+  if (selectedClubId > 0) {
+    filtered = filtered.filter(s => parseInt(s.club_id) === selectedClubId);
+  }
+  const pending = filtered.filter(s => (s.status || 'pending') === 'pending').length;
+  const approved = filtered.filter(s => s.status === 'approved').length;
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statApproved').textContent = approved;
+  document.getElementById('statMembers').textContent = selectedClubId > 0 ? '?' : '—';
+  document.getElementById('statTotal').textContent = filtered.length;
+
+  // Load member count if club selected
+  if (selectedClubId > 0) {
+    fetch('../api/membership.php?action=members&club_id=' + selectedClubId, { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) document.getElementById('statMembers').textContent = (data.members || []).length;
+      })
+      .catch(() => {});
+  }
+}
+
+// ====== Actions ======
+async function approveMembership(id) {
+  try {
+    const r = await fetch('../api/membership.php?action=approve', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ membership_id: id })
+    });
+    const data = await r.json();
+    if (data.success) { showToast('✅ 已批准绑定', 'success'); loadData(); }
+    else { showToast(data.message || '审批失败', 'error'); }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+async function rejectMembership(id) {
+  if (!confirm('确定拒绝此绑定申请吗？')) return;
+  try {
+    const r = await fetch('../api/membership.php?action=reject', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ membership_id: id })
+    });
+    const data = await r.json();
+    if (data.success) { showToast('已拒绝', 'success'); loadData(); }
+    else { showToast(data.message || '操作失败', 'error'); }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+async function changeMemberRole(membershipId, newRole) {
+  const roleName = newRole === 'manager' ? '管理员' : '普通成员';
+  if (!confirm('确定将此成员的角色改为「' + roleName + '」吗？')) return;
+  try {
+    const r = await fetch('../api/membership.php?action=change_role', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ membership_id: membershipId, role: newRole })
+    });
+    const data = await r.json();
+    if (data.success) { showToast('✅ 角色已更新', 'success'); renderMembers(); }
+    else { showToast(data.message || '操作失败', 'error'); }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+async function kickMember(membershipId, username) {
+  if (!confirm('确定将「' + username + '」踢出同好会吗？')) return;
+  try {
+    const r = await fetch('../api/membership.php?action=kick', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ membership_id: membershipId })
+    });
+    const data = await r.json();
+    if (data.success) { showToast('✅ 已踢出', 'success'); renderMembers(); }
+    else { showToast(data.message || '操作失败', 'error'); }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+// ====== Tab ======
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  renderList(tab);
+}
+
+// ====== Utilities ======
+function statusText(status) {
+  return status === 'approved' ? '✅ 已通过' : status === 'rejected' ? '❌ 已拒绝' : '⏳ 待审核';
+}
+
+function applyRoleText(role) {
+  return role === 'representative' ? '负责人' : role === 'manager' ? '管理员' : '成员';
+}
+
+// ====== Event Listeners ======
+document.getElementById('tabBar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (btn) switchTab(btn.dataset.tab);
+});
+
+// ====== Start ======
+init();
+</script>
+</body>
+</html>

@@ -8,6 +8,8 @@
     <meta name="keywords" content="全国Galgame同好会地图,视觉小说,Galgame,同好会,高校社团,地图导航,同好社群" />
     <meta name="author" content="全国Galgame同好会地图" />
     <meta name="robots" content="index,follow,max-image-preview:large" />
+    <!-- Cropper.js -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
     <meta name="theme-color" content="#9b59b6" />
     <meta name="theme-color" content="#9b59b6" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#2c0a2c" media="prefers-color-scheme: dark" />
@@ -49,7 +51,7 @@
             <button id="introCloseBtn" class="intro-action-btn" type="button">收起</button>
             <button id="introExpandBtn" class="intro-expand-btn" type="button">简介</button>
             <h2 id="introTitle" class="card-title">全国Galgame同好会地图</h2>
-            <img id="introLogo" src="./VNF.png" alt="VNFest 视觉小说高校学园祭" width="640" height="196" fetchpriority="high" decoding="async" />
+            <img id="introLogo" src="./images/VNF.png" alt="VNFest 视觉小说高校学园祭" width="640" height="196" fetchpriority="high" decoding="async" />
             <p class="card-body">本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。</p>
             <p class="card-body">数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。</p>
             
@@ -77,6 +79,9 @@
                     <button id="submitEventBtn" class="submit-btn" type="button">
                         📅 添加活动信息
                     </button>
+                    <button id="submitPublicationBtn" class="submit-btn" type="button">
+                        📖 投稿刊物征集
+                    </button>
                     <div class="lang-switch-group">
     <button id="langZhBtn" class="lang-btn">
         <span class="lang-icon">🇨🇳</span>
@@ -87,6 +92,18 @@
         <span class="lang-text">日本語</span>
     </button>
 </div>
+                </div>
+                <!-- 简化用户引导区 -->
+                <div id="userSection" class="user-section" style="margin-top: 12px; text-align: center;">
+                    <div id="mainUserBar">
+                        <button id="mainLoginBtn" class="submit-btn primary" type="button" style="width: auto; padding: 6px 20px;">登录 / 注册</button>
+                    </div>
+                    <div id="mainUserProfile" style="display: none; align-items: center; justify-content: center; gap: 8px;">
+                        <img id="mainUserAvatar" src="" alt="" style="width: 28px; height: 28px; border-radius: 50%;" />
+                        <span id="mainUserName" style="font-size: 13px;"></span>
+                        <span id="mainUserRoleBadge" style="display: none; font-size: 11px; padding: 1px 8px; border-radius: 10px; font-weight: 500; line-height: 1.6;"></span>
+                        <button id="mainAccountBtn" class="submit-btn" type="button" style="width: auto; padding: 4px 12px; font-size: 12px;">账号</button>
+                    </div>
                 </div>
                 <p class="card-body gpl-text" style="margin-top: 8px; font-size: 11px; text-align: center;">
                     基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a>
@@ -202,7 +219,7 @@
         <div id="feedbackModal" class="feedback-modal" aria-hidden="true">
             <div class="feedback-modal-card" role="dialog" aria-modal="true">
                 <button id="feedbackModalClose" class="feedback-modal-close" type="button">×</button>
-                <img src="./qrcode.webp" alt="反馈群二维码" class="feedback-modal-image" loading="lazy" />
+                <img src="./images/qrcode.webp" alt="反馈群二维码" class="feedback-modal-image" loading="lazy" />
                 <a href="#" target="_blank" rel="noopener noreferrer" class="feedback-modal-link">前往加群链接</a>
             </div>
         </div>
@@ -219,6 +236,7 @@
         <!-- 日历弹窗 -->
         <div id="calendarModal" class="calendar-modal" aria-hidden="true">
             <div class="calendar-modal-card" role="dialog" aria-modal="true">
+                <div class="modal-handle"></div>
                 <button id="calendarModalClose" class="calendar-modal-close" type="button">×</button>
                 <div class="calendar-modal-scroll">
                     <div class="calendar-header">
@@ -230,17 +248,25 @@
                     <div id="calendarEventList" class="calendar-event-list"></div>
                     
                     <!-- 添加活动按钮（管理员模式显示） -->
-                    <button id="calendarAddEventBtn" class="md3-btn" style="margin-top: 20px; width: 100%; display: none;">➕ 添加活动</button>
+                    <button id="calendarAddEventBtn" class="md3-btn" style="margin-top: 20px; width: 100%; display: none;">添加活动</button>
                 </div>
             </div>
         </div>
 
         <!-- 刊物弹窗 -->
         <div id="publicationModal" class="calendar-modal" aria-hidden="true">
-            <div class="calendar-modal-card" style="max-width: 650px;">
+            <div class="calendar-modal-card" style="max-width: 800px;">
                 <button id="publicationModalClose" class="calendar-modal-close" type="button">×</button>
                 <div class="calendar-modal-scroll">
                     <h3 class="calendar-title" style="margin-top: 30px;">📖 同好会刊物制作列表</h3>
+                    <div class="pub-filter-tabs" id="pubFilterTabs">
+                        <button class="pub-filter-btn active" data-filter="all">📋 全部</button>
+                        <button class="pub-filter-btn" data-filter="writing">✍️ 征稿中</button>
+                        <button class="pub-filter-btn" data-filter="planning">📋 策划中</button>
+                        <button class="pub-filter-btn" data-filter="editing">🔧 编辑中</button>
+                        <button class="pub-filter-btn" data-filter="publishing">📢 即将发布</button>
+                        <button class="pub-filter-btn" data-filter="completed">✅ 已发布</button>
+                    </div>
                     <div id="publicationList" class="publication-list"></div>
                     <button id="addPublicationBtn" class="md3-btn" style="margin-top: 20px; width: 100%; display: none;">➕ 添加刊物</button>
                 </div>
@@ -284,6 +310,17 @@
                 <small style="color: #999; font-size: 11px;">备用投稿链接</small>
             </div>
             <div style="margin: 12px 0;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">刊物封面/素材图片</label>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                    <img id="pubImagePreview" src="" alt="" style="width: 100%; max-height: 240px; object-fit: contain; border-radius: 12px; background: var(--md-surface-container-high); display: none; margin-bottom: 4px;">
+                    <input type="hidden" id="pubImageUrl" />
+                    <input type="file" id="pubImageInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+                    <button id="pubImageBtn" type="button" style="padding: 6px 14px; border-radius: 8px; border: 1px solid var(--md-outline); background: var(--md-surface); cursor: pointer; font-size: 12px;">📷 上传图片</button>
+                    <button id="pubImageRemoveBtn" type="button" style="padding: 6px 14px; border-radius: 8px; border: 1px solid var(--md-outline); background: var(--md-surface); cursor: pointer; font-size: 12px; color: #e74c3c; display: none;">移除</button>
+                    <span id="pubImageStatus" style="font-size: 11px; color: #999;"></span>
+                </div>
+            </div>
+            <div style="margin: 12px 0;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">截止日期</label>
                 <input type="date" id="pubDeadline" class="md3-input" style="width: 100%;">
             </div>
@@ -319,8 +356,15 @@
                         <textarea id="eventEditorRawText" class="md3-input" rows="2" placeholder="简短的活动介绍..." style="width: 100%; resize: vertical;"></textarea>
                     </div>
                     <div style="margin: 12px 0;">
-                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">宣传图文件名</label>
-                        <input type="text" id="eventEditorImage" class="md3-input" placeholder="例：sakura_event.jpg（放在 images/ 目录下）" style="width: 100%;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">海报图片</label>
+                        <img id="eventImagePreview" src="" alt="" style="width: 100%; max-height: 240px; object-fit: contain; border-radius: 12px; background: var(--md-surface-container-high); display: none; margin-bottom: 8px;">
+                        <input type="hidden" id="eventEditorImage" />
+                        <input type="file" id="eventImageInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+                        <div style="display: flex; gap: 8px;">
+                            <button id="eventImageBtn" type="button" style="padding: 6px 14px; border-radius: 8px; border: 1px solid var(--md-outline); background: var(--md-surface); cursor: pointer; font-size: 12px;">📷 上传海报</button>
+                            <button id="eventImageRemoveBtn" type="button" style="padding: 6px 14px; border-radius: 8px; border: 1px solid var(--md-outline); background: var(--md-surface); cursor: pointer; font-size: 12px; color: #e74c3c; display: none;">移除</button>
+                            <span id="eventImageStatus" style="font-size: 11px; color: var(--md-on-surface-variant);"></span>
+                        </div>
                     </div>
                     <div style="margin: 12px 0;">
                         <label style="display: block; margin-bottom: 6px; font-weight: 600;">活动链接</label>
@@ -362,19 +406,274 @@
         </div>
 
         <!-- 同好会详情弹窗 -->
-        <div id="clubDetailModal" class="calendar-modal" aria-hidden="true">
-            <div class="calendar-modal-card" role="dialog" aria-modal="true">
-                <button id="clubDetailClose" class="calendar-modal-close" type="button">×</button>
+        <div id="clubDetailModal" aria-hidden="true">
+            <div class="club-detail-modal-card" role="dialog" aria-modal="true">
+                <button id="clubDetailClose" class="club-detail-modal-close" type="button">×</button>
+                <div class="club-detail-modal-scroll">
+                    <h3 id="clubDetailName"></h3>
+                    <div id="clubDetailContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 同好会绑定申请弹窗 -->
+        <div id="membershipApplyModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" role="dialog" aria-modal="true" style="max-width: 450px;">
+                <button id="membershipApplyClose" class="calendar-modal-close" type="button">×</button>
                 <div class="calendar-modal-scroll">
-                    <h3 id="clubDetailName" class="event-poster-title" style="margin-bottom: 20px;"></h3>
-                    <div id="clubDetailContent" style="line-height: 1.8;"></div>
+                    <h3 class="calendar-title" style="margin-top: 30px;">📝 申请绑定同好会</h3>
+                    <div id="membershipApplyClubName" style="text-align: center; font-size: 16px; font-weight: 600; margin: 12px 0 20px; color: var(--md-on-surface);"></div>
+                    <div style="display: flex; flex-direction: column; gap: 14px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;">QQ账号 <span style="color: #999; font-weight: 400;">(非必填)</span></label>
+                            <input type="text" id="applyQQ" class="md3-input" placeholder="例：123456789" />
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;">申请身份</label>
+                            <select id="applyRole" class="md3-select">
+                                <option value="member">成员</option>
+                                <option value="manager">管理员</option>
+                                <option value="representative">负责人</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                                <input type="checkbox" id="applyIsStudent" checked />
+                                <span>是本校学生</span>
+                            </label>
+                        </div>
+                        <div id="membershipApplyMessage" style="font-size: 13px; text-align: center; min-height: 20px; color: var(--md-primary);"></div>
+                        <button id="membershipApplySubmitBtn" class="submit-btn primary" type="button">提交申请</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 绑定审批弹窗 -->
+        <div id="membershipModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" role="dialog" aria-modal="true" style="max-width: 500px;">
+                <button id="membershipModalClose" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <h3 class="calendar-title" style="margin-top: 30px;">📋 绑定审批</h3>
+                    <div id="membershipPendingList" style="margin-top: 16px;">
+                        <p style="text-align: center; color: var(--md-on-surface-variant);">加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 账号管理弹窗 -->
+        <div id="accountModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" role="dialog" aria-modal="true" style="max-width: 480px;">
+                <button id="accountModalClose" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <!-- 登录界面 -->
+                    <div id="accountLoginForm">
+                        <h3 class="calendar-title" style="margin-top: 30px;">登录</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                            <input type="text" id="accLoginUsername" class="md3-input" placeholder="用户名 / 邮箱" />
+                            <input type="password" id="accLoginPassword" class="md3-input" placeholder="密码" />
+                            <button id="accLoginBtn" class="submit-btn primary" type="button">登录</button>
+                            <div id="accLoginMessage" style="font-size: 13px; text-align: center; min-height: 20px;"></div>
+                            <!-- 第三方登录 -->
+                            <div id="accSocialLogin" style="display: none;">
+                                <div class="social-login-divider"><span>其他方式</span></div>
+                                <div class="social-login-buttons">
+                                    <button id="qqLoginBtn" class="social-btn social-btn-qq" type="button">QQ 登录</button>
+                                    <button id="discordLoginBtn" class="social-btn social-btn-discord" type="button">Discord 登录</button>
+                                </div>
+                            </div>
+                            <hr style="border: none; border-top: 1px solid var(--md-outline); margin: 8px 0;" />
+                            <p style="text-align: center; font-size: 13px; color: var(--md-on-surface-variant);">还没有账号？</p>
+                            <button id="accShowRegisterBtn" class="submit-btn" type="button">注册新账号</button>
+                        </div>
+                    </div>
+                    <!-- 注册界面 -->
+                    <div id="accountRegisterForm" style="display: none;">
+                        <h3 class="calendar-title" style="margin-top: 30px;">注册</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                            <input type="text" id="accRegUsername" class="md3-input" placeholder="用户名" />
+                            <input type="password" id="accRegPassword" class="md3-input" placeholder="密码" />
+                            <button id="accRegisterBtn" class="submit-btn primary" type="button">注册</button>
+                            <div id="accRegMessage" style="font-size: 13px; text-align: center; min-height: 20px;"></div>
+                            <hr style="border: none; border-top: 1px solid var(--md-outline); margin: 8px 0;" />
+                            <p style="text-align: center; font-size: 13px; color: var(--md-on-surface-variant);">已有账号？</p>
+                            <button id="accShowLoginBtn" class="submit-btn" type="button">返回登录</button>
+                        </div>
+                    </div>
+                    <!-- 个人设置主页（替代旧 profile 视图） -->
+                    <div id="accountSettings" style="display: none;">
+                        <!-- 头像区 -->
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 20px;">
+                            <div id="accAvatarWrap" style="position: relative; cursor: pointer;">
+                                <img id="accUserAvatar" src="" alt="" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover;" />
+                                <div style="position: absolute; bottom: 0; right: -4px; background: var(--md-primary); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid var(--md-surface);">📷</div>
+                            </div>
+                            <input type="file" id="accAvatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;" />
+                            <div id="accAvatarStatus" style="font-size: 12px; min-height: 18px;"></div>
+                        </div>
+
+                        <!-- 基本信息 -->
+                        <div class="settings-section">
+                            <h4 class="settings-section-title">基本信息</h4>
+                            <div class="settings-row">
+                                <span class="settings-label">昵称</span>
+                                <input type="text" id="accNicknameInput" class="nickname-input" placeholder="设置昵称" maxlength="30" />
+                                <button id="accNicknameSaveBtn" class="btn-small btn-primary">保存</button>
+                            </div>
+                            <div class="settings-row">
+                                <span class="settings-label">用户名</span>
+                                <span id="accSettingsUsername" class="settings-value"></span>
+                            </div>
+                            <div class="settings-row">
+                                <span class="settings-label">等级</span>
+                                <span id="accSettingsRole" class="settings-value"></span>
+                            </div>
+                        </div>
+
+                        <!-- 安全设置 -->
+                        <div class="settings-section">
+                            <h4 class="settings-section-title">安全设置</h4>
+                            <div class="settings-row">
+                                <span class="settings-label">邮箱</span>
+                                <span id="accSettingsEmail" class="settings-value idle">未绑定</span>
+                                <div id="accSettingsEmailActions" style="display: flex; gap: 6px;">
+                                    <button id="accSettingsBindEmailBtn" class="btn-small">绑定</button>
+                                    <button id="accSettingsUnbindEmailBtn" class="btn-small btn-danger" style="display: none;">解绑</button>
+                                </div>
+                            </div>
+                            <div class="settings-row">
+                                <span class="settings-label">密码</span>
+                                <span class="settings-value idle">已加密</span>
+                                <button id="accSettingsChangePwdBtn" class="btn-small">修改</button>
+                            </div>
+                        </div>
+
+                        <!-- 社交账号绑定 -->
+                        <div class="settings-section">
+                            <h4 class="settings-section-title">社交账号绑定</h4>
+                            <div class="settings-row">
+                                <span class="settings-label">QQ</span>
+                                <span id="accQQStatus" class="social-bind-status unbound">未绑定</span>
+                                <button id="accQQBindBtn" class="btn-small">绑定</button>
+                                <button id="accQQUnbindBtn" class="btn-small btn-danger" style="display: none;">解绑</button>
+                            </div>
+                            <div class="settings-row">
+                                <span class="settings-label">Discord</span>
+                                <span id="accDiscordStatus" class="social-bind-status unbound">未绑定</span>
+                                <button id="accDiscordBindBtn" class="btn-small">绑定</button>
+                                <button id="accDiscordUnbindBtn" class="btn-small btn-danger" style="display: none;">解绑</button>
+                            </div>
+                        </div>
+
+                        <!-- 同好会管理 -->
+                        <div class="settings-section">
+                            <h4 class="settings-section-title">我的同好会</h4>
+                            <div id="accClubList"></div>
+                        </div>
+
+                        <!-- 管理操作 -->
+                        <div class="settings-section">
+                            <h4 class="settings-section-title">管理</h4>
+                            <div class="settings-row">
+                                <button id="accClubManageBtn" class="btn-small" style="display: none;">同好会管理</button>
+                            </div>
+                            <div class="settings-row">
+                                <button id="accPublicationManageBtn" class="btn-small" style="display: none;">刊物管理</button>
+                            </div>
+                        </div>
+
+                        <!-- 退出登录 -->
+                        <div style="text-align: center; margin-top: 8px;">
+                            <button id="accLogoutBtn" class="btn-small btn-danger" style="padding: 6px 24px;">退出登录</button>
+                        </div>
+                    </div>
+                    <!-- 头像裁剪弹窗 -->
+                    <div id="avatarCropModal" class="crop-modal" style="display:none;">
+                        <div class="crop-modal-backdrop"></div>
+                        <div class="crop-modal-content">
+                            <h3 style="margin: 0 0 12px; font-size: 16px;">裁剪头像</h3>
+                            <div class="crop-container">
+                                <img id="cropImage" src="" alt="" />
+                            </div>
+                            <div class="crop-actions">
+                                <button id="cropCancelBtn" class="submit-btn" type="button">取消</button>
+                                <button id="cropConfirmBtn" class="submit-btn primary" type="button">确认</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 修改密码子视图 -->
+                    <div id="accountChangePasswordForm" style="display: none;">
+                        <h3 class="calendar-title" style="margin-top: 30px;">修改密码</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                            <input type="password" id="accPwdCurrent" class="md3-input" placeholder="当前密码" />
+                            <input type="password" id="accPwdNew" class="md3-input" placeholder="新密码" />
+                            <input type="password" id="accPwdConfirm" class="md3-input" placeholder="确认新密码" />
+                            <button id="accChangePwdSaveBtn" class="submit-btn primary" type="button">保存</button>
+                            <div id="accPwdMessage" style="font-size: 13px; text-align: center; min-height: 20px;"></div>
+                            <button id="accPwdCancelBtn" class="submit-btn" type="button">返回</button>
+                        </div>
+                    </div>
+                    <!-- 绑定邮箱子视图 -->
+                    <div id="accountBindEmailForm" style="display: none;">
+                        <h3 class="calendar-title" style="margin-top: 30px;">绑定邮箱</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                            <div style="display: flex; gap: 8px;">
+                                <input type="email" id="accEmailInput" class="md3-input" placeholder="请输入邮箱地址" style="flex: 1;" />
+                                <button id="accSendCodeBtn" class="submit-btn" type="button" style="width: auto; padding: 8px 16px; font-size: 13px; white-space: nowrap;">发送验证码</button>
+                            </div>
+                            <input type="text" id="accCodeInput" class="md3-input" placeholder="请输入验证码" style="display: none;" maxlength="6" />
+                            <button id="accEmailSaveBtn" class="submit-btn primary" type="button" style="display: none;">绑定</button>
+                            <div id="accEmailMessage" style="font-size: 13px; text-align: center; min-height: 20px;"></div>
+                            <button id="accEmailCancelBtn" class="submit-btn" type="button">返回</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- 管理员浮动按钮 -->
-        <button id="floatingAdminBtn" class="floating-admin-btn" title="管理员模式（需开发者模式）">👑</button>
-        <button id="addClubBtn" class="floating-admin-btn" style="bottom: 152px; display: none;">➕</button>
+        <button id="floatingAdminBtn" class="floating-admin-btn" title="管理员模式">管理员模式</button>
+        <button id="addClubBtn" class="floating-admin-sub" style="bottom: 130px; display: none;">添加同好会</button>
+        <button id="membershipBtn" class="floating-admin-sub" style="bottom: 178px; display: none;">成员审批</button>
+        <button id="reviewsBtn" class="floating-admin-sub" style="bottom: 226px; display: none;">审核中心</button>
+        <button id="clubManageBtn" class="floating-admin-sub" style="bottom: 274px; display: none;">同好会管理</button>
+        <button id="publicationManageBtn" class="floating-admin-sub" style="bottom: 322px; display: none;">刊物管理</button>
+
+        <!-- 管理员操作面板（移动端底部弹出） -->
+        <div id="adminActionOverlay" class="admin-action-overlay" aria-hidden="true"></div>
+        <div id="adminActionSheet" class="admin-action-sheet" aria-hidden="true" role="dialog" aria-modal="true">
+            <div class="modal-handle"></div>
+            <div class="admin-action-header">管理员操作</div>
+            <div class="admin-action-items">
+                <button class="admin-action-item" data-action="addClub">
+                    <span class="admin-action-icon">➕</span>
+                    <span class="admin-action-label">添加同好会</span>
+                </button>
+                <button class="admin-action-item" data-action="membership">
+                    <span class="admin-action-icon">👥</span>
+                    <span class="admin-action-label">成员审批</span>
+                </button>
+                <button class="admin-action-item" data-action="reviews">
+                    <span class="admin-action-icon">📋</span>
+                    <span class="admin-action-label">审核中心</span>
+                </button>
+                <button class="admin-action-item" data-action="clubManage">
+                    <span class="admin-action-icon">⚙️</span>
+                    <span class="admin-action-label">同好会管理</span>
+                </button>
+                <button class="admin-action-item" data-action="publicationManage">
+                    <span class="admin-action-icon">📖</span>
+                    <span class="admin-action-label">刊物管理</span>
+                </button>
+            </div>
+            <div class="admin-action-divider"></div>
+            <button class="admin-action-item admin-action-exit" data-action="exitAdmin">
+                <span class="admin-action-icon">🚪</span>
+                <span class="admin-action-label">退出管理员模式</span>
+            </button>
+            <button class="admin-action-cancel">取消</button>
+        </div>
 
         <!-- 管理员编辑面板 -->
         <div id="adminPanel" class="admin-panel">
@@ -452,6 +751,17 @@
                 </select>
             </div>
             
+            <!-- 同好会头像上传 -->
+            <div id="editAvatarSection" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 8px; background: var(--md-surface-container); border-radius: 12px;">
+                <img id="editClubAvatar" src="" alt="" style="width: 48px; height: 48px; border-radius: 12px; object-fit: cover; background: var(--md-surface-container-high);" />
+                <div style="flex: 1;">
+                    <input type="file" id="editClubAvatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;" />
+                    <input type="hidden" id="editClubAvatarUrl" />
+                    <button id="editClubAvatarBtn" type="button" style="padding: 6px 14px; border-radius: 8px; border: 1px solid var(--md-outline); background: var(--md-surface); cursor: pointer; font-size: 12px;">📷 上传头像</button>
+                    <button id="editClubAvatarRemoveBtn" type="button" style="padding: 6px 14px; border-radius: 8px; border: 1px solid var(--md-outline); background: var(--md-surface); cursor: pointer; font-size: 12px; color: #e74c3c; display: none;">移除</button>
+                    <span id="editClubAvatarStatus" style="font-size: 11px; color: #999; margin-left: 8px;"></span>
+                </div>
+            </div>
             <input type="text" id="editName" placeholder="组织名称 *">
             <select id="editType">
                 <option value="school">高校同好会</option>
@@ -460,11 +770,32 @@
             </select>
             <input type="text" id="editInfo" placeholder="联系方式 *">
             <textarea id="editRemark" rows="4" placeholder="详细介绍..."></textarea>
+            <textarea id="editExternalLinks" rows="3" placeholder="对外平台链接（每行一个，格式：平台: URL）&#10;例：B站: https://space.bilibili.com/12345&#10;bangumi: https://bgm.tv/user/xxx&#10;推特: https://twitter.com/xxx"></textarea>
             <input type="text" id="editSchool" placeholder="学校/组织">
+            <label class="md3-switch" for="editVisibleByDefault" style="margin: 8px 0 0 8px;">
+                <input type="checkbox" id="editVisibleByDefault" />
+                <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+                <span class="md3-switch-label">公开显示联系方式</span>
+            </label>
             <div class="admin-panel-buttons">
-                <button id="adminCancelBtn" class="btn-secondary">取消</button>
-                <button id="adminSaveBtn" class="btn-primary">保存</button>
-                <button id="adminDeleteBtn" class="btn-danger" style="display: none;">删除</button>
+                <button id="adminSaveBtn" class="btn-primary admin-save-btn">保存</button>
+                <div class="admin-panel-secondary-row">
+                    <button id="adminCancelBtn" class="btn-secondary">取消</button>
+                    <button id="adminDeleteBtn" class="btn-danger" style="display: none;">删除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成员名单模态框 -->
+        <div id="memberListModal" class="calendar-modal" aria-hidden="true">
+            <div class="calendar-modal-card" role="dialog" aria-modal="true" style="max-width: 500px;">
+                <button id="memberListModalClose" class="calendar-modal-close" type="button">×</button>
+                <div class="calendar-modal-scroll">
+                    <h3 class="calendar-title" style="margin-top: 30px;">成员名单</h3>
+                    <div id="memberListContent" style="margin-top: 16px; min-height: 100px;">
+                        <p style="text-align: center; opacity: 0.6;">加载中...</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -490,6 +821,7 @@
     </footer>
 
     <!-- 脚本文件 -->
+    <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
     <script defer src="https://cdn.jsdmirror.com/npm/d3@7.9.0/dist/d3.min.js"></script>
     <script defer src="./js/china.js"></script>
     <script defer src="./js/japan.js"></script>
@@ -511,6 +843,13 @@
             if (submitEventBtn) {
                 submitEventBtn.addEventListener('click', function() {
                     window.open('./submit_event.html', '_blank');
+                });
+            }
+
+            var submitPublicationBtn = document.getElementById('submitPublicationBtn');
+            if (submitPublicationBtn) {
+                submitPublicationBtn.addEventListener('click', function() {
+                    window.open('./submit_publication.html', '_blank');
                 });
             }
         });

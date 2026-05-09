@@ -11,14 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $dataFile = __DIR__ . '/../data/events.json';
-$adminToken = 'ciallo';
-
-function checkAuth() {
-    global $adminToken;
-    $headers = getallheaders();
-    $token = $headers['X-Admin-Token'] ?? '';
-    return $token === $adminToken;
-}
 
 // GET - 读取数据
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -39,12 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // POST - 保存数据（需要验证）
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!checkAuth()) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => '未授权访问']);
-        exit();
-    }
-    
+    require_once __DIR__ . '/../includes/auth.php';
+    requireAdmin();
+
     $input = json_decode(file_get_contents('php://input'), true);
     if (!$input || !isset($input['events'])) {
         echo json_encode(['success' => false, 'message' => '无效的数据']);

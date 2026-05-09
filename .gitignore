@@ -37,6 +37,26 @@ config.php
 !config.example.php
 !.env.example
 
+# 数据库文件（包含生产数据）
+data/*.sql
+data/*.db
+data/*.sqlite
+
+# 用户上传文件
+data/avatars/*
+!data/avatars/.gitkeep
+data/club_avatars/*
+!data/club_avatars/.gitkeep
+data/publication_images/*
+!data/publication_images/.gitkeep
+
+# 提交数据（含用户提交的个人信息）
+data/submissions*.json
+data/qq_members.json
+
+# 服务器配置（暴露目录路径）
+.user.ini
+
 # 其他敏感
 *.key
 *.pem

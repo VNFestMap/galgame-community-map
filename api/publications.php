@@ -11,14 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $dataFile = __DIR__ . '/../data/publications.json';
-$adminToken = 'ciallo';
-
-function checkAuth() {
-    global $adminToken;
-    $headers = getallheaders();
-    $token = $headers['X-Admin-Token'] ?? '';
-    return $token === $adminToken;
-}
 
 // GET - 读取数据
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -31,11 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // 以下需要验证
-if (!checkAuth()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => '未授权访问']);
-    exit();
-}
+require_once __DIR__ . '/../includes/auth.php';
+requireAdmin();
 
 // POST - 添加
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -62,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'submitLink' => $input['submitLink'] ?? '',        // 保留链接作为备用
         'deadline' => $input['deadline'] ?? '',
         'description' => $input['description'] ?? '',
+        'image_url' => $input['image_url'] ?? '',
         'created_at' => date('Y-m-d H:i:s'),
         'updated_at' => date('Y-m-d H:i:s')
     ];
@@ -94,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             $publications[$i]['submitLink'] = $input['submitLink'] ?? $item['submitLink'];
             $publications[$i]['deadline'] = $input['deadline'] ?? $item['deadline'];
             $publications[$i]['description'] = $input['description'] ?? $item['description'];
+            $publications[$i]['image_url'] = $input['image_url'] ?? $item['image_url'] ?? '';
             $publications[$i]['updated_at'] = date('Y-m-d H:i:s');
             $updated = true;
             break;

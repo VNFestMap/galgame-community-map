@@ -7,7 +7,6 @@
     modalAnimToken: 0,
   };
 
-  const ADMIN_TOKEN = 'ciallo';
   const EVENTS_FILE = './data/events.json';
 
   // DOM 元素缓存
@@ -31,12 +30,8 @@
     return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   }
 
-  function getAdminToken() {
-    return localStorage.getItem('admin_token');
-  }
-
   function isAdminMode() {
-    return localStorage.getItem('admin_token') === ADMIN_TOKEN;
+    return typeof hasRole === 'function' && hasRole('manager');
   }
 
   // 加载活动数据
@@ -70,9 +65,8 @@
 
   // 保存活动数据到服务器
   async function saveEvents() {
-    const adminToken = getAdminToken();
-    if (!adminToken) {
-      console.error('未登录管理员');
+    if (!isAdminMode()) {
+      console.error('无管理员权限');
       return false;
     }
 
@@ -80,10 +74,7 @@
       const eventsToSave = state.events.map(({ parsedDate, ...rest }) => rest);
       const response = await fetch('./api/events.php', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': adminToken
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ events: eventsToSave })
       });
       
@@ -196,6 +187,13 @@
       if (elements.eventEditorDescription) elements.eventEditorDescription.value = editEvent.description || '';
       if (elements.eventEditorLink) elements.eventEditorLink.value = editEvent.link || '';
       if (elements.eventEditorDeleteBtn) elements.eventEditorDeleteBtn.style.display = 'block';
+      // 显示已有海报
+      const imgUrl = editEvent.image || '';
+      if (imgUrl && elements.eventImagePreview) {
+        elements.eventImagePreview.src = imgUrl;
+        elements.eventImagePreview.style.display = 'block';
+      }
+      if (elements.eventImageRemoveBtn) elements.eventImageRemoveBtn.style.display = imgUrl ? 'inline-block' : 'none';
     } else {
       if (elements.eventEditorTitle) elements.eventEditorTitle.textContent = '➕ 添加活动';
       if (elements.eventEditorId) elements.eventEditorId.value = '';
@@ -207,6 +205,9 @@
       if (elements.eventEditorDescription) elements.eventEditorDescription.value = '';
       if (elements.eventEditorLink) elements.eventEditorLink.value = '';
       if (elements.eventEditorDeleteBtn) elements.eventEditorDeleteBtn.style.display = 'none';
+      if (elements.eventImagePreview) { elements.eventImagePreview.src = ''; elements.eventImagePreview.style.display = 'none'; }
+      if (elements.eventImageRemoveBtn) elements.eventImageRemoveBtn.style.display = 'none';
+      if (elements.eventImageStatus) elements.eventImageStatus.textContent = '';
     }
 
     elements.eventEditorModal.classList.add('open');
@@ -269,7 +270,7 @@
     
     if (elements.eventDetailImage) {
       if (eventData.image) {
-        elements.eventDetailImage.src = `./images/${eventData.image}`;
+        elements.eventDetailImage.src = eventData.image;
         elements.eventDetailImage.style.display = 'block';
       } else {
         elements.eventDetailImage.style.display = 'none';
@@ -542,6 +543,41 @@
       });
     }
 
+    // 活动海报上传
+    if (elements.eventImageBtn && elements.eventImageInput) {
+      elements.eventImageBtn.addEventListener('click', () => elements.eventImageInput.click());
+      elements.eventImageInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const eventId = elements.eventEditorId?.value || 'event_' + Date.now();
+        const fd = new FormData();
+        fd.append('image', file);
+        fd.append('id', eventId);
+        if (elements.eventImageStatus) elements.eventImageStatus.textContent = '上传中...';
+        try {
+          const r = await fetch('./api/club_avatar.php?scope=event', { method: 'POST', body: fd });
+          const j = await r.json();
+          if (j.success) {
+            if (elements.eventImagePreview) { elements.eventImagePreview.src = j.image_url; elements.eventImagePreview.style.display = 'block'; }
+            if (elements.eventEditorImage) elements.eventEditorImage.value = j.image_url;
+            if (elements.eventImageRemoveBtn) elements.eventImageRemoveBtn.style.display = 'inline-block';
+            if (elements.eventImageStatus) elements.eventImageStatus.textContent = '✅ 上传成功';
+          } else {
+            if (elements.eventImageStatus) elements.eventImageStatus.textContent = '❌ ' + (j.message || '上传失败');
+          }
+        } catch { if (elements.eventImageStatus) elements.eventImageStatus.textContent = '❌ 网络错误'; }
+        elements.eventImageInput.value = '';
+      });
+    }
+    if (elements.eventImageRemoveBtn) {
+      elements.eventImageRemoveBtn.addEventListener('click', () => {
+        if (elements.eventImagePreview) { elements.eventImagePreview.src = ''; elements.eventImagePreview.style.display = 'none'; }
+        if (elements.eventEditorImage) elements.eventEditorImage.value = '';
+        elements.eventImageRemoveBtn.style.display = 'none';
+        if (elements.eventImageStatus) elements.eventImageStatus.textContent = '已移除海报';
+      });
+    }
+
     // 活动详情弹窗事件
     if (elements.eventDetailModal) {
       elements.eventDetailModal.addEventListener('click', (e) => {
@@ -606,6 +642,11 @@
       eventEditorCancelBtn: $('eventEditorCancelBtn'),
       eventEditorSaveBtn: $('eventEditorSaveBtn'),
       eventEditorDeleteBtn: $('eventEditorDeleteBtn'),
+      eventImagePreview: $('eventImagePreview'),
+      eventImageInput: $('eventImageInput'),
+      eventImageBtn: $('eventImageBtn'),
+      eventImageRemoveBtn: $('eventImageRemoveBtn'),
+      eventImageStatus: $('eventImageStatus'),
       eventDetailModal: $('eventDetailModal'),
       eventDetailClose: $('eventDetailClose'),
       eventDetailTitle: $('eventDetailTitle'),
