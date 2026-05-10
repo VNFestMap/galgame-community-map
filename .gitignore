@@ -76,13 +76,26 @@ config.php
 *.cert
 .secrets/
 
-# --- 数据库 / 上传文件（运行时生成） ---
+# --- 数据库文件（包含生产数据） ---
+data/*.sql
 data/*.db
 data/*.sqlite
-data/avatars/
-data/club_avatars/
-data/event_images/
-data/publication_images/
+
+# --- 用户上传文件 ---
+data/avatars/*
+!data/avatars/.gitkeep
+data/club_avatars/*
+!data/club_avatars/.gitkeep
+data/publication_images/*
+!data/publication_images/.gitkeep
+data/event_images/*
+
+# --- 提交数据（含用户个人信息） ---
+data/submissions*.json
+data/qq_members.json
+
+# --- 服务器配置 ---
+.user.ini
 
 # --- Claude Code 缓存 ---
 .claude/

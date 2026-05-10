@@ -2,7 +2,7 @@
 RewriteRule ^includes/ - [F,L]
 
 # 保护数据库文件
-RewriteRule ^data/.*\.(db|sqlite)$ - [F,L]
+RewriteRule ^data/.*\.(db|sqlite|sql)$ - [F,L]
 
 # PHP 安全头
 <IfModule mod_headers.c>
