@@ -22,7 +22,6 @@ const State = {
   activeBubbleState: null,
   bubbleAnimToken: 0,
   invertCtrlBubble: false,
-  developerModeEnabled: false,
   globalSearchEnabled: false,
   themePreference: 'system',
   systemThemeMediaQuery: null,
@@ -33,26 +32,1036 @@ const State = {
   listSort: 'default',
   currentDataSource: 'none',
   mobileSheetHeightPx: null,
-  resetClickBurstCount: 0,
-  resetClickBurstTimer: null,
   currentCountry: 'china',
   japanRows: [],
   japanGroupsMap: new Map()
 };
 
-let adminMode = false;
+let currentUser = null;
 let currentEditClubId = null;
-let ADMIN_PASSWORD = '';
 
-// 页面加载时获取配置
-fetch('./api/get_config.php')
-    .then(res => res.json())
-    .then(config => {
-        ADMIN_PASSWORD = config.admin_token;
+const ROLE_HIERARCHY = { visitor: 0, member: 1, manager: 2, representative: 3, super_admin: 4 };
+
+async function checkAuth() {
+    try {
+        const resp = await fetch('./api/auth.php?action=me', { credentials: 'same-origin' });
+        const data = await resp.json();
+        currentUser = data;
+    } catch {
+        currentUser = { logged_in: false, user: null };
+    }
+    updateUserUI();
+    window.dispatchEvent(new CustomEvent('auth:updated'));
+    return currentUser;
+}
+
+function getEffectiveLevel() {
+    // 取系统角色与俱乐部角色中的最高等级
+    let level = ROLE_HIERARCHY[currentUser?.user?.role] ?? -1;
+    if (currentUser?.memberships) {
+        for (const m of currentUser.memberships) {
+            if (m.status === 'active') {
+                const clubLevel = ROLE_HIERARCHY[m.role] ?? -1;
+                if (clubLevel > level) level = clubLevel;
+            }
+        }
+    }
+    return level;
+}
+
+function getEffectiveRole() {
+    const level = getEffectiveLevel();
+    for (const [role, lv] of Object.entries(ROLE_HIERARCHY)) {
+        if (lv === level) return role;
+    }
+    return currentUser?.user?.role || 'visitor';
+}
+
+function hasRole(minRole) {
+    if (!currentUser?.logged_in || !currentUser?.user) return false;
+    const requiredLevel = ROLE_HIERARCHY[minRole] ?? 99;
+    return getEffectiveLevel() >= requiredLevel;
+}
+
+function updateUserUI() {
+    const bar = document.getElementById('mainUserBar');
+    const profile = document.getElementById('mainUserProfile');
+    if (!bar || !profile) return;
+
+    if (currentUser?.logged_in && currentUser?.user) {
+        bar.style.display = 'none';
+        profile.style.display = 'flex';
+        const avatar = document.getElementById('mainUserAvatar');
+        const name = document.getElementById('mainUserName');
+        if (avatar) avatar.src = currentUser.user.avatar_url || '';
+        if (name) name.textContent = currentUser.user.nickname || currentUser.user.username || '用户';
+        // 左侧等级徽章
+        const badge = document.getElementById('mainUserRoleBadge');
+        if (badge) {
+            const sidebarRoleNames = { visitor: '访客', member: '成员', manager: '管理员', representative: '会长', super_admin: '超级管理员' };
+            const roleText = sidebarRoleNames[getEffectiveRole()] || '';
+            const roleStyles = {
+                visitor: { bg: 'rgba(128,128,128,0.12)', color: '#888' },
+                member: { bg: 'rgba(76,175,80,0.12)', color: '#4caf50' },
+                manager: { bg: 'rgba(33,150,243,0.12)', color: '#2196f3' },
+                representative: { bg: 'rgba(255,152,0,0.12)', color: '#ff9800' },
+                super_admin: { bg: 'rgba(233,30,99,0.12)', color: '#e91e63' },
+            };
+            const s = roleStyles[getEffectiveRole()] || roleStyles.visitor;
+            badge.textContent = roleText;
+            badge.style.display = 'inline';
+            badge.style.background = s.bg;
+            badge.style.color = s.color;
+        }
+    } else {
+        bar.style.display = 'block';
+        profile.style.display = 'none';
+    }
+}
+
+function openAccountModal(view) {
+    const modal = document.getElementById('accountModal');
+    if (!modal) return;
+    document.getElementById('accountLoginForm').style.display = view === 'login' ? 'block' : 'none';
+    document.getElementById('accountRegisterForm').style.display = view === 'register' ? 'block' : 'none';
+    document.getElementById('accountSettings').style.display = view === 'settings' ? 'block' : 'none';
+    document.getElementById('accountChangePasswordForm').style.display = 'none';
+    document.getElementById('accountBindEmailForm').style.display = 'none';
+    const lm = document.getElementById('accLoginMessage');
+    const rm = document.getElementById('accRegMessage');
+    if (lm) lm.textContent = '';
+    if (rm) rm.textContent = '';
+    // 触发 OAuth 配置检测
+    if (view === 'login') checkOAuthConfig();
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeAccountModal() {
+    const modal = document.getElementById('accountModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    // 关闭时销毁裁剪实例
+    destroyCropper();
+    document.getElementById('avatarCropModal').style.display = 'none';
+}
+
+// 页面加载时检查登录状态
+checkAuth();
+
+// 主页面 — 登录/注册按钮 → 打开账号弹窗（登录视图）
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'mainLoginBtn') {
+        openAccountModal('login');
+    }
+});
+
+// 主页面 — 账号按钮 → 打开个人设置
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'mainAccountBtn') {
+        openAccountModal('settings');
+        refreshProfile();
+    }
+});
+
+// 关闭弹窗
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accountModalClose') {
+        closeAccountModal();
+    }
+});
+
+// 点击遮罩关闭
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('accountModal');
+    if (e.target === modal && modal?.classList.contains('open')) {
+        closeAccountModal();
+    }
+});
+
+// 申请绑定弹窗 — 关闭
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'membershipApplyClose') {
+        closeMembershipApplyModal();
+    }
+});
+// 申请绑定弹窗 — 点击遮罩关闭
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('membershipApplyModal');
+    if (e.target === modal && modal?.classList.contains('open')) {
+        closeMembershipApplyModal();
+    }
+});
+// 申请绑定弹窗 — 提交
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'membershipApplySubmitBtn') {
+        submitMembershipApply();
+    }
+});
+
+// 切换 → 注册视图
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accShowRegisterBtn') {
+        document.getElementById('accountLoginForm').style.display = 'none';
+        document.getElementById('accountRegisterForm').style.display = 'block';
+    }
+});
+
+// 切换 → 登录视图
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accShowLoginBtn') {
+        document.getElementById('accountRegisterForm').style.display = 'none';
+        document.getElementById('accountLoginForm').style.display = 'block';
+    }
+});
+
+// 账号弹窗 — 登录
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accLoginBtn') {
+        const username = document.getElementById('accLoginUsername')?.value.trim();
+        const password = document.getElementById('accLoginPassword')?.value;
+        const msgEl = document.getElementById('accLoginMessage');
+        if (!username || !password) { if (msgEl) { msgEl.textContent = '请输入用户名/邮箱和密码'; msgEl.style.color = '#e74c3c'; } return; }
+        if (password.length < 6) { if (msgEl) { msgEl.textContent = '密码至少 6 位'; msgEl.style.color = '#e74c3c'; } return; }
+        if (password.length < 6) { if (msgEl) { msgEl.textContent = '密码至少 6 位'; msgEl.style.color = '#e74c3c'; } return; }
+        try {
+            const resp = await fetch('./api/auth.php?action=login_local', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                currentUser = { logged_in: true, user: data.user, memberships: data.memberships || [] };
+                closeAccountModal();
+                setTimeout(() => location.reload(), 100);
+            } else {
+                if (msgEl) { msgEl.textContent = data.message || '登录失败'; msgEl.style.color = '#e74c3c'; }
+            }
+        } catch { if (msgEl) { msgEl.textContent = '网络错误，请重试'; msgEl.style.color = '#e74c3c'; } }
+    }
+});
+
+// 账号弹窗 — 注册
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accRegisterBtn') {
+        const username = document.getElementById('accRegUsername')?.value.trim();
+        const password = document.getElementById('accRegPassword')?.value;
+        const msgEl = document.getElementById('accRegMessage');
+        if (!username || !password) { if (msgEl) { msgEl.textContent = '请输入用户名和密码'; msgEl.style.color = '#e74c3c'; } return; }
+        if (username.length < 2 || username.length > 20) { if (msgEl) { msgEl.textContent = '用户名需 2-20 个字符'; msgEl.style.color = '#e74c3c'; } return; }
+        if (password.length < 6) { if (msgEl) { msgEl.textContent = '密码至少 6 位'; msgEl.style.color = '#e74c3c'; } return; }
+        try {
+            const resp = await fetch('./api/auth.php?action=register_local', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                currentUser = { logged_in: true, user: data.user, memberships: data.memberships || [] };
+                closeAccountModal();
+                setTimeout(() => location.reload(), 100);
+            } else {
+                if (msgEl) { msgEl.textContent = data.message || '注册失败'; msgEl.style.color = '#e74c3c'; }
+            }
+        } catch { if (msgEl) { msgEl.textContent = '网络错误，请重试'; msgEl.style.color = '#e74c3c'; } }
+    }
+});
+
+// 账号弹窗 — 退出登录
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accLogoutBtn') {
+        try {
+            await fetch('./api/auth.php?action=logout', { credentials: 'same-origin' });
+        } catch {}
+        currentUser = { logged_in: false, user: null };
+        closeAccountModal();
+        setTimeout(() => location.reload(), 100);
+    }
+});
+
+// ====== 个人设置刷新 ======
+async function refreshProfile() {
+    if (!currentUser?.logged_in || !currentUser?.user) return;
+
+    const user = currentUser.user;
+    const roleNames = { visitor: __('settingsRoleVisitor'), member: __('settingsRoleMember'), manager: __('settingsRoleManager'), representative: __('settingsRoleRep'), super_admin: __('settingsRoleAdmin') };
+    const clubRoleNames = { member: __('settingsRoleMember'), manager: __('settingsRoleManager'), representative: __('settingsRoleRep') };
+    const effectiveRole = getEffectiveRole();
+
+    // 头像
+    const avatar = document.getElementById('accUserAvatar');
+    if (avatar) avatar.src = user.avatar_url || '';
+
+    // 昵称
+    const nicknameInput = document.getElementById('accNicknameInput');
+    if (nicknameInput) nicknameInput.value = user.nickname || user.username || '';
+
+    // 用户名（只读）
+    const usernameEl = document.getElementById('accSettingsUsername');
+    if (usernameEl) usernameEl.textContent = user.username || '';
+
+    // 等级
+    const roleEl = document.getElementById('accSettingsRole');
+    if (roleEl) roleEl.textContent = roleNames[effectiveRole] || roleNames[user.role] || '';
+
+    // 邮箱
+    const emailEl = document.getElementById('accSettingsEmail');
+    const bindEmailBtn = document.getElementById('accSettingsBindEmailBtn');
+    const unbindEmailBtn = document.getElementById('accSettingsUnbindEmailBtn');
+    if (emailEl) {
+        if (user.email) {
+            emailEl.textContent = user.email;
+            emailEl.className = 'settings-value';
+            if (bindEmailBtn) bindEmailBtn.textContent = '更换';
+            if (unbindEmailBtn) unbindEmailBtn.style.display = '';
+        } else {
+            emailEl.textContent = '未绑定';
+            emailEl.className = 'settings-value idle';
+            if (bindEmailBtn) bindEmailBtn.textContent = '绑定';
+            if (unbindEmailBtn) unbindEmailBtn.style.display = 'none';
+        }
+    }
+
+    // 第三方绑定状态
+    loadSocialBindStatus();
+
+    // 管理按钮
+    const clubManageBtn = document.getElementById('accClubManageBtn');
+    if (clubManageBtn) clubManageBtn.style.display = hasRole('manager') ? '' : 'none';
+    const pubManageBtn = document.getElementById('accPublicationManageBtn');
+    if (pubManageBtn) pubManageBtn.style.display = hasRole('manager') ? '' : 'none';
+
+    // 加载同好会列表
+    renderClubMemberships();
+}
+
+// ====== 第三方绑定状态显示 ======
+function loadSocialBindStatus() {
+    const user = currentUser?.user;
+    if (!user) return;
+
+    const qqStatus = document.getElementById('accQQStatus');
+    const qqBindBtn = document.getElementById('accQQBindBtn');
+    const qqUnbindBtn = document.getElementById('accQQUnbindBtn');
+    const discordStatus = document.getElementById('accDiscordStatus');
+    const discordBindBtn = document.getElementById('accDiscordBindBtn');
+    const discordUnbindBtn = document.getElementById('accDiscordUnbindBtn');
+
+    if (qqStatus && qqBindBtn && qqUnbindBtn) {
+        const qqBound = user.qq_openid && user.qq_openid !== '';
+        qqStatus.textContent = qqBound ? '已绑定' : '未绑定';
+        qqStatus.className = 'social-bind-status ' + (qqBound ? 'bound' : 'unbound');
+        qqBindBtn.style.display = qqBound ? 'none' : '';
+        qqUnbindBtn.style.display = qqBound ? '' : 'none';
+    }
+
+    if (discordStatus && discordBindBtn && discordUnbindBtn) {
+        const dcBound = user.discord_id && user.discord_id !== '';
+        discordStatus.textContent = dcBound ? '已绑定' : '未绑定';
+        discordStatus.className = 'social-bind-status ' + (dcBound ? 'bound' : 'unbound');
+        discordBindBtn.style.display = dcBound ? 'none' : '';
+        discordUnbindBtn.style.display = dcBound ? '' : 'none';
+    }
+}
+
+// ====== 更新昵称 ======
+async function updateNickname() {
+    const input = document.getElementById('accNicknameInput');
+    const nickname = input?.value.trim();
+    if (!nickname) { alert('昵称不能为空'); return; }
+    if (nickname.length > 30) { alert('昵称不能超过 30 个字符'); return; }
+    try {
+        const resp = await fetch('./api/auth.php?action=update_profile', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            currentUser.user.nickname = nickname;
+            updateUserUI();
+            alert('昵称已更新');
+        } else {
+            alert(data.message || '更新失败');
+        }
+    } catch { alert('网络错误'); }
+}
+
+// ====== OAuth 绑定/解绑 ======
+function initiateQQBind() {
+    window.location.href = './api/auth.php?action=qq_auth&mode=bind';
+}
+
+function initiateDiscordBind() {
+    window.location.href = './api/auth.php?action=discord_auth&mode=bind';
+}
+
+async function unbindQQ() {
+    if (!confirm('确定解绑 QQ 吗？')) return;
+    try {
+        const resp = await fetch('./api/auth.php?action=unbind_qq', {
+            method: 'POST', credentials: 'same-origin',
+        });
+        const data = await resp.json();
+        if (data.success) {
+            currentUser.user.qq_openid = '';
+            loadSocialBindStatus();
+            alert('QQ 已解绑');
+        } else {
+            alert(data.message || '解绑失败');
+        }
+    } catch { alert('网络错误'); }
+}
+
+async function unbindDiscord() {
+    if (!confirm('确定解绑 Discord 吗？')) return;
+    try {
+        const resp = await fetch('./api/auth.php?action=unbind_discord', {
+            method: 'POST', credentials: 'same-origin',
+        });
+        const data = await resp.json();
+        if (data.success) {
+            currentUser.user.discord_id = '';
+            loadSocialBindStatus();
+            alert('Discord 已解绑');
+        } else {
+            alert(data.message || '解绑失败');
+        }
+    } catch { alert('网络错误'); }
+}
+
+// ====== 退出同好会 ======
+async function leaveClub(membershipId, clubName) {
+    if (!confirm(`确定退出同好会「${clubName}」吗？`)) return;
+    try {
+        const resp = await fetch('./api/membership.php?action=leave', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ membership_id: membershipId }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert('已退出同好会');
+            renderClubMemberships();
+        } else {
+            alert(data.message || '操作失败');
+        }
+    } catch { alert('网络错误'); }
+}
+
+// ====== 修改成员角色（负责人操作） ======
+async function changeMemberRole(membershipId, newRole) {
+    const roleName = newRole === 'manager' ? '管理员' : '普通成员';
+    if (!confirm('确定将此成员的角色改为「' + roleName + '」吗？')) return;
+    try {
+        const resp = await fetch('./api/membership.php?action=change_role', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ membership_id: membershipId, role: newRole }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert('角色已更新');
+            // 刷新成员列表
+            const modal = document.getElementById('memberListModal');
+            const cid = parseInt(modal?.dataset?.clubId);
+            if (cid) openMemberList(cid);
+        } else {
+            alert(data.message || '操作失败');
+        }
+    } catch { alert('网络错误'); }
+}
+
+// ====== 踢出成员 ======
+async function kickMember(membershipId, username) {
+    if (!confirm('确定将「' + username + '」踢出同好会吗？')) return;
+    try {
+        const resp = await fetch('./api/membership.php?action=kick', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ membership_id: membershipId }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert('已踢出成员');
+            const modal = document.getElementById('memberListModal');
+            const cid = parseInt(modal?.dataset?.clubId);
+            if (cid) openMemberList(cid);
+        } else {
+            alert(data.message || '操作失败');
+        }
+    } catch { alert('网络错误'); }
+}
+
+// ====== 转让负责人 ======
+async function transferRepresentative(targetMembershipId, clubId, targetName) {
+    if (!confirm('⚠️ 确定将负责人身份转让给「' + targetName + '」吗？\n\n转让后你将变为管理员。此操作不可撤销！')) return;
+    try {
+        const resp = await fetch('./api/membership.php?action=transfer', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ membership_id: targetMembershipId, club_id: clubId }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert('✅ 负责人已成功转让给 ' + targetName);
+            // 刷新成员列表
+            const modal = document.getElementById('memberListModal');
+            const cid = parseInt(modal?.dataset?.clubId);
+            if (cid) openMemberList(cid);
+            // 刷新当前用户状态（角色变了）
+            await fetchCurrentUser();
+        } else {
+            alert(data.message || '操作失败');
+        }
+    } catch { alert('网络错误'); }
+}
+
+// ====== 渲染同好会列表 ======
+async function renderClubMemberships() {
+    const container = document.getElementById('accClubList');
+    if (!container) return;
+    try {
+        const resp = await fetch('./api/membership.php?action=my', { credentials: 'same-origin' });
+        const data = await resp.json();
+        if (!data.success || !data.memberships) {
+            container.innerHTML = '<div class="settings-empty">' + __('noClub') + '</div>';
+            return;
+        }
+        const active = data.memberships.filter(m => m.status === 'active');
+        const allClubs = [...(State.bandoriRows || []), ...(State.japanRows || [])];
+        const clubRoleNames = { member: __('settingsRoleMember'), manager: __('settingsRoleManager'), representative: __('settingsRoleRep') };
+
+        if (active.length === 0) {
+            container.innerHTML = '<div class="settings-empty">' + __('noClub') + '</div>';
+            return;
+        }
+
+        container.innerHTML = active.map(m => {
+            const club = allClubs.find(c => parseInt(c.id) === parseInt(m.club_id) && (c.country || 'china') === (m.country || 'china'));
+            const clubName = club ? club.name : ('# ' + m.club_id);
+            const roleName = clubRoleNames[m.role] || m.role;
+            const canLeave = m.role === 'member';
+            return `
+                <div class="club-membership-item">
+                    <div class="club-membership-info">
+                        <span class="club-membership-name">${escapeHtml(clubName)}</span>
+                        <span class="club-membership-role">${escapeHtml(roleName)}</span>
+                    </div>
+                    <div class="club-membership-actions">
+                        ${canLeave ? `<button class="btn-small btn-danger" onclick="leaveClub(${m.id}, '${escapeHtml(clubName).replace(/'/g, "\\'")}')">${__('detailBtnLeave')}</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch {
+        container.innerHTML = '<div class="settings-empty">' + __('memberLoadError') + '</div>';
+    }
+}
+
+// ====== OAuth 配置检测 ======
+async function checkOAuthConfig() {
+    const container = document.getElementById('accSocialLogin');
+    if (!container) return;
+    try {
+        const resp = await fetch('./api/auth.php?action=oauth_config', { credentials: 'same-origin' });
+        const data = await resp.json();
+        if (!data.success) return;
+        container.style.display = (data.qq_configured || data.discord_configured) ? 'block' : 'none';
+        const qqBtn = document.getElementById('qqLoginBtn');
+        const dcBtn = document.getElementById('discordLoginBtn');
+        if (qqBtn) qqBtn.style.display = data.qq_configured ? '' : 'none';
+        if (dcBtn) dcBtn.style.display = data.discord_configured ? '' : 'none';
+    } catch {}
+}
+
+// ====== OAuth 回调消息处理 ======
+function handleOAuthCallback() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('oauth') === 'success') {
+        const msg = params.get('message') || '操作成功';
+        const toast = document.createElement('div');
+        toast.className = 'oauth-toast success';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+        // 更新登录状态
+        checkAuth();
+        // 清理 URL
+        const url = new URL(window.location);
+        url.searchParams.delete('oauth');
+        url.searchParams.delete('message');
+        window.history.replaceState({}, '', url);
+    } else if (params.get('oauth') === 'error') {
+        const msg = params.get('message') || '操作失败';
+        const toast = document.createElement('div');
+        toast.className = 'oauth-toast error';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+        const url = new URL(window.location);
+        url.searchParams.delete('oauth');
+        url.searchParams.delete('message');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+// ====== 头像上传 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accAvatarWrap' || e.target.closest('#accAvatarWrap')) {
+        document.getElementById('accAvatarInput')?.click();
+    }
+});
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'accAvatarInput') {
+        const file = e.target.files?.[0];
+        const statusEl = document.getElementById('accAvatarStatus');
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            if (statusEl) { statusEl.textContent = '图片不能超过 2MB'; statusEl.style.color = '#e74c3c'; }
+            e.target.value = '';
+            return;
+        }
+        const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowed.includes(file.type)) {
+            if (statusEl) { statusEl.textContent = '仅支持 JPEG/PNG/GIF/WebP'; statusEl.style.color = '#e74c3c'; }
+            e.target.value = '';
+            return;
+        }
+        // 显示裁剪弹窗
+        const cropImg = document.getElementById('cropImage');
+        cropImg.onload = function () {
+            document.getElementById('avatarCropModal').style.display = 'flex';
+            initCropper(cropImg);
+        };
+        cropImg.src = URL.createObjectURL(file);
+        e.target.value = '';
+    }
+});
+
+// ====== 头像裁剪 ======
+let cropperInstance = null;
+let _clubAvatarCropClubId = null;
+
+function initCropper(img) {
+    destroyCropper();
+    cropperInstance = new Cropper(img, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 1,
+        cropBoxMovable: false,
+        cropBoxResizable: false,
+        toggleDragModeOnDblclick: false,
+        background: false,
     });
+}
 
-function isAdminMode() {
-    return localStorage.getItem('admin_token') === ADMIN_PASSWORD;
+function destroyCropper() {
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'cropConfirmBtn') {
+        if (!cropperInstance) return;
+        const canvas = cropperInstance.getCroppedCanvas({
+            width: 256,
+            height: 256,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+        document.getElementById('avatarCropModal').style.display = 'none';
+        destroyCropper();
+        const clubId = _clubAvatarCropClubId;
+        _clubAvatarCropClubId = null;
+        canvas.toBlob(async (blob) => {
+            // 同好会头像上传
+            if (clubId) {
+                const statusEl = document.getElementById('editClubAvatarStatus');
+                const fd = new FormData();
+                fd.append('image', blob, 'avatar.png');
+                fd.append('id', clubId);
+                if (statusEl) statusEl.textContent = '上传中...';
+                try {
+                    const r = await fetch('./api/club_avatar.php?scope=club', { method: 'POST', credentials: 'same-origin', body: fd });
+                    const j = await r.json();
+                    if (j.success) {
+                        document.getElementById('editClubAvatar').src = j.image_url;
+                        document.getElementById('editClubAvatarUrl').value = j.image_url;
+                        const rmBtn = document.getElementById('editClubAvatarRemoveBtn');
+                        if (rmBtn) rmBtn.style.display = '';
+                        if (statusEl) { statusEl.textContent = '✅ 上传成功'; statusEl.style.color = '#27ae60'; }
+                        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+                    } else {
+                        if (statusEl) { statusEl.textContent = '❌ ' + (j.message || '上传失败'); statusEl.style.color = '#e74c3c'; }
+                    }
+                } catch {
+                    if (statusEl) { statusEl.textContent = '❌ 网络错误'; statusEl.style.color = '#e74c3c'; }
+                }
+                return;
+            }
+            // 用户头像上传
+            const formData = new FormData();
+            formData.append('avatar', blob, 'avatar.png');
+            const statusEl = document.getElementById('accAvatarStatus');
+            if (statusEl) { statusEl.textContent = '上传中...'; statusEl.style.color = ''; }
+            try {
+                const resp = await fetch('./api/avatar.php?action=upload', {
+                    method: 'POST', credentials: 'same-origin', body: formData,
+                });
+                const data = await resp.json();
+                if (data.success && currentUser?.user) {
+                    currentUser.user.avatar_url = data.avatar_url;
+                    document.getElementById('accUserAvatar').src = data.avatar_url;
+                    document.getElementById('mainUserAvatar').src = data.avatar_url;
+                    if (statusEl) { statusEl.textContent = '✅ 头像更新成功'; statusEl.style.color = '#27ae60'; }
+                    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+                } else {
+                    if (statusEl) { statusEl.textContent = '❌ ' + (data.message || '上传失败'); statusEl.style.color = '#e74c3c'; }
+                }
+            } catch (err) {
+                if (statusEl) { statusEl.textContent = '❌ 网络错误'; statusEl.style.color = '#e74c3c'; }
+            }
+        }, 'image/png');
+    }
+    if (e.target.id === 'cropCancelBtn') {
+        document.getElementById('avatarCropModal').style.display = 'none';
+        destroyCropper();
+        _clubAvatarCropClubId = null;
+        document.getElementById('accAvatarInput').value = '';
+    }
+});
+
+// ====== 工具函数 ======
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ====== OAuth 回调检测 ======
+handleOAuthCallback();
+
+// ====== 昵称保存 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accNicknameSaveBtn') {
+        updateNickname();
+    }
+});
+
+// ====== QQ / Discord 登录 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'qqLoginBtn') {
+        window.location.href = './api/auth.php?action=qq_auth&mode=login';
+    }
+});
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'discordLoginBtn') {
+        window.location.href = './api/auth.php?action=discord_auth&mode=login';
+    }
+});
+
+// ====== QQ 绑定/解绑 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accQQBindBtn') {
+        initiateQQBind();
+    }
+});
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accQQUnbindBtn') {
+        unbindQQ();
+    }
+});
+
+// ====== Discord 绑定/解绑 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accDiscordBindBtn') {
+        initiateDiscordBind();
+    }
+});
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accDiscordUnbindBtn') {
+        unbindDiscord();
+    }
+});
+
+// ====== 账户面板管理入口 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accClubManageBtn') {
+        window.open('./admin/club_manager.html', '_blank');
+    }
+});
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accPublicationManageBtn') {
+        window.open('./admin/publication_manager.html', '_blank');
+    }
+});
+
+// ====== 修改密码 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accSettingsChangePwdBtn') {
+        document.getElementById('accountSettings').style.display = 'none';
+        document.getElementById('accountChangePasswordForm').style.display = 'block';
+        document.getElementById('accPwdMessage').textContent = '';
+    }
+});
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accPwdCancelBtn') {
+        document.getElementById('accountChangePasswordForm').style.display = 'none';
+        document.getElementById('accountSettings').style.display = 'block';
+    }
+});
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accChangePwdSaveBtn') {
+        const current = document.getElementById('accPwdCurrent')?.value || '';
+        const newPwd = document.getElementById('accPwdNew')?.value || '';
+        const confirm = document.getElementById('accPwdConfirm')?.value || '';
+        const msgEl = document.getElementById('accPwdMessage');
+        if (!current || !newPwd || !confirm) {
+            if (msgEl) { msgEl.textContent = '请填完所有字段'; msgEl.style.color = '#e74c3c'; }
+            return;
+        }
+        if (newPwd !== confirm) {
+            if (msgEl) { msgEl.textContent = '两次输入的新密码不一致'; msgEl.style.color = '#e74c3c'; }
+            return;
+        }
+        if (newPwd.length < 6) {
+            if (msgEl) { msgEl.textContent = '新密码至少 6 位'; msgEl.style.color = '#e74c3c'; }
+            return;
+        }
+        try {
+            const resp = await fetch('./api/auth.php?action=change_password', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_password: current, new_password: newPwd }),
+            });
+            const data = await resp.json();
+            if (msgEl) {
+                msgEl.textContent = data.message || (data.success ? '修改成功' : '修改失败');
+                msgEl.style.color = data.success ? '#27ae60' : '#e74c3c';
+            }
+            if (data.success) {
+                document.getElementById('accPwdCurrent').value = '';
+                document.getElementById('accPwdNew').value = '';
+                document.getElementById('accPwdConfirm').value = '';
+            }
+        } catch {
+            if (msgEl) { msgEl.textContent = '网络错误'; msgEl.style.color = '#e74c3c'; }
+        }
+    }
+});
+
+// ====== 绑定邮箱（含验证码） ======
+let sendCodeTimer = null;
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accSettingsBindEmailBtn') {
+        document.getElementById('accountSettings').style.display = 'none';
+        document.getElementById('accountBindEmailForm').style.display = 'block';
+        document.getElementById('accEmailMessage').textContent = '';
+        document.getElementById('accEmailInput').value = '';
+        document.getElementById('accCodeInput').value = '';
+        document.getElementById('accCodeInput').style.display = 'none';
+        document.getElementById('accEmailSaveBtn').style.display = 'none';
+        document.getElementById('accSendCodeBtn').disabled = false;
+        document.getElementById('accSendCodeBtn').textContent = '发送验证码';
+    }
+});
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accEmailCancelBtn') {
+        if (sendCodeTimer) { clearInterval(sendCodeTimer); sendCodeTimer = null; }
+        document.getElementById('accountBindEmailForm').style.display = 'none';
+        document.getElementById('accountSettings').style.display = 'block';
+    }
+});
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accSendCodeBtn') {
+        const email = document.getElementById('accEmailInput')?.value.trim();
+        const msgEl = document.getElementById('accEmailMessage');
+        if (!email) {
+            if (msgEl) { msgEl.textContent = '请输入邮箱地址'; msgEl.style.color = '#e74c3c'; }
+            return;
+        }
+        const btn = document.getElementById('accSendCodeBtn');
+        btn.disabled = true;
+        btn.textContent = '发送中...';
+        if (msgEl) { msgEl.textContent = ''; }
+        try {
+            const resp = await fetch('./api/auth.php?action=send_code', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            const data = await resp.json();
+            if (data.success) {
+                if (msgEl) { msgEl.textContent = data.message || '验证码已发送'; msgEl.style.color = '#27ae60'; }
+                document.getElementById('accCodeInput').style.display = 'block';
+                document.getElementById('accEmailSaveBtn').style.display = 'block';
+                document.getElementById('accCodeInput').focus();
+                // 60 秒倒计时
+                let countdown = 60;
+                const tick = () => {
+                    btn.textContent = countdown + 's';
+                    if (--countdown <= 0) {
+                        btn.disabled = false;
+                        btn.textContent = '重新发送';
+                        if (sendCodeTimer) { clearInterval(sendCodeTimer); sendCodeTimer = null; }
+                    }
+                };
+                if (sendCodeTimer) { clearInterval(sendCodeTimer); }
+                sendCodeTimer = setInterval(tick, 1000);
+                tick();
+            } else {
+                if (msgEl) { msgEl.textContent = data.message || '发送失败'; msgEl.style.color = '#e74c3c'; }
+                btn.disabled = false;
+                btn.textContent = '重新发送';
+            }
+        } catch {
+            if (msgEl) { msgEl.textContent = '网络错误'; msgEl.style.color = '#e74c3c'; }
+            btn.disabled = false;
+            btn.textContent = '重新发送';
+        }
+    }
+});
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accEmailSaveBtn') {
+        const email = document.getElementById('accEmailInput')?.value.trim();
+        const code = document.getElementById('accCodeInput')?.value.trim();
+        const msgEl = document.getElementById('accEmailMessage');
+        if (!email) {
+            if (msgEl) { msgEl.textContent = '请输入邮箱地址'; msgEl.style.color = '#e74c3c'; }
+            return;
+        }
+        if (!code || !/^\d{6}$/.test(code)) {
+            if (msgEl) { msgEl.textContent = '请输入 6 位验证码'; msgEl.style.color = '#e74c3c'; }
+            return;
+        }
+        try {
+            const resp = await fetch('./api/auth.php?action=bind_email', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code }),
+            });
+            const data = await resp.json();
+            if (msgEl) {
+                msgEl.textContent = data.message || (data.success ? '绑定成功' : '绑定失败');
+                msgEl.style.color = data.success ? '#27ae60' : '#e74c3c';
+            }
+            if (data.success && currentUser?.user) {
+                currentUser.user.email = data.email || email;
+                if (sendCodeTimer) { clearInterval(sendCodeTimer); sendCodeTimer = null; }
+                setTimeout(() => {
+                    document.getElementById('accountBindEmailForm').style.display = 'none';
+                    document.getElementById('accountSettings').style.display = 'block';
+                    refreshProfile();
+                }, 1000);
+            }
+        } catch {
+            if (msgEl) { msgEl.textContent = '网络错误'; msgEl.style.color = '#e74c3c'; }
+        }
+    }
+});
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accSettingsUnbindEmailBtn') {
+        if (!confirm('确定解绑邮箱吗？')) return;
+        try {
+            const resp = await fetch('./api/auth.php?action=unbind_email', {
+                method: 'POST', credentials: 'same-origin',
+            });
+            const data = await resp.json();
+            if (data.success && currentUser?.user) {
+                currentUser.user.email = '';
+                refreshProfile();
+            } else {
+                alert(data.message || '解绑失败');
+            }
+        } catch {
+            alert('网络错误');
+        }
+    }
+});
+
+// ====== 成员名单模态框 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'memberListModalClose') {
+        document.getElementById('memberListModal').classList.remove('open');
+        document.getElementById('memberListModal').setAttribute('aria-hidden', 'true');
+    }
+});
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('memberListModal');
+    if (e.target === modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+});
+
+async function openMemberList(clubId, country) {
+    const modal = document.getElementById('memberListModal');
+    const content = document.getElementById('memberListContent');
+    if (!modal || !content) return;
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.dataset.clubId = clubId;
+    content.innerHTML = '<p style="text-align: center; opacity: 0.6;">' + __('memberLoading') + '</p>';
+    try {
+        const cc = country || 'china';
+        const resp = await fetch('./api/membership.php?action=members&club_id=' + clubId + '&country=' + cc, { credentials: 'same-origin' });
+        const data = await resp.json();
+        if (!data.success) {
+            content.innerHTML = '<p style="text-align: center; color: #e74c3c;">' + (data.message || __('memberLoadError')) + '</p>';
+            return;
+        }
+        if (!data.members || data.members.length === 0) {
+            content.innerHTML = '<p style="text-align: center; opacity: 0.6;">' + __('memberEmpty') + '</p>';
+            return;
+        }
+
+        // 获取当前用户在该俱乐部中的角色
+        const myMembership = currentUser?.memberships?.find(m => parseInt(m.club_id) === clubId && (m.country || 'china') === cc && m.status === 'active');
+        const myClubRole = myMembership?.role || '';
+        const isSuperAdmin = currentUser?.user?.role === 'super_admin';
+        const currentUserId = currentUser?.user?.id;
+
+        content.innerHTML = '<div style="display: flex; flex-direction: column; gap: 8px;">' +
+            data.members.map(m => {
+                const isSelf = m.user_id === currentUserId;
+                // 踢出按钮条件
+                let showKick = false;
+                if (!isSelf && (isSuperAdmin || myClubRole === 'representative' || myClubRole === 'manager')) {
+                    if (isSuperAdmin) showKick = true;
+                    else if (myClubRole === 'representative') showKick = m.role !== 'representative';
+                    else if (myClubRole === 'manager') showKick = m.role === 'member';
+                }
+                // 角色变更条件
+                const canChangeRole = !isSelf && (isSuperAdmin || myClubRole === 'representative');
+                const showRoleUp = canChangeRole && m.role === 'member';
+                const showRoleDown = canChangeRole && m.role === 'manager';
+                // 转让负责人条件：仅当前负责人可见，目标非自己、非负责人
+                const showTransfer = !isSelf && myClubRole === 'representative' && m.role !== 'representative';
+
+                return '<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--md-surface-container); border-radius: 10px;">' +
+                    '<img src="' + (m.avatar_url || '') + '" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" onerror="this.style.display=\'none\'" />' +
+                    '<span style="flex: 1; font-weight: 500;">' + Utils.escapeHTML(m.username) + '</span>' +
+                    '<span style="font-size: 12px; opacity: 0.7;">' + ({
+                        member: __('memberRoleMember'), manager: __('memberRoleManager'), representative: __('memberRoleRep')
+                    }[m.role] || m.role) + '</span>' +
+                    '<span style="font-size: 11px; opacity: 0.5;">' + (m.joined_at ? m.joined_at.split(' ')[0] : '') + '</span>' +
+                    (showRoleUp ? '<button class="btn-small" onclick="event.stopPropagation();changeMemberRole(' + m.id + ',\'manager\')" style="font-size:11px;padding:2px 8px;">升为管理</button>' : '') +
+                    (showRoleDown ? '<button class="btn-small" onclick="event.stopPropagation();changeMemberRole(' + m.id + ',\'member\')" style="font-size:11px;padding:2px 8px;">设为成员</button>' : '') +
+                    (showTransfer ? '<button class="btn-small btn-danger" onclick="event.stopPropagation();transferRepresentative(' + m.id + ',' + clubId + ',\'' + Utils.escapeHTML(m.username) + '\')" style="font-size:11px;padding:2px 8px;">转让</button>' : '') +
+                    (showKick ? '<button class="btn-small btn-danger" onclick="event.stopPropagation();kickMember(' + m.id + ',\'' + Utils.escapeHTML(m.username) + '\')" style="font-size:11px;padding:2px 8px;">踢出</button>' : '') +
+                    '</div>';
+            }).join('') + '</div>';
+    } catch {
+        content.innerHTML = '<p style="text-align: center; color: #e74c3c;">' + __('memberNetworkError') + '</p>';
+    }
 }
 
 const Utils = {
@@ -71,7 +1080,7 @@ const Utils = {
   groupTypeText: (type) => ({ school: '高校同好会', region: '地区高校联合', 'vnfest': '视觉小说学园祭' }[type] || '其他'),
   typeFilterValue: (type) => ({ school: 'school', region: 'region', 'vnfest': 'vnfest' }[type] || 'other'),
   formatCreatedAt: (value) => {
-    if (!value) return '成立时间未知';
+    if (!value) return __('detailUnknownDate');
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -164,6 +1173,7 @@ const translations = {
         openSource: '开源仓库',
         submitClub: '提交同好会',
         submitEvent: '添加活动',
+        submitPublication: '投稿刊物征集',
         
         // 开关
         invertCtrl: '反转操作 (Ctrl+点击查看详情)',
@@ -261,7 +1271,101 @@ const translations = {
         submitSubmitter: '你的联系方式',
         submitSubmitterHint: '仅用于审核沟通，不会公开',
         submitButton: '✉️ 提交信息',
-        submitInfo: '⭐ 提交后，管理员会尽快审核'
+        submitInfo: '⭐ 提交后，管理员会尽快审核',
+
+        // 详情面板 - 扩展
+        detailTypeRegion: '地区联合',
+        detailTypeSchool: '高校同好会',
+        detailTypeVnfest: '学园祭',
+        detailUnfilled: '未填写',
+        detailSectionIntro: '同好会简介',
+        detailSectionExt: '对外平台',
+        detailSectionContact: '联系方式',
+        detailSectionActions: '操作',
+        detailContactLockedLogin: '联系方式仅对绑定成员公开\n请先登录后申请绑定同好会',
+        detailContactLocked: '联系方式仅对绑定成员公开',
+        detailContactPending: '⏳ 绑定申请已提交，等待管理员审核',
+        detailContactRejected: '❌ 绑定申请已被拒绝',
+        detailContactBound: '✅ 你已绑定该同好会，请重新打开查看联系方式',
+        detailContactApply: '申请绑定后可查看联系方式',
+        detailContactQueryFail: '❌ 查询失败，请刷新重试',
+        detailBtnApplyClub: '📝 申请绑定同好会',
+        detailBtnEdit: '✏️ 编辑同好会信息',
+        detailBtnMembers: '👥 成员名单',
+        detailBtnTransfer: '🔄 转让负责人',
+        detailBtnLeave: '🚪 退出同好会',
+        detailBtnApply: '📝 申请绑定',
+        detailUnknownDate: '成立时间未知',
+        detailNoContact: '无联系方式',
+        detailRegistered: '✓ 已登记',
+        detailLoading: '⏳ 查询绑定状态中...',
+
+        // 列表项
+        listEmptyFilter: '没有找到相关同好会',
+        listNoName: '未命名组织',
+        listNoContact: '无联系方式',
+        listInfoHidden: '🔒 申请绑定后可见',
+        listVerified: '已登记',
+        listUnverified: '未登记',
+        listBound: '✅ 已绑定',
+        listApply: '申请绑定',
+        listNoRemark: '暂无介绍',
+        listEstablished: '· 成立时间：',
+
+        // 成员列表
+        memberLoading: '加载中...',
+        memberLoadError: '加载失败',
+        memberEmpty: '暂无成员',
+        memberRoleMember: '成员',
+        memberRoleManager: '管理员',
+        memberRoleRep: '负责人',
+        memberBtnPromote: '升为管理',
+        memberBtnDemote: '设为成员',
+        memberBtnTransfer: '转让',
+        memberBtnKick: '踢出',
+        memberNetworkError: '网络错误',
+
+        // 排序按钮
+        sortDefaultShort: '默认',
+        sortTimeAsc: '成立时间 ↑',
+        sortTimeDesc: '成立时间 ↓',
+        sortNameAZ: '首字母 A→Z',
+        sortNameZA: '首字母 Z→A',
+        sortTypeAZ: '类型 A→Z',
+        sortTypeZA: '类型 Z→A',
+
+        // 面板标题
+        renderTitleDetail: '{0} · 同好会详情',
+        renderTitleSearch: '🔍 全局搜索 · {0}同好会',
+        renderTitleSummary: '全国Galgame同好会数据',
+        renderMetaDataSource: '数据源：{0}',
+        renderMetaSearch: '搜索 "{0}" · 找到 {1} 个结果 · ',
+        renderMetaRange: '范围 {0} · 高校同好会 {1} · 地区联合 {2}',
+        renderMetaVnfest: '· 学园祭 {0}',
+        renderMetaSummary: '范围 全局 · 高校同好会 {0} · 地区联合 {1}',
+
+        // 设置面板角色
+        settingsRoleVisitor: '访客',
+        settingsRoleMember: '成员',
+        settingsRoleManager: '管理员',
+        settingsRoleRep: '负责人',
+        settingsRoleAdmin: '超级管理员',
+
+        // 通用状态
+        statusRefresh: '刷新数据',
+        statusRefreshing: '刷新中...',
+        statusEasterEgg: '彩蛋内容',
+
+        // 审批面板
+        approvalEmpty: '✅ 暂无待审批的绑定申请',
+        approvalLoadError: '❌ 加载失败，请重试',
+        approvalTime: '申请时间：',
+        approvalApprove: '批准',
+        approvalReject: '拒绝',
+
+        // 数据源
+        sourceLocalJSON: '本地JSON',
+        sourceMock: '模拟数据',
     },
     ja: {
         // タイトルと紹介
@@ -300,6 +1404,7 @@ const translations = {
         openSource: 'オープンソース',
         submitClub: '同好会を投稿',
         submitEvent: 'イベントを追加',
+        submitPublication: '投稿を募集',
         
         // スイッチ
         invertCtrl: '操作反転 (Ctrl+クリックで詳細表示)',
@@ -397,11 +1502,143 @@ const translations = {
         submitSubmitter: 'あなたの連絡先',
         submitSubmitterHint: '審査連絡用（公開されません）',
         submitButton: '✉️ 投稿する',
-        submitInfo: '⭐ 投稿後、管理者が審査します'
+        submitInfo: '⭐ 投稿後、管理者が審査します',
+        // 詳細パネル - 拡張
+        detailTypeRegion: '地域大学連合',
+        detailTypeSchool: '大学同好会',
+        detailTypeVnfest: 'ビジュアルノベル祭',
+        detailUnfilled: '未入力',
+        detailSectionIntro: 'サークル紹介',
+        detailSectionExt: '外部プラットフォーム',
+        detailSectionContact: '連絡先',
+        detailSectionActions: '操作',
+        detailContactLockedLogin: '連絡先はメンバーのみ公開されています\nログインしてから申請してください',
+        detailContactLocked: '連絡先はメンバーのみ公開されています',
+        detailContactPending: '⏳ 申請中です。管理者の承認をお待ちください',
+        detailContactRejected: '❌ 申請が拒否されました',
+        detailContactBound: '✅ このサークルに加入済みです。再表示してください',
+        detailContactApply: '申請後に連絡先を表示できます',
+        detailContactQueryFail: '❌ 照会失敗。再読み込みしてください',
+        detailBtnApplyClub: '📝 サークルに参加申請',
+        detailBtnEdit: '✏️ サークル情報を編集',
+        detailBtnMembers: '👥 メンバー一覧',
+        detailBtnTransfer: '🔄 代表者を譲渡',
+        detailBtnLeave: '🚪 サークルを退出',
+        detailBtnApply: '📝 申請する',
+        detailUnknownDate: '設立日不明',
+        detailNoContact: '連絡先なし',
+        detailRegistered: '✓ 登録済み',
+        detailLoading: '⏳ 状態を確認中...',
+
+        // リスト項目
+        listEmptyFilter: '該当するサークルが見つかりません',
+        listNoName: '名称未設定',
+        listNoContact: '連絡先なし',
+        listInfoHidden: '🔒 申請後に表示',
+        listVerified: '登録済み',
+        listUnverified: '未登録',
+        listBound: '✅ 加入済み',
+        listApply: '申請する',
+        listNoRemark: '紹介文なし',
+        listEstablished: '· 設立：',
+
+        // メンバー一覧
+        memberLoading: '読み込み中...',
+        memberLoadError: '読み込み失敗',
+        memberEmpty: 'メンバーがいません',
+        memberRoleMember: 'メンバー',
+        memberRoleManager: '管理者',
+        memberRoleRep: '代表者',
+        memberBtnPromote: '管理者に昇格',
+        memberBtnDemote: 'メンバーに降格',
+        memberBtnTransfer: '譲渡',
+        memberBtnKick: '追放',
+        memberNetworkError: 'ネットワークエラー',
+
+        // ソートボタン
+        sortDefaultShort: 'デフォルト',
+        sortTimeAsc: '設立日 ↑',
+        sortTimeDesc: '設立日 ↓',
+        sortNameAZ: '名前 A→Z',
+        sortNameZA: '名前 Z→A',
+        sortTypeAZ: 'タイプ A→Z',
+        sortTypeZA: 'タイプ Z→A',
+
+        // パネルタイトル
+        renderTitleDetail: '{0} · サークル詳細',
+        renderTitleSearch: '🔍 全体検索 · {0}サークル',
+        renderTitleSummary: '全国ギャルゲー同好会マップ',
+        renderMetaDataSource: 'データソース：{0}',
+        renderMetaSearch: '検索 "{0}" · {1} 件 · ',
+        renderMetaRange: '範囲 {0} · 大学同好会 {1} · 地域連合 {2}',
+        renderMetaVnfest: '· ビジュアルノベル祭 {0}',
+        renderMetaSummary: '範囲 全体 · 大学同好会 {0} · 地域連合 {1}',
+
+        // 設定パネル役割
+        settingsRoleVisitor: 'ゲスト',
+        settingsRoleMember: 'メンバー',
+        settingsRoleManager: '管理者',
+        settingsRoleRep: '代表者',
+        settingsRoleAdmin: 'スーパー管理者',
+
+        // 共通ステータス
+        statusRefresh: 'データを更新',
+        statusRefreshing: '更新中...',
+        statusEasterEgg: 'イースターエッグ',
+
+        // 承認パネル
+        approvalEmpty: '✅ 承認待ちの申請はありません',
+        approvalLoadError: '❌ 読み込み失敗。再試行してください',
+        approvalTime: '申請日時：',
+        approvalApprove: '承認',
+        approvalReject: '拒否',
+
+        // データソース
+        sourceLocalJSON: 'ローカルJSON',
+        sourceMock: 'モックデータ',
+
     }
 };
 
 let currentLang = 'zh';
+
+// 全局翻译辅助函数：可在任何地方使用，支持 {0} {1} 占位符
+function __(key, ...args) {
+    const t = translations[currentLang];
+    if (!t || t[key] === undefined) {
+        const zh = translations.zh;
+        return zh && zh[key] !== undefined ? zh[key] : key;
+    }
+    let val = t[key];
+    if (args.length) {
+        args.forEach((arg, i) => { val = val.replace(new RegExp('\\{' + i + '\\}', 'g'), arg); });
+    }
+    return val;
+}
+
+// 平台图标映射
+const PLATFORM_ICONS = {
+  'b站': '📺', 'bilibili': '📺',
+  'twitter': '🐦', 'x': '🐦',
+  'bangumi': '📖',
+  '微博': '📱', 'weibo': '📱',
+  'discord': '💬',
+  'qq': '💬', '微信': '💬', 'wechat': '💬',
+  'github': '💻',
+  '知乎': '📕', 'zhihu': '📕',
+  '小红书': '📕', 'xiaohongshu': '📕',
+  '豆瓣': '📕', 'douban': '📕',
+  '贴吧': '📕', 'tieba': '📕',
+  'niconico': '🎵', 'nico': '🎵',
+  'youtube': '▶️', 'yt': '▶️',
+  'pixiv': '🎨',
+  'lofter': '📝',
+  'fanbox': '💝', 'patreon': '💝', 'fantia': '💝',
+  '官网': '🌐', 'website': '🌐', 'homepage': '🌐',
+};
+function getPlatformIcon(platform) {
+  return PLATFORM_ICONS[platform.toLowerCase().trim()] || '🔗';
+}
 
 function updateUILanguage() {
     const t = translations[currentLang];
@@ -434,7 +1671,7 @@ function updateUILanguage() {
     
     const chinaBtn = document.getElementById('chinaToggleBtn');
     const japanBtn = document.getElementById('japanToggleBtn');
-    const otherBtn = document.getElementById('otherToggleBtn');
+    const otherBtn = document.getElementById('overseasToggleBtn');
     const calendarBtn = document.getElementById('calendarToggleBtn');
     const publicationBtn = document.getElementById('publicationToggleBtn');
     if (chinaBtn) chinaBtn.textContent = t.chinaBtn;
@@ -443,15 +1680,7 @@ function updateUILanguage() {
     if (calendarBtn) calendarBtn.textContent = t.calendarBtn;
     if (publicationBtn) publicationBtn.textContent = t.publicationBtn;
     
-    const controlTitle = document.querySelector('#controlCard .card-title');
-    if (controlTitle) controlTitle.textContent = t.mapControls;
-    const zoomInBtn = document.getElementById('zoomInBtn');
-    const zoomOutBtn = document.getElementById('zoomOutBtn');
-    const resetViewBtn = document.getElementById('resetViewBtn');
-    if (zoomInBtn) zoomInBtn.textContent = t.zoomIn;
-    if (zoomOutBtn) zoomOutBtn.textContent = t.zoomOut;
-    if (resetViewBtn) resetViewBtn.textContent = t.reset;
-    
+
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.placeholder = t.searchPlaceholder;
     
@@ -494,6 +1723,8 @@ function updateUILanguage() {
     const submitEventBtn = document.getElementById('submitEventBtn');
     if (submitClubBtn) submitClubBtn.innerHTML = `📝 ${t.submitClub}`;
     if (submitEventBtn) submitEventBtn.innerHTML = `📅 ${t.submitEvent}`;
+    const submitPublicationBtn = document.getElementById('submitPublicationBtn');
+    if (submitPublicationBtn) submitPublicationBtn.innerHTML = `📖 ${t.submitPublication}`;
     
     const emptyTexts = document.querySelectorAll('.empty-text');
     emptyTexts.forEach(el => {
@@ -518,7 +1749,9 @@ function updateUILanguage() {
         }
     }
     
-    console.log('✅ 界面语言已切换为:', currentLang === 'zh' ? '中文' : '日本語');
+    // 更新排序按钮文字和详情面板
+    updateSortButtonView();
+    renderCurrentDetail();
 }
 
 // ==========================================
@@ -528,31 +1761,22 @@ function applyMobileModeLayout() {
   const els = {
     map: document.getElementById('map'),
     selectedCard: document.getElementById('selectedCard'),
-    overseasBtn: document.getElementById('overseasToggleBtn'),
     sheetHandle: document.getElementById('mobileSheetHandle'),
-    controlCard: document.getElementById('controlCard'),
     introCard: document.getElementById('introCard')
   };
-  if (!els.map || !els.selectedCard || !els.overseasBtn || !els.controlCard || !els.introCard || !els.sheetHandle) return;
+  if (!els.map || !els.selectedCard || !els.introCard || !els.sheetHandle) return;
 
-  const nonRegionalBtn = document.getElementById('nonRegionalToggleBtn');
   const calendarBtn = document.getElementById('calendarToggleBtn');
 
   if (Utils.isMobileViewport()) {
-    if (els.overseasBtn.parentElement !== els.selectedCard || els.sheetHandle.parentElement !== els.selectedCard) {
+    if (els.sheetHandle.parentElement !== els.selectedCard) {
       els.selectedCard.insertBefore(els.sheetHandle, els.selectedCard.firstChild);
-      els.selectedCard.insertBefore(els.overseasBtn, els.sheetHandle.nextSibling);
-      if (nonRegionalBtn) {
-        els.selectedCard.insertBefore(nonRegionalBtn, els.overseasBtn.nextSibling);
-      }
       if (calendarBtn) {
-        els.selectedCard.insertBefore(calendarBtn, (nonRegionalBtn || els.overseasBtn).nextSibling);
+        els.selectedCard.insertBefore(calendarBtn, els.sheetHandle.nextSibling);
       }
     }
-    els.overseasBtn.classList.add('mobile-inside');
-    nonRegionalBtn?.classList.add('mobile-inside');
     calendarBtn?.classList.add('mobile-inside');
-    els.controlCard.classList.add('mobile-hidden');
+
     els.introCard.classList.add('collapsed');
 
     if (State.mobileSheetHeightPx) {
@@ -561,22 +1785,14 @@ function applyMobileModeLayout() {
       els.selectedCard.style.height = '46vh';
     }
   } else {
-    if (els.overseasBtn.parentElement !== els.map) {
-      els.map.insertBefore(els.overseasBtn, els.controlCard);
-    }
-    if (nonRegionalBtn && nonRegionalBtn.parentElement !== els.map) {
-      els.map.insertBefore(nonRegionalBtn, els.controlCard);
-    }
     if (calendarBtn && calendarBtn.parentElement !== els.map) {
-      els.map.insertBefore(calendarBtn, els.controlCard);
+      els.map.insertBefore(calendarBtn, els.map.firstChild);
     }
     if (els.sheetHandle.parentElement !== els.map) {
-      els.map.insertBefore(els.sheetHandle, els.controlCard);
+      els.map.insertBefore(els.sheetHandle, els.map.firstChild);
     }
-    els.overseasBtn.classList.remove('mobile-inside');
-    nonRegionalBtn?.classList.remove('mobile-inside');
     calendarBtn?.classList.remove('mobile-inside');
-    els.controlCard.classList.remove('mobile-hidden');
+
     els.selectedCard.style.height = '';
   }
 }
@@ -604,9 +1820,7 @@ function updateThemeSwitchUI() {
   const effectiveTheme = getPreferredTheme();
   if (themeSwitch) themeSwitch.checked = effectiveTheme === 'dark';
   if (label) {
-    label.textContent = State.themePreference === 'system'
-      ? `暗黑模式（跟随系统：${effectiveTheme === 'dark' ? '开' : '关'}）`
-      : `暗黑模式（临时${effectiveTheme === 'dark' ? '开启' : '关闭'}）`;
+    label.textContent = __(effectiveTheme === 'dark' ? 'themeDark' : 'themeLight');
   }
 }
 
@@ -743,10 +1957,11 @@ function updateSortButtonView() {
     btn.classList.remove('active');
 
     const config = {
-      default: { text: '默认', active: State.listSort === 'default', next: 'default' },
-      time_desc: { text: State.listSort === 'time_asc' ? '成立时间 ↑' : '成立时间 ↓', active: ['time_asc', 'time_desc'].includes(State.listSort), next: State.listSort === 'time_asc' ? 'time_asc' : 'time_desc' },
-      name_asc: { text: State.listSort === 'name_desc' ? '首字母 Z→A' : '首字母 A→Z', active: ['name_asc', 'name_desc'].includes(State.listSort), next: State.listSort === 'name_desc' ? 'name_desc' : 'name_asc' },
-      type_asc: { text: State.listSort === 'type_desc' ? '类型 Z→A' : '类型 A→Z', active: ['type_asc', 'type_desc'].includes(State.listSort), next: State.listSort === 'type_desc' ? 'type_desc' : 'type_asc' }
+      default: { text: __('sortDefaultShort'), active: State.listSort === 'default', next: 'default' },
+      time_desc: { text: State.listSort === 'time_asc' ? __('sortTimeAsc') : __('sortTimeDesc'), active: ['time_asc', 'time_desc'].includes(State.listSort), next: State.listSort === 'time_asc' ? 'time_asc' : 'time_desc' },
+      name_asc: { text: State.listSort === 'name_desc' ? __('sortNameZA') : __('sortNameAZ'), active: ['name_asc', 'name_desc'].includes(State.listSort), next: State.listSort === 'name_desc' ? 'name_desc' : 'name_asc' },
+      type_asc: { text: State.listSort === 'type_desc' ? __('sortTypeZA') : __('sortTypeAZ'), active: ['type_asc', 'type_desc'].includes(State.listSort), next: State.listSort === 'type_desc' ? 'type_desc' : 'type_asc' }
+
     };
 
     const targetConfig = config[key.split('_')[0] + (key.includes('desc') ? '_desc' : (key === 'default' ? '' : '_asc'))] || config[key];
@@ -787,6 +2002,12 @@ function getFilteredSortedRows(rows) {
     // 排序
     const sortStrategies = {
         default: (a, b) => {
+            // 类型优先级: vnfest(0) > region(1) > school(2) > other(3)
+            const typeOrder = { vnfest: 0, region: 1, school: 2 };
+            const orderA = typeOrder[a.type] ?? 3;
+            const orderB = typeOrder[b.type] ?? 3;
+            if (orderA !== orderB) return orderA - orderB;
+            // 同类型内: 已认证优先，再按名称拼音排序
             if ((b.verified || 0) !== (a.verified || 0)) return (b.verified || 0) - (a.verified || 0);
             return String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN-u-co-pinyin');
         },
@@ -810,65 +2031,167 @@ function getFilteredSortedRows(rows) {
     return result;
 }
 
+/**
+ * 检查当前用户是否可管理指定俱乐部（前端版）
+ */
+function canManageClub(clubId, country) {
+  if (!currentUser?.logged_in || !currentUser?.memberships) return false;
+  return currentUser.memberships.some(m =>
+    parseInt(m.club_id) === parseInt(clubId) &&
+    (country ? (m.country || 'china') === country : true) &&
+    m.status === 'active' &&
+    (m.role === 'manager' || m.role === 'representative')
+  );
+}
+
+/**
+ * 检查当前用户是否已绑定指定俱乐部
+ */
+function isClubMember(clubId, country) {
+  if (!currentUser?.logged_in || !currentUser?.memberships) return false;
+  return currentUser.memberships.some(m =>
+    parseInt(m.club_id) === parseInt(clubId) && (country ? (m.country || 'china') === country : true) && m.status === 'active'
+  );
+}
+
+/**
+ * 获取当前用户对指定俱乐部的绑定状态
+ */
+function getClubMembership(clubId, country) {
+  if (!currentUser?.logged_in || !currentUser?.memberships) return null;
+  if (country) {
+    return currentUser.memberships.find(m =>
+      parseInt(m.club_id) === parseInt(clubId) && (m.country || 'china') === country
+    ) || null;
+  }
+  return currentUser.memberships.find(m => parseInt(m.club_id) === parseInt(clubId)) || null;
+}
+
+/**
+ * 解析外部链接为 HTML
+ */
+function renderExternalLinks(externalLinksStr) {
+  if (!externalLinksStr || !externalLinksStr.trim()) return '';
+  const links = externalLinksStr.trim().split('\n')
+    .map(line => {
+      const idx = line.indexOf(': ');
+      return idx > 0 ? { platform: line.substring(0, idx).trim(), url: line.substring(idx + 2).trim() } : null;
+    })
+    .filter(Boolean);
+  if (!links.length) return '';
+  return links.map(l => {
+    const icon = getPlatformIcon(l.platform);
+    const cleanUrl = l.url.replace(/\/+$/, '');
+    const display = cleanUrl.replace(/^https?:\/\//, '');
+    return `<a href="${Utils.escapeHTML(cleanUrl)}" target="_blank" rel="noopener noreferrer" class="group-ext-link">${icon} ${Utils.escapeHTML(l.platform)}：${Utils.escapeHTML(display)}</a>`;
+  }).join('');
+}
+
 function renderGroupList(rows) {
   const listEl = document.getElementById('groupList');
   if (!listEl) return;
 
   if (!rows.length) {
-    listEl.innerHTML = '<div class="empty-text">没有找到相关同好会</div>';
+    listEl.innerHTML = '<div class="empty-text">' + __('listEmptyFilter') + '</div>';
     return;
   }
 
   listEl.innerHTML = rows.map((item) => {
-    const name = Utils.escapeHTML(item.name || '未命名组织');
+    const name = Utils.escapeHTML(item.name || __('listNoName'));
     const rawText = Utils.escapeHTML(item.raw_text || item.name || '');
-    const detectedUrl = Utils.extractUrl(item);
-    const rawInfo = detectedUrl || item.info || '';
-    const infoText = rawInfo || '无联系方式';
-    const info = Utils.escapeHTML(infoText);
+    const isHidden = item.info_hidden === true;
+    const canApply = item.can_apply === true;
+    const clubId = parseInt(item.id);
+    const member = getClubMembership(clubId, item.country);
+    const isMember = member && member.status === 'active';
+
+    let infoHtml, infoText;
+    if (isMember || !isHidden) {
+      const contactInfo = item.info || '';
+      const detectedUrl = Utils.extractUrl(item) || (/^https?:\/\//.test(contactInfo) ? contactInfo : null);
+      if (detectedUrl) {
+        infoHtml = `<a href="${Utils.escapeHTML(detectedUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--md-primary);text-decoration:none">${Utils.escapeHTML(contactInfo)}</a>`;
+        infoText = contactInfo;
+      } else {
+        infoHtml = Utils.escapeHTML(contactInfo || __('listNoContact'));
+        infoText = contactInfo;
+      }
+    } else {
+      infoHtml = '<span style="opacity:0.5">' + __('listInfoHidden') + '</span>';
+      infoText = __('listInfoHidden');
+    }
+
+    const extLinksHtml = renderExternalLinks(item.external_links);
     const type = Utils.escapeHTML(Utils.groupTypeText(item.type));
-    const verifyMeta = Utils.escapeHTML(item.verified ? '已登记' : '未登记') + ' · 成立时间：' + Utils.escapeHTML(Utils.formatCreatedAt(item.created_at));
-    
+    const verifyMeta = Utils.escapeHTML(item.verified ? __('listVerified') : __('listUnverified')) + __('listEstablished') + Utils.escapeHTML(Utils.formatCreatedAt(item.created_at));
+
     const clubData = encodeURIComponent(JSON.stringify({
       id: item.id,
       name: name,
       school: item.school || '',
-      info: info,
+      info: infoText,
       originalInfo: item.info || '',
-      detectedUrl: detectedUrl,
+      detectedUrl: '',
+      infoHidden: isHidden,
+      canApply: canApply,
       type: type,
       verifyMeta: verifyMeta,
       province: item.province || '',
-      remark: item.remark || '暂无介绍'
+      remark: item.remark || __('listNoRemark'),
+      country: item.country || 'china',
+      logo_url: item.logo_url || '',
+      external_links: item.external_links || '',
     }));
-    
+
+    const statusBadge = isMember
+      ? '<span style="font-size:11px;color:#4CAF50;white-space:nowrap">' + __('listBound') + '</span>'
+      : canApply
+        ? `<button class="apply-mini-btn" data-club='${clubData}' type="button" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--md-primary);color:#fff;cursor:pointer;white-space:nowrap">${__('listApply')}</button>`
+        : '';
+
+    const province = Utils.escapeHTML(item.province || '');
+
+    const avatarHtml = item.logo_url
+        ? `<img src="${Utils.escapeHTML(item.logo_url)}" alt="" class="club-avatar" loading="lazy">`
+        : `<div class="club-avatar club-avatar-fallback">🏫</div>`;
+
     return `
         <article class="group-item" data-club='${clubData}'>
-          <div class="group-top">
-            <h3 class="group-name" title="${rawText}">${name}</h3>
-            <span class="group-chip">${type}</span>
+          <div class="group-main">
+            ${avatarHtml}
+            <div class="group-header">
+              <h3 class="group-name" title="${rawText}">${name}</h3>
+              <div class="group-top-tags">
+                <span class="group-chip">${type}</span>
+                <span class="group-chip-outline">${province}</span>
+              </div>
+            </div>
           </div>
-          <div class="group-info-row">
-            <p class="group-info" data-club='${clubData}'>${info}</p>
-            <button class="copy-btn" data-club='${clubData}' type="button">查看详情</button>
+          <div class="group-divider"></div>
+          <div class="group-footer">
+            <div class="group-footer-left">
+              <span class="group-info" data-club='${clubData}'>${infoHtml}</span>
+              ${extLinksHtml ? `<div class="group-ext-links">${extLinksHtml}</div>` : ''}
+            </div>
+            <div class="group-footer-right">${statusBadge}</div>
           </div>
-          <p class="group-meta">${verifyMeta}</p>
         </article>
     `;
   }).join('');
 
+  // 点击列表项 → 打开详情或编辑
   document.querySelectorAll('.group-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      if (e.target.classList.contains('copy-btn')) return;
+      if (e.target.classList.contains('apply-mini-btn') || e.target.closest('.apply-mini-btn')) return;
       const clubData = item.getAttribute('data-club');
       if (clubData) {
         const club = JSON.parse(decodeURIComponent(clubData));
-        if (adminMode) openEditPanel(club);
-        else showClubDetail(club);
+        showClubDetail(club);
       }
     });
   });
-  
+
+  // 点击 info → 打开详情
   document.querySelectorAll('.group-info').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -876,101 +2199,353 @@ function renderGroupList(rows) {
       if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)));
     });
   });
-  
-  document.querySelectorAll('.copy-btn').forEach(btn => {
+
+  // 列表内申请绑定按钮
+  document.querySelectorAll('.apply-mini-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const clubData = btn.getAttribute('data-club');
-      if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)));
+      if (clubData) {
+        const club = JSON.parse(decodeURIComponent(clubData));
+        openMembershipApplyModal(club);
+      }
     });
   });
 }
 
 function showClubDetail(club) {
   const modal = document.getElementById('clubDetailModal');
-  const title = document.getElementById('clubDetailName');
   const content = document.getElementById('clubDetailContent');
   if (!modal) return;
-  
-  title.textContent = club.name;
-  
-  const contactInfo = club.originalInfo || club.info || '';
-  const detectedUrl = club.detectedUrl;
-  const isLink = detectedUrl || contactInfo.startsWith('http://') || contactInfo.startsWith('https://') || contactInfo.includes('discord.gg') || contactInfo.includes('discord.com/invite');
-  const contactUrl = detectedUrl || (isLink ? contactInfo : null);
-  
-  const escapeHtml = (str) => {
+
+  const esc = (str) => {
     if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    });
+    return String(str).replace(/[&<>]/g, (m) => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
   };
-  
-  const safeInfo = escapeHtml(club.info);
-  const safeUrl = contactUrl ? escapeHtml(contactUrl) : '';
-  
-  let contactHtml = '';
-  if (isLink && contactUrl) {
-    contactHtml = `
-      <div style="margin-bottom: 16px; padding: 12px; background: var(--md-surface-container); border-radius: 12px;">
-        <strong>群聊号码</strong><br>
-        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="font-family: monospace; font-size: 16px; color: var(--md-primary); word-break: break-all;">${safeInfo}</a>
-        <div style="margin-top: 12px;">
-          <button onclick="window.open('${safeUrl.replace(/'/g, "\\'")}', '_blank')" style="margin-right: 10px; padding: 6px 16px; background: var(--md-primary); color: white; border: none; border-radius: 8px; cursor: pointer;">打开链接</button>
-          <button onclick="navigator.clipboard.writeText('${safeUrl.replace(/'/g, "\\'")}')" style="padding: 6px 16px; background: var(--md-surface-container-high); color: var(--md-primary); border: 1px solid var(--md-outline); border-radius: 8px; cursor: pointer;">复制链接</button>
+
+  const clubId = parseInt(club.id);
+  const clubCountry = club.country || 'china';
+  const isClubManager = canManageClub(clubId, clubCountry);
+  const isBound = isClubMember(clubId, clubCountry);
+  const isInfoHidden = club.infoHidden === true || club.info === '申请绑定后可见';
+  const canApply = club.canApply === true && !isBound;
+
+  // ——— Header ———
+  const avatarHtml = club.logo_url
+    ? `<img src="${esc(club.logo_url)}" alt="" class="club-detail-avatar">`
+    : `<div class="club-detail-avatar club-detail-avatar-fallback">🏫</div>`;
+  const typeLabel = club.type === 'region' ? __('detailTypeRegion') : club.type === 'vnfest' ? __('detailTypeVnfest') : __('detailTypeSchool');
+  const headerHtml = `
+    <div class="club-detail-header">
+      ${avatarHtml}
+      <div class="club-detail-header-info">
+        <div class="club-detail-name">${esc(club.name)}</div>
+        <div class="club-detail-meta-row">
+          <span class="club-detail-chip">${esc(club.province || __('detailUnfilled'))}</span>
+          <span class="club-detail-chip primary">${esc(typeLabel)}</span>
+          <span class="club-detail-chip verified">${__('detailRegistered')}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ——— 简介 ———
+  const descHtml = `
+    <div class="club-detail-section">
+      <div class="club-detail-section-title">${__('detailSectionIntro')}</div>
+      <div class="club-detail-card">
+        <div class="club-detail-description">${esc(club.remark || '暂无介绍，欢迎补充~')}</div>
+      </div>
+    </div>
+  `;
+
+  // ——— 对外平台（内联链接样式） ———
+  const parseExternalLinks = () => {
+    if (!club.external_links || !club.external_links.trim()) return '';
+    const links = club.external_links.trim().split('\n')
+      .map(line => {
+        const idx = line.indexOf(': ');
+        return idx > 0 ? { platform: line.substring(0, idx).trim(), url: line.substring(idx + 2).trim() } : null;
+      })
+      .filter(Boolean);
+    if (!links.length) return '';
+    return `
+      <div class="club-detail-section">
+        <div class="club-detail-section-title">${__('detailSectionExt')}</div>
+        <div class="club-detail-card club-detail-ext-list">
+          ${links.map(l => {
+            const icon = getPlatformIcon(l.platform);
+            const cleanUrl = l.url.replace(/\/+$/, '');
+            const display = cleanUrl.replace(/^https?:\/\//, '');
+            return `<div class="club-detail-ext-item"><a href="${esc(cleanUrl)}" target="_blank" rel="noopener noreferrer" class="club-detail-ext-link">${icon} ${esc(l.platform)}：${esc(display)}</a></div>`;
+          }).join('')}
         </div>
       </div>
     `;
+  };
+  const extHtml = parseExternalLinks();
+
+  // ——— 联系方式 ———
+  let contactHtml = '';
+  if (isInfoHidden && !isBound) {
+    if (!currentUser?.logged_in) {
+      contactHtml = `
+        <div class="club-detail-section">
+          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
+          <div class="club-detail-hidden-placeholder">
+            <div class="lock-icon">🔒</div>
+            <p>${__('detailContactLockedLogin')}</p>
+          </div>
+        </div>
+      `;
+    } else if (canApply) {
+      contactHtml = `
+        <div class="club-detail-section">
+          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
+          <div class="club-detail-hidden-placeholder">
+            <div class="lock-icon">🔒</div>
+            <p id="membershipStatus">⏳ 查询绑定状态中...</p>
+          </div>
+        </div>
+      `;
+      // 异步查询
+      (async () => {
+        try {
+          const resp = await fetch('./api/membership.php?action=my', { credentials: 'same-origin' });
+          const data = await resp.json();
+          const ms = data.memberships || [];
+          const match = ms.find(m => parseInt(m.club_id) === clubId && (m.country || 'china') === clubCountry);
+          const statusEl = document.getElementById('membershipStatus');
+          if (!statusEl) return;
+          if (match) {
+            if (match.status === 'pending') statusEl.innerHTML = __('detailContactPending');
+            else if (match.status === 'rejected') statusEl.innerHTML = __('detailContactRejected');
+            else if (match.status === 'active') statusEl.innerHTML = __('detailContactBound');
+          } else {
+            statusEl.innerHTML = __('detailContactApply');
+            const parent = statusEl.closest('.club-detail-hidden-placeholder');
+            if (parent) {
+              const btn = document.createElement('button');
+              btn.textContent = __('detailBtnApply');
+              btn.className = 'club-detail-btn primary full';
+              btn.onclick = () => openMembershipApplyModal(club);
+              parent.appendChild(btn);
+            }
+          }
+        } catch {
+          const statusEl = document.getElementById('membershipStatus');
+          if (statusEl) statusEl.textContent = __('detailContactQueryFail');
+        }
+      })();
+    } else {
+      contactHtml = `
+        <div class="club-detail-section">
+          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
+          <div class="club-detail-hidden-placeholder">
+            <div class="lock-icon">🔒</div>
+            <p>${__('detailContactLocked')}</p>
+          </div>
+        </div>
+      `;
+    }
   } else {
-    const safeInfoForCopy = safeInfo.replace(/'/g, "\\'");
-    contactHtml = `
-      <div style="margin-bottom: 16px; padding: 12px; background: var(--md-surface-container); border-radius: 12px;">
-        <strong>群聊号码</strong><br>
-        <span style="font-family: monospace; font-size: 16px; word-break: break-all;">${safeInfo || '无联系方式'}</span>
-        ${safeInfo ? `<button onclick="navigator.clipboard.writeText('${safeInfoForCopy}')" style="margin-left: 10px; padding: 4px 12px; background: var(--md-primary); color: white; border: none; border-radius: 8px; cursor: pointer;">复制</button>` : ''}
-      </div>
-    `;
+    // 可见联系方式（已绑定或公开）
+    const contactInfo = esc(club.originalInfo || club.info || '');
+    const detectedUrl = club.detectedUrl || (/^https?:\/\//.test(club.originalInfo || club.info) ? club.originalInfo || club.info : null);
+    const isLink = detectedUrl || /discord\.(gg|com\/invite)/.test(contactInfo);
+    const contactUrl = detectedUrl || (isLink ? contactInfo : null);
+
+    if (isLink && contactUrl) {
+      contactHtml = `
+        <div class="club-detail-section">
+          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
+          <div class="club-detail-card">
+            <div class="club-detail-contact">${contactInfo}</div>
+            <div class="club-detail-contact-actions">
+              <a href="${esc(contactUrl)}" target="_blank" rel="noopener noreferrer" class="club-detail-btn primary">🔗 打开链接</a>
+              <button onclick="navigator.clipboard.writeText('${contactUrl.replace(/'/g, "\\'")}')" class="club-detail-btn secondary">📋 复制</button>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      const safeCopy = contactInfo.replace(/'/g, "\\'");
+      contactHtml = `
+        <div class="club-detail-section">
+          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
+          <div class="club-detail-card">
+            <div class="club-detail-contact">${contactInfo || __('detailNoContact')}</div>
+            ${contactInfo ? `<div class="club-detail-contact-actions"><button onclick="navigator.clipboard.writeText('${safeCopy}')" class="club-detail-btn primary">📋 复制群号</button></div>` : ''}
+          </div>
+        </div>
+      `;
+    }
   }
-  
-  content.innerHTML = `
-    <div style="margin-bottom: 16px; padding: 12px; background: var(--md-surface-container); border-radius: 12px;">
-      <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-        <div style="flex: 1;"><strong>所在省份</strong><br>${escapeHtml(club.province || '未填写')}</div>
-        <div style="flex: 1;"><strong>同好会类型</strong><br>${escapeHtml(club.type || '其他')}</div>
-      </div>
-    </div>
-    ${contactHtml}
-    <div style="margin-bottom: 16px; padding: 12px; background: var(--md-surface-container); border-radius: 12px;">
-      <strong>${escapeHtml(club.verifyMeta || '成立时间未知')}</strong>
-    </div>
-    <div style="padding: 12px; background: var(--md-surface-container); border-radius: 12px;">
-      <strong>介绍</strong><br>
-      <div style="margin-top: 8px; line-height: 1.6;">${escapeHtml(club.remark || '暂无介绍，欢迎补充~')}</div>
+
+  // ——— 操作区（纵向按钮） ———
+  const actionBtns = [];
+
+  // 已登录 + 未绑定 + 可申请 → 申请绑定
+  if (canApply) {
+    actionBtns.push(`<button data-action="apply-club" class="club-detail-btn primary full" style="margin-bottom:4px">${__('detailBtnApplyClub')}</button>`);
+  }
+
+  // 可管理该俱乐部 → 编辑 + 成员名单
+  if (isClubManager || hasRole('super_admin')) {
+    actionBtns.push(`<button data-action="edit-club" class="club-detail-btn warning full" style="margin-bottom:4px">${__('detailBtnEdit')}</button>`);
+    actionBtns.push(`<button data-action="member-list" class="club-detail-btn secondary full" style="margin-bottom:4px">${__('detailBtnMembers')}</button>`);
+  }
+
+  // 当前用户是该俱乐部的负责人 → 转让负责人
+  if (isClubManager && getClubMembership(clubId, clubCountry)?.role === 'representative') {
+    actionBtns.push(`<button data-action="transfer" class="club-detail-btn warning full" style="margin-bottom:4px">🔄 转让负责人</button>`);
+  }
+
+  // 已绑定 → 退出
+  if (isBound) {
+    actionBtns.push(`<button data-action="leave-club" class="club-detail-btn secondary full" style="margin-bottom:4px">🚪 退出同好会</button>`);
+  }
+
+  const actionHtml = actionBtns.length
+    ? `<div class="club-detail-section"><div class="club-detail-section-title">${__('detailSectionActions')}</div><div class="club-detail-actions">${actionBtns.join('')}</div></div>`
+    : '';
+
+  // ——— 底部元信息 ———
+  const footerHtml = `
+    <div class="club-detail-meta-footer">
+      <span>📅 ${esc(club.verifyMeta || __('detailUnknownDate'))}</span>
     </div>
   `;
-  
+
+  // ——— 组装 ———
+  content.innerHTML = `
+    <div class="club-detail-body-wrapper">
+      ${headerHtml}
+      ${descHtml}
+      ${extHtml}
+      ${contactHtml}
+      ${actionHtml}
+      ${footerHtml}
+    </div>
+  `;
+
+  // ——— 附加操作按钮事件（data-action → 闭包） ———
+  const actionsContainer = content.querySelector('.club-detail-actions');
+  if (actionsContainer) {
+    actionsContainer.querySelector('[data-action="apply-club"]')?.addEventListener('click', () => openMembershipApplyModal(club));
+    actionsContainer.querySelector('[data-action="edit-club"]')?.addEventListener('click', () => openEditPanel(club));
+    actionsContainer.querySelector('[data-action="member-list"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));
+    actionsContainer.querySelector('[data-action="transfer"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));
+    actionsContainer.querySelector('[data-action="leave-club"]')?.addEventListener('click', () => confirmLeaveClub(clubId, club.name, club.country));
+  }
+
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
-  
+
   const closeBtn = document.getElementById('clubDetailClose');
   if (closeBtn) {
-    const newCloseBtn = closeBtn.cloneNode(true);
-    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-    newCloseBtn.onclick = () => {
+    const newBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+    newBtn.onclick = () => {
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
     };
   }
-  
   modal.onclick = (e) => {
-    if (e.target === modal) {
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    }
+    if (e.target === modal) { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
   };
+}
+
+// ====== 同好会绑定申请弹窗 ======
+function openMembershipApplyModal(club) {
+  const modal = document.getElementById('membershipApplyModal');
+  if (!modal) return;
+  document.getElementById('membershipApplyClubName').textContent = club.name || '未命名';
+  document.getElementById('applyQQ').value = '';
+  document.getElementById('applyRole').value = 'member';
+  document.getElementById('applyIsStudent').checked = true;
+  const msg = document.getElementById('membershipApplyMessage');
+  if (msg) msg.textContent = '';
+  modal._clubId = club.id;
+  modal._country = club.country || 'china';
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeMembershipApplyModal() {
+  const modal = document.getElementById('membershipApplyModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+async function submitMembershipApply() {
+  const modal = document.getElementById('membershipApplyModal');
+  const msg = document.getElementById('membershipApplyMessage');
+  const btn = document.getElementById('membershipApplySubmitBtn');
+  if (!modal || !msg || !btn) return;
+
+  const clubId = modal._clubId;
+  const country = modal._country || 'china';
+  const qqAccount = document.getElementById('applyQQ')?.value.trim() || '';
+  const applyRole = document.getElementById('applyRole')?.value || 'member';
+  const isStudent = document.getElementById('applyIsStudent')?.checked ? 1 : 0;
+
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  msg.textContent = '';
+
+  try {
+    const resp = await fetch('./api/membership.php?action=apply', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        club_id: clubId,
+        country: country,
+        qq_account: qqAccount,
+        apply_role: applyRole,
+        is_student: isStudent
+      })
+    });
+    const result = await resp.json();
+    if (result.success) {
+      msg.innerHTML = '✅ ' + (result.message || '申请已提交');
+      btn.textContent = '已完成';
+      setTimeout(() => {
+        closeMembershipApplyModal();
+        btn.disabled = false;
+        btn.textContent = '提交申请';
+      }, 1500);
+    } else {
+      msg.innerHTML = '❌ ' + (result.message || '申请失败');
+      btn.disabled = false;
+      btn.textContent = '提交申请';
+    }
+  } catch {
+    msg.innerHTML = '❌ 网络错误，请重试';
+    btn.disabled = false;
+    btn.textContent = '提交申请';
+  }
+}
+
+// ====== 退出同好会 ======
+function confirmLeaveClub(clubId, clubName, country) {
+  if (!confirm(`确定要退出「${clubName}」吗？`)) return;
+  fetch('./api/membership.php?action=leave', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ club_id: clubId, country: country || 'china' })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      alert('✅ 已退出同好会');
+      location.reload();
+    } else {
+      alert('❌ ' + (data.message || '操作失败'));
+    }
+  })
+  .catch(() => alert('❌ 网络错误，请重试'));
 }
 
 function renderCurrentDetail() {
@@ -991,10 +2566,10 @@ function renderCurrentDetail() {
     
     // 如果数据为空，显示提示
     if (!sourceRows.length && !State.globalSearchEnabled) {
-        const provinceName = State.currentDetailProvinceName || (State.currentCountry === 'japan' ? '日本' : '未选择');
-        document.getElementById('selectedTitle').textContent = `${provinceName} · 同好会详情`;
-        document.getElementById('selectedProvince').textContent = '0 个组织';
-        document.getElementById('selectedMeta').textContent = `范围 ${provinceName} · 暂无同好会信息`;
+        const provinceName = State.currentDetailProvinceName || (State.currentCountry === 'japan' ? '日本' : State.currentCountry === 'overseas' ? '海外' : '未选择');
+        document.getElementById('selectedTitle').textContent = __('renderTitleDetail', provinceName);
+        document.getElementById('selectedProvince').textContent = '0 ' + __('clubCount');
+        document.getElementById('selectedMeta').textContent = __('renderMetaRange', provinceName, '0', '0');
         document.getElementById('groupList').innerHTML = '<div class="empty-text">暂无同好会信息，欢迎提交~</div>';
         return;
     }
@@ -1010,30 +2585,30 @@ function renderCurrentDetail() {
     if (displayTitle === '非地区') displayTitle = '国内同好会';
     
     if (State.globalSearchEnabled) {
-        const countryName = State.currentCountry === 'japan' ? '日本' : '全国';
-        document.getElementById('selectedTitle').textContent = `🔍 全局搜索 · ${countryName}同好会`;
-        let metaText = `范围 全局 · 高校同好会 ${schoolCount} · 地区联合 ${regionCount}`;
-        if (vnfestCount > 0) metaText += ` · 学园祭 ${vnfestCount}`;
+        const countryName = State.currentCountry === 'japan' ? '日本' : State.currentCountry === 'overseas' ? '海外' : '全国';
+        document.getElementById('selectedTitle').textContent = __('renderTitleSearch', countryName);
+        let metaText = __('renderMetaSummary', schoolCount, regionCount);
+        if (vnfestCount > 0) metaText += __('renderMetaVnfest', vnfestCount);
         if (State.listQuery) {
-            metaText = `搜索 "${State.listQuery}" · 找到 ${filtered.length} 个结果 · ` + metaText;
+            metaText = __('renderMetaSearch', State.listQuery, filtered.length) + metaText;
         }
         document.getElementById('selectedMeta').textContent = metaText;
     } else {
-        document.getElementById('selectedTitle').textContent = `${displayTitle} · 同好会详情`;
-        document.getElementById('selectedMeta').textContent = `范围 ${displayTitle} · 高校同好会 ${schoolCount} · 地区联合 ${regionCount}`;
+        document.getElementById('selectedTitle').textContent = __('renderTitleDetail', displayTitle);
+        document.getElementById('selectedMeta').textContent = __('renderMetaRange', displayTitle, schoolCount, regionCount);
     }
     
-    document.getElementById('selectedProvince').textContent = `${filtered.length} 个组织`;
+    document.getElementById('selectedProvince').textContent = `${filtered.length} ` + __('clubCount');
     renderGroupListWithLocation(filtered);
 }
 
 function updateSummaryUI(source, animate = true) {
   const applySummary = () => {
     const mainlandTotal = Array.from(State.provinceGroupsMap.keys()).reduce((sum, key) => key === '海外' ? sum : sum + (State.provinceGroupsMap.get(key)?.length || 0), 0);
-    document.getElementById('selectedTitle').textContent = '全国Galgame同好会数据';
-    document.getElementById('selectedProvince').textContent = `${mainlandTotal} 个组织`;
-    document.getElementById('selectedMeta').textContent = `数据源：${source}`;
-    document.getElementById('groupList').innerHTML = '<div class="empty-text">点击地图省份查看该地区同好会信息</div>';
+    document.getElementById('selectedTitle').textContent = __('renderTitleSummary');
+    document.getElementById('selectedProvince').textContent = `${mainlandTotal} ` + __('clubCount');
+    document.getElementById('selectedMeta').textContent = __('renderMetaDataSource', source);
+    document.getElementById('groupList').innerHTML = '<div class="empty-text">' + __('noData') + '</div>';
   };
 
   if (animate) animateSelectedCardUpdate(applySummary);
@@ -1057,74 +2632,107 @@ function updateSummaryUI(source, animate = true) {
 function renderGroupListWithLocation(rows) {
     const listEl = document.getElementById('groupList');
     if (!listEl) return;
-    
+
     if (!rows.length) {
-        listEl.innerHTML = '<div class="empty-text">没有找到相关同好会</div>';
+        listEl.innerHTML = '<div class="empty-text">' + __('listEmptyFilter') + '</div>';
         return;
     }
-    
+
     const isJapan = State.currentCountry === 'japan';
-    
+
     listEl.innerHTML = rows.map((item) => {
-        const name = Utils.escapeHTML(item.name || '未命名组织');
+        const name = Utils.escapeHTML(item.name || __('listNoName'));
         const rawText = Utils.escapeHTML(item.raw_text || item.name || '');
-        const detectedUrl = Utils.extractUrl(item);
-        const infoText = detectedUrl || item.info || '';
-        const info = Utils.escapeHTML(infoText);
-        const type = Utils.escapeHTML(Utils.groupTypeText(item.type));
-        const verifyMeta = Utils.escapeHTML(item.verified ? '已登记' : '未登记') + ' · 成立时间：' + Utils.escapeHTML(Utils.formatCreatedAt(item.created_at));
-        
-        // 地区显示
-        let locationText = '';
-        if (isJapan) {
-            locationText = item.prefecture || item.province || '';
+        const isHidden = item.info_hidden === true;
+        const canApply = item.can_apply === true;
+        const clubId = parseInt(item.id);
+        const member = getClubMembership(clubId, item.country || (isJapan ? 'japan' : 'china'));
+        const isBound = member && member.status === 'active';
+
+        let infoHtml;
+        if (isBound || !isHidden) {
+            const contactInfo = item.info || '';
+            const detectedUrl = Utils.extractUrl(item) || (/^https?:\/\//.test(contactInfo) ? contactInfo : null);
+            if (detectedUrl) {
+                infoHtml = `<a href="${Utils.escapeHTML(detectedUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--md-primary);text-decoration:none">${Utils.escapeHTML(contactInfo)}</a>`;
+            } else {
+                infoHtml = Utils.escapeHTML(contactInfo || __('listNoContact'));
+            }
         } else {
-            locationText = item.province || '';
+            infoHtml = '<span style="opacity:0.5">' + __('listInfoHidden') + '</span>';
         }
-        
+
+        const extLinksHtml = renderExternalLinks(item.external_links);
+        const type = Utils.escapeHTML(Utils.groupTypeText(item.type));
+        const verifyMeta = Utils.escapeHTML(item.verified ? __('listVerified') : __('listUnverified')) + __('listEstablished') + Utils.escapeHTML(Utils.formatCreatedAt(item.created_at));
+
+        // 地区显示
+        let locationText = isJapan ? (item.prefecture || item.province || '') : (item.province || '');
+
         const clubData = encodeURIComponent(JSON.stringify({
             id: item.id,
             name: name,
             school: item.school || '',
-            info: info,
+            info: Utils.escapeHTML(isHidden ? __('listInfoHidden') : (item.info || __('listNoContact'))),
             originalInfo: item.info || '',
-            detectedUrl: detectedUrl,
+            infoHidden: isHidden,
+            canApply: canApply,
+            detectedUrl: '',
             type: type,
             verifyMeta: verifyMeta,
             province: locationText,
-            remark: item.remark || '暂无介绍',
-            country: isJapan ? 'japan' : 'china'
+            remark: item.remark || __('listNoRemark'),
+            country: isJapan ? 'japan' : 'china',
+            logo_url: item.logo_url || '',
+            external_links: item.external_links || ''
         }));
-        
+
+        const avatarHtml = item.logo_url
+            ? `<img src="${Utils.escapeHTML(item.logo_url)}" alt="" class="club-avatar" loading="lazy">`
+            : `<div class="club-avatar club-avatar-fallback">🏫</div>`;
+
+        const statusBadge = isBound
+            ? '<span style="font-size:11px;color:#4CAF50;white-space:nowrap">' + __('listBound') + '</span>'
+            : canApply
+                ? `<button class="apply-mini-btn" data-club='${clubData}' type="button" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--md-primary);color:#fff;cursor:pointer;white-space:nowrap">${__('listApply')}</button>`
+                : '';
+
         return `
             <article class="group-item" data-club='${clubData}'>
-                <div class="group-top">
-                    <h3 class="group-name" title="${rawText}">${name}</h3>
-                    <span class="group-chip">${type}</span>
+                <div class="group-main">
+                    ${avatarHtml}
+                    <div class="group-header">
+                        <h3 class="group-name" title="${rawText}">${name}</h3>
+                        <div class="group-top-tags">
+                          <span class="group-chip">${type}</span>
+                          <span class="group-chip-outline">${Utils.escapeHTML(locationText)}</span>
+                        </div>
+                    </div>
                 </div>
-                ${locationText ? `<div style="font-size: 11px; color: var(--md-primary); margin-bottom: 4px;">📍 ${Utils.escapeHTML(locationText)}</div>` : ''}
-                <div class="group-info-row">
-                    <p class="group-info" data-club='${clubData}'>${info || '暂无联系方式'}</p>
-                    <button class="copy-btn" data-club='${clubData}' type="button">查看详情</button>
+                <div class="group-divider"></div>
+                <div class="group-footer">
+                    <div class="group-footer-left">
+                        <span class="group-info" data-club='${clubData}'>${infoHtml}</span>
+                        ${extLinksHtml ? `<div class="group-ext-links">${extLinksHtml}</div>` : ''}
+                    </div>
+                    <div class="group-footer-right">${statusBadge}</div>
                 </div>
-                <p class="group-meta">${verifyMeta}</p>
             </article>
         `;
     }).join('');
-    
+
     // 绑定事件
     document.querySelectorAll('.group-item').forEach(item => {
         item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('copy-btn')) return;
+            if (e.target.classList.contains('apply-mini-btn') || e.target.closest('.apply-mini-btn')) return;
             const clubData = item.getAttribute('data-club');
             if (clubData) {
                 const club = JSON.parse(decodeURIComponent(clubData));
-                if (adminMode) openEditPanel(club);
-                else showClubDetail(club);
+                showClubDetail(club);
             }
         });
     });
-    
+
     document.querySelectorAll('.group-info').forEach(el => {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1132,12 +2740,16 @@ function renderGroupListWithLocation(rows) {
             if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)));
         });
     });
-    
-    document.querySelectorAll('.copy-btn').forEach(btn => {
+
+    // 申请绑定按钮
+    document.querySelectorAll('.apply-mini-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const clubData = btn.getAttribute('data-club');
-            if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)));
+            if (clubData) {
+                const club = JSON.parse(decodeURIComponent(clubData));
+                openMembershipApplyModal(club);
+            }
         });
     });
 }
@@ -1155,7 +2767,7 @@ function showProvinceDetails(provinceName) {
         if (provinceName === '国内同好会') {
             State.currentDetailRows = State.provinceGroupsMap.get('__non_regional__') || [];
         } else if (provinceName === '海外') {
-            State.currentDetailRows = State.provinceGroupsMap.get('海外') || [];
+            State.currentDetailRows = State.provinceGroupsMap.get('海外') || State.bandoriRows.filter(item => item.province === '海外') || [];
         } else {
             State.currentDetailRows = State.provinceGroupsMap.get(key) || [];
         }
@@ -1265,13 +2877,16 @@ function showMapBubbleByProvince(provinceName, anchorX, anchorY) {
     // 更新气泡内容
     bubble.innerHTML = `
         <div class="map-bubble-scroll">
-            <h3 class="map-bubble-title">${Utils.escapeHTML(provinceName)} · ${rows.length} 个组织</h3>
-            ${rows.slice(0, 12).map(item => `
+            <h3 class="map-bubble-title">${Utils.escapeHTML(provinceName)} · ${rows.length} ${__('clubCount')}</h3>
+            ${rows.slice(0, 12).map(item => {
+              const bubbleInfo = item.info_hidden ? __('listInfoHidden') : (item.info || __('listNoContact'));
+              return `
                 <article class="map-bubble-item" data-copy="${encodeURIComponent(String(item.info || ''))}" title="点击复制联系方式">
                     <div class="bubble-name-wrap"><span class="bubble-name">${Utils.escapeHTML(item.name || '未命名')}</span></div>
-                    <div class="bubble-id">${Utils.escapeHTML(String(item.info || '无联系方式'))}</div>
+                    <div class="bubble-id">${Utils.escapeHTML(bubbleInfo)}</div>
                 </article>
-            `).join('')}
+              `;
+            }).join('')}
             ${rows.length > 12 ? `<div class="map-bubble-more" style="margin-top: 8px; font-size: 12px; color: var(--md-primary); text-align: center;">还有 ${rows.length - 12} 个组织，点击地图查看全部</div>` : ''}
         </div>
     `;
@@ -1554,8 +3169,9 @@ const japanNameMap = {
     const maxCount = allCounts.length ? Math.max(...allCounts) : 1;
     const BASE_SCREEN_RADIUS = 8;
 
-    g.selectAll('.province').each(function(d) {
-      const chineseName = japanNameMap[d.id] || d.name;
+    g.selectAll('.province').each(function() {
+      const chineseName = japanNameMap[this.id];
+      if (!chineseName) return;
       const count = State.japanGroupsMap.get(chineseName)?.length || 0;
       d3.select(this)
         .style('fill', MapUtils.colorByCount(count, maxCount))
@@ -1565,8 +3181,9 @@ const japanNameMap = {
     g.selectAll('.count-layer').remove();
     const badgeLayer = g.append('g').attr('class', 'count-layer');
 
-    g.selectAll('.province').each(function(d) {
-      const chineseName = japanNameMap[d.id] || d.name;
+    g.selectAll('.province').each(function() {
+      const chineseName = japanNameMap[this.id];
+      if (!chineseName) return;
       const count = State.japanGroupsMap.get(chineseName)?.length || 0;
       if (!count) return;
 
@@ -1620,10 +3237,11 @@ const japanNameMap = {
     });
 
     // 省份区域点击：显示右侧列表
-    g.selectAll('.province').each(function(d) {
+    g.selectAll('.province').each(function() {
+      const chineseName = japanNameMap[this.id];
+      if (!chineseName) return;
       const provinceElement = this;
-      const chineseName = japanNameMap[d.id] || d.name;
-      
+
       provinceElement.onclick = null;
     });
 
@@ -1720,20 +3338,26 @@ function showJapanMapBubble(provinceName, anchorX, anchorY) {
 
   bubble.innerHTML = `
     <div class="map-bubble-scroll">
-      <h3 class="map-bubble-title">${Utils.escapeHTML(provinceName)} · ${rows.length} 个组织</h3>
+      <h3 class="map-bubble-title">${Utils.escapeHTML(provinceName)} · ${rows.length} ${__('clubCount')}</h3>
       ${rows.slice(0, 12).map(item => `
         <article class="map-bubble-item" data-club='${encodeURIComponent(JSON.stringify({
           id: item.id,
           name: item.name,
           info: item.info,
+          originalInfo: item.info || '',
+          infoHidden: item.info_hidden === true,
+          canApply: item.can_apply === true,
+          detectedUrl: '',
           type: item.type,
           province: provinceName,
           prefecture: item.prefecture || provinceName,
-          remark: item.remark || '暂无介绍',
-          verified: item.verified
+          school: item.school || '',
+          remark: item.remark || __('listNoRemark'),
+          verifyMeta: (item.verified ? '已登记' : '未登记') + ' · 成立时间：' + Utils.formatCreatedAt(item.created_at),
+          country: 'japan', logo_url: item.logo_url || '', external_links: item.external_links || ''
         }))}'>
           <div class="bubble-name-wrap"><span class="bubble-name">${Utils.escapeHTML(item.name || '未命名')}</span></div>
-          <div class="bubble-id">${Utils.escapeHTML(String(item.info || '无联系方式'))}</div>
+          <div class="bubble-id">${Utils.escapeHTML(item.info_hidden ? __('listInfoHidden') : String(item.info || __('listNoContact')))}</div>
         </article>
       `).join('')}
       ${rows.length > 12 ? `<div class="map-bubble-more" style="margin-top: 8px; font-size: 12px; color: var(--md-primary); text-align: center;">还有 ${rows.length - 12} 个组织，点击地图查看全部</div>` : ''}
@@ -1797,13 +3421,15 @@ function switchToChinaMap() {
     State.currentCountry = 'china';
     document.getElementById('chinaToggleBtn')?.classList.add('active');
     document.getElementById('japanToggleBtn')?.classList.remove('active');
+    document.getElementById('overseasToggleBtn')?.classList.remove('active');
     const svgEl = document.getElementById('mapSvg');
     if (svgEl) svgEl.innerHTML = '';
     setTimeout(() => {
         renderChinaMap();
-        updateSummaryUI(State.currentDataSource);
-        
-        // 添加这部分：重置搜索状态
+        bindMapTooltip();
+        // 直接显示国内同好会列表
+        State.currentDetailProvinceName = '国内同好会';
+        State.currentDetailRows = State.bandoriRows.filter(item => item.province !== '海外');
         State.globalSearchEnabled = false;
         State.listQuery = '';
         State.listType = 'all';
@@ -1814,79 +3440,87 @@ function switchToChinaMap() {
         const globalBtn = document.getElementById('globalSearchBtn');
         if (globalBtn) globalBtn.classList.remove('active');
         renderCurrentDetail();
-        bindMapTooltip();
-        // 结束
     }, 100);
 }
 
 // 切换到日本地图（数据已预加载）
 function switchToJapanMap() {
     if (State.currentCountry === 'japan') return;
-    
+
     console.log('切换到日本地图');
     State.currentCountry = 'japan';
-    
+
     document.getElementById('japanToggleBtn')?.classList.add('active');
     document.getElementById('chinaToggleBtn')?.classList.remove('active');
-    
-    // 重置详情数据（但不清空已加载的数据）
-    State.currentDetailProvinceName = '';
-    State.currentDetailRows = [];
+    document.getElementById('overseasToggleBtn')?.classList.remove('active');
+
     State.globalSearchEnabled = false;
     State.listQuery = '';
     State.listType = 'all';
-    
+    State.listSort = 'default';
+
     if (document.getElementById('searchInput')) document.getElementById('searchInput').value = '';
     if (document.getElementById('typeFilter')) document.getElementById('typeFilter').value = 'all';
-    
+    updateSortButtonView();
+
     const globalBtn = document.getElementById('globalSearchBtn');
     if (globalBtn) globalBtn.classList.remove('active');
-    
+
     const svgEl = document.getElementById('mapSvg');
     if (svgEl) svgEl.innerHTML = '';
-    
+
     // 直接渲染，不需要再加载数据（数据已在 init 时加载）
     setTimeout(() => {
         renderJapanMap();
-        updateSummaryUI('日本同好会数据');
+        bindMapTooltip();
+        // 直接显示日本同好会列表
+        State.currentDetailProvinceName = '日本';
+        State.currentDetailRows = State.japanRows || [];
         renderCurrentDetail();
     }, 100);
 }
 
+function switchToOverseas() {
+    if (State.currentCountry === 'overseas') return;
 
-async function loadJapanData() {
-  try {
-    const resp = await fetch('./data/clubs_japan.json', { cache: 'no-store' });
-    if (resp.ok) {
-      const json = await resp.json();
-      if (json?.data && Array.isArray(json.data)) {
-        State.japanRows = json.data;
-        State.japanGroupsMap = new Map();
-        State.japanRows.forEach(item => {
-          const prefecture = item.prefecture || item.province;
-          if (!prefecture) return;
-          if (!State.japanGroupsMap.has(prefecture)) {
-            State.japanGroupsMap.set(prefecture, []);
-          }
-          State.japanGroupsMap.get(prefecture).push(item);
-        });
-        console.log('✅ 日本数据加载成功，共', State.japanRows.length, '条');
-        return true;
-      }
-    }
-    useMockJapanData();
-  } catch (e) {
-    console.log('日本数据加载失败，使用模拟数据:', e);
-    useMockJapanData();
-  }
-  return false;
+    setGlobalSearchEnabled(false);
+    State.currentCountry = 'overseas';
+
+    document.getElementById('overseasToggleBtn')?.classList.add('active');
+    document.getElementById('chinaToggleBtn')?.classList.remove('active');
+    document.getElementById('japanToggleBtn')?.classList.remove('active');
+
+    // 清除地图
+    const svgEl = document.getElementById('mapSvg');
+    if (svgEl) svgEl.innerHTML = '';
+
+    // 重置筛选条件
+    State.listType = 'all';
+    State.listQuery = '';
+    State.listSort = 'default';
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    const typeFilter = document.getElementById('typeFilter');
+    if (typeFilter) typeFilter.value = 'all';
+    updateSortButtonView();
+    document.getElementById('nonRegionalToggleBtn')?.classList.remove('active');
+
+    // 显示海外同好会列表
+    State.currentDetailProvinceName = '海外';
+    State.selectedProvinceKey = '海外';
+    State.currentDetailRows = State.provinceGroupsMap.get('海外') || State.bandoriRows.filter(item => item.province === '海外') || [];
+    console.log('海外同好会列表:', State.currentDetailRows.length, '条');
+
+    hideMapBubble();
+    renderCurrentDetail();
 }
+
 
 function useMockJapanData() {
   State.japanRows = [
-    { id: 1, name: "东京大学视觉小说研究会", prefecture: "东京都", info: "https://discord.gg/example", type: "school", created_at: "2026-05-07" },
+    { id: 1, name: "东京大学视觉小说研究会", prefecture: "东京都", info: "https://discord.gg/example", type: "school", created_at: "2026-05-07", external_links: "Twitter: https://x.com/ut_vinos\n官网: https://example.com/ut-vinos" },
     { id: 2, name: "京都大学Galgame同好会", prefecture: "京都府", info: "123456789", type: "school", created_at: "2026-05-07" },
-    { id: 3, name: "大阪大学动漫研究社", prefecture: "大阪府", info: "987654321", type: "school", created_at: "2026-05-07" },
+    { id: 3, name: "大阪大学动漫研究社", prefecture: "大阪府", info: "987654321", type: "school", created_at: "2026-05-07", external_links: "Twitter: https://x.com/example_osaka" },
     { id: 4, name: "北海道大学视觉小说部", prefecture: "北海道", info: "111222333", type: "school", created_at: "2026-05-07" },
     { id: 5, name: "名古屋大学Galgame部", prefecture: "爱知县", info: "444555666", type: "school", created_at: "2026-05-07" }
   ];
@@ -2007,64 +3641,9 @@ function bindAllStaticEvents() {
     svg.call(zoom.transform, nextTransform);
   };
 
-  document.getElementById('zoomInBtn')?.addEventListener('click', () => stepScale(1.2));
-  document.getElementById('zoomOutBtn')?.addEventListener('click', () => stepScale(1 / 1.2));
-  
-  const resetViewBtn = document.getElementById('resetViewBtn');
-  if (resetViewBtn) {
-      resetViewBtn.onclick = function() {
-          console.log('桌面端重置按钮被点击');
-          
-          State.resetClickBurstCount++;
-          clearTimeout(State.resetClickBurstTimer);
-          State.resetClickBurstTimer = setTimeout(function() { 
-              State.resetClickBurstCount = 0; 
-          }, 1400);
-          
-          if (State.resetClickBurstCount >= 6) {
-              State.developerModeEnabled = !State.developerModeEnabled;
-              State.resetClickBurstCount = 0;
-              const btn = document.getElementById('resetViewBtn');
-              if(btn) {
-                  btn.textContent = State.developerModeEnabled ? '重置（开发者）' : '重置';
-                  btn.title = State.developerModeEnabled ? '允许右键' : '禁止右键';
-              }
-              const floatingAdminBtn = document.getElementById('floatingAdminBtn');
-              if (State.developerModeEnabled) {
-                  document.body.classList.add('developer-mode');
-                  if (floatingAdminBtn) floatingAdminBtn.style.display = 'flex';
-                  console.log('🔓 开发者模式已开启');
-                  if (Utils.isMobileViewport()) {
-                      showToast('开发者模式已开启！\n管理员按钮已出现在右下角', 3000);
-                  } else {
-                      alert('开发者模式已开启！\n👑 管理员按钮已出现在右下角');
-                  }
-              } else {
-                  document.body.classList.remove('developer-mode');
-                  if (floatingAdminBtn) floatingAdminBtn.style.display = 'none';
-                  if (adminMode) toggleAdminMode();
-                  console.log('🔒 开发者模式已关闭');
-                  if (Utils.isMobileViewport()) {
-                      showToast('开发者模式已关闭', 1500);
-                  }
-              }
-          }
-          
-          if (State.mapViewState) {
-              const { svg, zoom, baseScale, baseTranslate } = State.mapViewState;
-              svg.call(zoom.transform, d3.zoomIdentity.translate(baseTranslate[0], baseTranslate[1]).scale(baseScale));
-          }
-      };
-      console.log('✅ 桌面端重置按钮绑定成功');
-  }
 
-  document.getElementById('overseasToggleBtn')?.addEventListener('click', () => {
-    setGlobalSearchEnabled(false);
-    State.selectedProvinceKey = '海外';
-    showProvinceDetails('海外');
-    hideMapBubble();
-    State.mapViewState?.g.selectAll('.province').classed('selected', false);
-  });
+
+  document.getElementById('overseasToggleBtn')?.addEventListener('click', switchToOverseas);
 
   document.getElementById('nonRegionalToggleBtn')?.addEventListener('click', () => {
     setGlobalSearchEnabled(false);
@@ -2130,7 +3709,6 @@ function bindAllStaticEvents() {
   });
 
   document.addEventListener('contextmenu', (e) => {
-    if (State.developerModeEnabled) return;
     e.preventDefault();
     if (e.target.closest('#siteFooter')) {
       document.getElementById('siteFooter')?.classList.add('site-footer-hidden');
@@ -2163,7 +3741,7 @@ function bindAllStaticEvents() {
     if (easterClickCount >= 10) {
       easterClickCount = 0;
       const modal = document.getElementById('easterModal');
-      document.getElementById('easterText').textContent = '彩蛋内容';
+      document.getElementById('easterText').textContent = __('statusEasterEgg');
       modal?.classList.add('open');
     }
   });
@@ -2178,13 +3756,7 @@ function bindAllStaticEvents() {
 
   document.getElementById('chinaToggleBtn')?.addEventListener('click', switchToChinaMap);
   document.getElementById('japanToggleBtn')?.addEventListener('click', switchToJapanMap);
-  document.getElementById('otherToggleBtn')?.addEventListener('click', () => {
-    setGlobalSearchEnabled(false);
-    State.selectedProvinceKey = '其他';
-    showProvinceDetails('其他');
-    hideMapBubble();
-  });
-    document.getElementById('map')?.addEventListener('click', function(e) {
+  document.getElementById('map')?.addEventListener('click', function(e) {
         const provincePath = e.target.closest('.province');
         if (!provincePath) return;
         
@@ -2226,47 +3798,42 @@ function bindAllStaticEvents() {
     // =======================================
 }
 
-// ==========================================
-// 管理员模式
-// ==========================================
-function toggleAdminMode() {
-  if (!State.developerModeEnabled) {
-    alert('请先连续点击「重置」按钮6次开启开发者模式');
-    return false;
+// 同好会管理按钮
+function initFAB() {
+  const fab = document.getElementById('fabAdminBtn');
+  if (!fab) return;
+
+  // 仅系统 manager 以上角色显示
+  if (!hasRole('manager')) {
+    fab.style.display = 'none';
+    return;
   }
-  if (!adminMode) localStorage.setItem('admin_token', 'ciallo');
-  else localStorage.removeItem('admin_token');
-  adminMode = !adminMode;
-  const floatingAdminBtn = document.getElementById('floatingAdminBtn');
-  const addClubBtn = document.getElementById('addClubBtn');
-  const calendarAddEventBtn = document.getElementById('calendarAddEventBtn');
-  const calendarAddEventBtnSide = document.getElementById('calendarAddEventBtnSide');
-  
-  if (adminMode) {
-    floatingAdminBtn?.classList.add('admin-active');
-    floatingAdminBtn.title = '退出管理员模式';
-    if (addClubBtn) addClubBtn.style.display = 'flex';
-    if (calendarAddEventBtn) calendarAddEventBtn.style.display = 'flex';
-    if (calendarAddEventBtnSide) calendarAddEventBtnSide.style.display = 'flex';
-    document.body.classList.add('admin-mode');
-    console.log('✅ 管理员模式已开启');
-  } else {
-    floatingAdminBtn?.classList.remove('admin-active');
-    floatingAdminBtn.title = '管理员模式';
-    if (addClubBtn) addClubBtn.style.display = 'none';
-    if (calendarAddEventBtn) calendarAddEventBtn.style.display = 'none';
-    if (calendarAddEventBtnSide) calendarAddEventBtnSide.style.display = 'none';
-    document.body.classList.remove('admin-mode');
-    console.log('✅ 管理员模式已关闭');
-  }
-  
-  if (typeof renderCalendar === 'function') {
-    renderCalendar();
-  }
-  
-  window.dispatchEvent(new CustomEvent('adminModeChanged'));
-  
-  return true;
+
+  fab.style.display = 'inline-flex';
+}
+
+// 解析外部链接字符串为数组
+function parseExternalLinksStr(str) {
+  if (!str || !str.trim()) return [];
+  return str.trim().split('\n')
+    .map(line => {
+      const idx = line.indexOf(': ');
+      return idx > 0 ? { platform: line.substring(0, idx).trim(), url: line.substring(idx + 2).trim().replace(/\/+$/, '') } : null;
+    })
+    .filter(Boolean);
+}
+
+// 从结构化输入行收集外部链接，拼接为 "平台: URL" 格式
+function getExternalLinksStr() {
+  const platforms = document.querySelectorAll('.ext-link-platform');
+  const urls = document.querySelectorAll('.ext-link-url');
+  const pairs = [];
+  platforms.forEach((sel, i) => {
+    const p = sel.value.trim();
+    const u = (urls[i]?.value.trim() || '').replace(/\/+$/, '');
+    if (p && u) pairs.push(`${p}: ${u}`);
+  });
+  return pairs.join('\n');
 }
 
 function openEditPanel(club = null, isNew = false) {
@@ -2293,6 +3860,11 @@ function openEditPanel(club = null, isNew = false) {
       if (prefectureGroup) prefectureGroup.style.display = 'block';
       if (editProvince) editProvince.required = false;
       if (editPrefecture) editPrefecture.required = true;
+    } else if (country === 'overseas') {
+      if (provinceGroup) provinceGroup.style.display = 'none';
+      if (prefectureGroup) prefectureGroup.style.display = 'none';
+      if (editProvince) editProvince.required = false;
+      if (editPrefecture) editPrefecture.required = false;
     } else {
       if (provinceGroup) provinceGroup.style.display = 'block';
       if (prefectureGroup) prefectureGroup.style.display = 'none';
@@ -2311,6 +3883,8 @@ function openEditPanel(club = null, isNew = false) {
     }
   }
   
+  const editVisible = document.getElementById('editVisibleByDefault');
+
   if (isNew) {
     adminPanelTitle.textContent = '➕ 添加同好会';
     if (editId) editId.value = '';
@@ -2322,13 +3896,16 @@ function openEditPanel(club = null, isNew = false) {
     if (editInfo) editInfo.value = '';
     if (editRemark) editRemark.value = '';
     if (editSchool) editSchool.value = '';
+    document.querySelectorAll('.ext-link-url').forEach(el => el.value = '');
+    document.querySelectorAll('.ext-link-platform').forEach(el => el.value = '');
+    if (editVisible) editVisible.checked = false;
     if (adminDeleteBtn) adminDeleteBtn.style.display = 'none';
     currentEditClubId = null;
     toggleRegionFields('china');
   } else if (club) {
     adminPanelTitle.textContent = '✏️ 编辑同好会';
     if (editId) editId.value = club.id || '';
-    const country = club.country || (club.prefecture ? 'japan' : 'china');
+    const country = club.country || (club.prefecture ? 'japan' : (club.province === '海外' ? 'overseas' : 'china'));
     if (editCountry) editCountry.value = country;
     if (editName) editName.value = club.name || '';
     if (club.province) setSelectValue(editProvince, club.province);
@@ -2337,11 +3914,35 @@ function openEditPanel(club = null, isNew = false) {
     if (editInfo) editInfo.value = club.originalInfo || club.info || '';
     if (editRemark) editRemark.value = club.remark || '';
     if (editSchool) editSchool.value = club.school || '';
+    if (editVisible) editVisible.checked = club.visible_by_default === true;
     if (adminDeleteBtn) adminDeleteBtn.style.display = 'block';
     currentEditClubId = club.id;
     toggleRegionFields(country);
+    // 加载同好会头像
+    const avatarImg = document.getElementById('editClubAvatar');
+    const avatarUrlField = document.getElementById('editClubAvatarUrl');
+    const avatarRemoveBtn = document.getElementById('editClubAvatarRemoveBtn');
+    if (avatarImg && avatarUrlField) {
+      if (club.logo_url) {
+        avatarImg.src = club.logo_url;
+        avatarUrlField.value = club.logo_url;
+        if (avatarRemoveBtn) avatarRemoveBtn.style.display = '';
+      } else {
+        avatarImg.src = '';
+        avatarUrlField.value = '';
+        if (avatarRemoveBtn) avatarRemoveBtn.style.display = 'none';
+      }
+    }
+    // 加载对外平台链接到结构化输入行
+    const extPlatforms = document.querySelectorAll('.ext-link-platform');
+    const extUrls = document.querySelectorAll('.ext-link-url');
+    const links = parseExternalLinksStr(club.external_links || '');
+    extPlatforms.forEach((sel, i) => {
+      if (links[i]) { sel.value = links[i].platform; extUrls[i].value = links[i].url; }
+      else { sel.value = ''; extUrls[i].value = ''; }
+    });
   }
-  
+
   if (editCountry) {
     editCountry.onchange = function() {
       toggleRegionFields(this.value);
@@ -2377,7 +3978,10 @@ async function saveClub() {
     remark: editRemark?.value.trim() || '',
     school: editSchool?.value.trim() || '',
     verified: 1,
-    country: country
+    country: country,
+    visible_by_default: document.getElementById('editVisibleByDefault')?.checked || false,
+    logo_url: document.getElementById('editClubAvatarUrl')?.value || '',
+    external_links: getExternalLinksStr(),
   };
   
   if (country === 'japan') {
@@ -2387,6 +3991,8 @@ async function saveClub() {
       alert('请选择日本县/都/府/道');
       return;
     }
+  } else if (country === 'overseas') {
+    clubData.province = '海外';
   } else {
     const provinceSelect = editProvince;
     clubData.province = provinceSelect?.options[provinceSelect.selectedIndex]?.text || '';
@@ -2406,7 +4012,6 @@ async function saveClub() {
   }
   
   const isEdit = currentEditClubId !== null;
-  const adminToken = localStorage.getItem('admin_token');
   const apiUrl = country === 'japan' ? './api/clubs_japan.php' : './api/clubs.php';
   
   try {
@@ -2415,19 +4020,15 @@ async function saveClub() {
       clubData.id = currentEditClubId;
       response = await fetch(apiUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': adminToken
-        },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(clubData)
       });
     } else {
       response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': adminToken
-        },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(clubData)
       });
     }
@@ -2456,11 +4057,10 @@ async function saveClub() {
 
 async function deleteClub() {
     if (!confirm('⚠️ 确定要删除这个同好会吗？此操作不可撤销！')) return;
-    const adminToken = localStorage.getItem('admin_token');
     try {
         const response = await fetch('./api/clubs.php', {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: currentEditClubId })
         });
         const result = await response.json();
@@ -2477,70 +4077,218 @@ async function deleteClub() {
     }
 }
 
-function initAdminEvents() {
-  const floatingAdminBtn = document.getElementById('floatingAdminBtn');
-  if (!floatingAdminBtn) { setTimeout(initAdminEvents, 100); return; }
-  
-  const addClubBtn = document.getElementById('addClubBtn');
-  const calendarAddEventBtn = document.getElementById('calendarAddEventBtn');
-  const calendarAddEventBtnSide = document.getElementById('calendarAddEventBtnSide');
-  const adminCancelBtn = document.getElementById('adminCancelBtn');
-  const adminSaveBtn = document.getElementById('adminSaveBtn');
-  const adminDeleteBtn = document.getElementById('adminDeleteBtn');
-  const adminPanel = document.getElementById('adminPanel');
-  
-  floatingAdminBtn.style.display = State.developerModeEnabled ? 'flex' : 'none';
-  
-  floatingAdminBtn.addEventListener('click', () => {
-    if (!State.developerModeEnabled) {
-      alert('请先连续点击「重置」按钮6次开启开发者模式');
+async function renderPendingApprovals() {
+  const container = document.getElementById('membershipPendingList');
+  if (!container) return;
+  container.innerHTML = '<p style="text-align: center; color: var(--md-on-surface-variant);">加载中...</p>';
+  try {
+    const resp = await fetch('./api/membership.php?action=pending', { credentials: 'same-origin' });
+    const data = await resp.json();
+    const list = data.memberships || [];
+    if (!list.length) {
+      container.innerHTML = '<p style="text-align: center; color: var(--md-on-surface-variant);">✅ 暂无待审批的绑定申请</p>';
       return;
     }
-    if (!adminMode) {
-      const pwd = prompt('🔐 请输入管理员密码：');
-      if (pwd !== ADMIN_PASSWORD) { alert('❌ 密码错误！'); return; }
-    }
-    toggleAdminMode();
-  });
-  
-  if (addClubBtn) {
-    addClubBtn.addEventListener('click', () => {
-      if (!State.developerModeEnabled) { alert('请先开启开发者模式'); return; }
-      openEditPanel(null, true);
+    container.innerHTML = list.map(m => `
+      <div style="padding: 12px; margin-bottom: 8px; border-radius: 8px; background: var(--md-surface-container); display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <strong>${Utils.escapeHTML(m.username)}</strong>
+          <span style="font-size: 12px; color: var(--md-on-surface-variant); margin-left: 8px;">同好会 #${m.club_id}</span>
+          <br><span style="font-size: 11px; color: var(--md-on-surface-variant);">申请时间：${Utils.escapeHTML(m.joined_at)}</span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="approve-btn" data-id="${m.id}" style="padding: 4px 12px; background: #2ecc71; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">批准</button>
+          <button class="reject-btn" data-id="${m.id}" style="padding: 4px 12px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">拒绝</button>
+        </div>
+      </div>
+    `).join('');
+
+    // 批准事件
+    container.querySelectorAll('.approve-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+        try {
+          const resp = await fetch('./api/membership.php?action=approve', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ membership_id: parseInt(id) })
+          });
+          const result = await resp.json();
+          alert(result.message || (result.success ? '已批准' : '操作失败'));
+          if (result.success) renderPendingApprovals();
+        } catch { alert('网络错误'); btn.disabled = false; }
+      });
     });
-  }
-  
-  if (calendarAddEventBtn) {
-    calendarAddEventBtn.addEventListener('click', () => {
-      if (!State.developerModeEnabled) { alert('请先开启开发者模式'); return; }
-      if (!adminMode) { alert('请先进入管理员模式'); return; }
-      if (typeof openEventEditor === 'function') {
-        openEventEditor(null);
-      } else {
-        console.warn('openEventEditor 未定义');
-      }
+
+    // 拒绝事件
+    container.querySelectorAll('.reject-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+        try {
+          const resp = await fetch('./api/membership.php?action=reject', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ membership_id: parseInt(id) })
+          });
+          const result = await resp.json();
+          alert(result.message || (result.success ? '已拒绝' : '操作失败'));
+          if (result.success) renderPendingApprovals();
+        } catch { alert('网络错误'); btn.disabled = false; }
+      });
     });
+  } catch {
+    container.innerHTML = '<p style="text-align: center; color: #e74c3c;">❌ 加载失败，请重试</p>';
   }
-  
-  if (adminCancelBtn) adminCancelBtn.addEventListener('click', closeAdminPanel);
-  if (adminSaveBtn) adminSaveBtn.addEventListener('click', saveClub);
-  if (adminDeleteBtn) adminDeleteBtn.addEventListener('click', deleteClub);
-  
-  if (adminPanel) {
-    adminPanel.addEventListener('click', (e) => { if (e.target === adminPanel) closeAdminPanel(); });
-  }
-  
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'e' && adminMode) { e.preventDefault(); exportData(); }
-  });
-  
-  console.log('✅ 管理员事件已初始化');
 }
+
+function initAdminEvents() {
+	  initFAB();
+
+	  const addClubBtn = document.getElementById("addClubBtn");
+	  const adminCancelBtn = document.getElementById("adminCancelBtn");
+	  const adminSaveBtn = document.getElementById("adminSaveBtn");
+	  const adminDeleteBtn = document.getElementById("adminDeleteBtn");
+	  const adminPanel = document.getElementById("adminPanel");
+
+	  if (addClubBtn) {
+	    addClubBtn.addEventListener("click", () => {
+	      if (!hasRole("manager")) { alert("权限不足"); return; }
+	      openEditPanel(null, true);
+	    });
+	  }
+
+	  if (adminCancelBtn) adminCancelBtn.addEventListener("click", closeAdminPanel);
+	  if (adminSaveBtn) adminSaveBtn.addEventListener("click", saveClub);
+    if (adminDeleteBtn) adminDeleteBtn.addEventListener("click", deleteClub);
+	  // 编辑面板关闭按钮和遮罩层
+	  const adminPanelClose = document.getElementById("adminPanelClose");
+	  if (adminPanelClose) adminPanelClose.addEventListener("click", closeAdminPanel);
+	  const adminBackdrop = document.getElementById("adminPanelBackdrop");
+	  if (adminBackdrop) adminBackdrop.addEventListener("click", closeAdminPanel);
+	  document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape") {
+			const panel = document.getElementById("adminPanel");
+			if (panel?.classList.contains("open")) closeAdminPanel();
+		}
+	  });
+
+	  if (adminPanel) {
+	    adminPanel.addEventListener("click", (e) => { if (e.target === adminPanel) closeAdminPanel(); });
+	  }
+
+	  // 绑定审批按钮
+	  const membershipBtn = document.getElementById("membershipBtn");
+	  if (membershipBtn) {
+	    membershipBtn.addEventListener("click", () => {
+	      if (!hasRole("manager")) { alert("权限不足"); return; }
+	      const modal = document.getElementById("membershipModal");
+	      if (!modal) return;
+	      modal.classList.add("open");
+	      modal.setAttribute("aria-hidden", "false");
+	      renderPendingApprovals();
+	    });
+	    membershipBtn.title = "绑定审批";
+	  }
+
+	  // 审核中心按钮
+	  const reviewsBtn = document.getElementById("reviewsBtn");
+	  if (reviewsBtn) {
+	    reviewsBtn.addEventListener("click", () => {
+	      window.open("./admin/reviews.html", "_blank");
+	    });
+	    reviewsBtn.title = "审核中心";
+	  }
+
+	  // 同好会管理按钮
+	  const clubManageBtn = document.getElementById("clubManageBtn");
+	  if (clubManageBtn) {
+	    clubManageBtn.addEventListener("click", () => {
+	      window.open("./admin/club_manager.html", "_blank");
+	    });
+	    clubManageBtn.title = "同好会管理";
+	  }
+
+	  // 绑定审批弹窗关闭
+	  const membershipModalClose = document.getElementById("membershipModalClose");
+	  if (membershipModalClose) {
+	    membershipModalClose.onclick = () => {
+	      const modal = document.getElementById("membershipModal");
+	      modal?.classList.remove("open");
+	      modal?.setAttribute("aria-hidden", "true");
+	    };
+	  }
+	  const membershipModal = document.getElementById("membershipModal");
+	  if (membershipModal) {
+	    membershipModal.addEventListener("click", (e) => {
+	      if (e.target === membershipModal) {
+	        membershipModal.classList.remove("open");
+	        membershipModal.setAttribute("aria-hidden", "true");
+	      }
+	    });
+	  }
+
+	  document.addEventListener("keydown", (e) => {
+	    if (e.ctrlKey && e.key === "e" && hasRole("manager")) { e.preventDefault(); exportData(); }
+	  });
+
+	  // 同好会头像上传
+	  const editClubAvatarBtn = document.getElementById("editClubAvatarBtn");
+	  const editClubAvatarInput = document.getElementById("editClubAvatarInput");
+	  const editClubAvatarRmBtn = document.getElementById("editClubAvatarRemoveBtn");
+	  const editClubAvatarSt = document.getElementById("editClubAvatarStatus");
+
+	  editClubAvatarBtn?.addEventListener("click", () => editClubAvatarInput?.click());
+
+	  editClubAvatarInput?.addEventListener("change", (e) => {
+	    const file = e.target.files[0];
+	    if (!file) return;
+	    const cid = document.getElementById("editId")?.value;
+	    if (!cid) {
+	      if (editClubAvatarSt) editClubAvatarSt.textContent = "请先保存同好会后再上传头像";
+	      editClubAvatarInput.value = "";
+	      return;
+	    }
+	    // 校验文件
+	    if (file.size > 2 * 1024 * 1024) {
+	      if (editClubAvatarSt) { editClubAvatarSt.textContent = "图片不能超过 2MB"; editClubAvatarSt.style.color = '#e74c3c'; }
+	      editClubAvatarInput.value = "";
+	      return;
+	    }
+	    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+	    if (!allowed.includes(file.type)) {
+	      if (editClubAvatarSt) { editClubAvatarSt.textContent = "仅支持 JPEG/PNG/GIF/WebP"; editClubAvatarSt.style.color = '#e74c3c'; }
+	      editClubAvatarInput.value = "";
+	      return;
+	    }
+	    // 打开裁剪弹窗
+	    const cropImg = document.getElementById('cropImage');
+	    cropImg.onload = function () {
+	      document.getElementById('avatarCropModal').style.display = 'flex';
+	      initCropper(cropImg);
+	      _clubAvatarCropClubId = cid;
+	      if (editClubAvatarSt) editClubAvatarSt.textContent = '';
+	    };
+	    cropImg.src = URL.createObjectURL(file);
+	    editClubAvatarInput.value = "";
+	  });
+
+	  editClubAvatarRmBtn?.addEventListener("click", () => {
+	    document.getElementById("editClubAvatar").src = "";
+	    document.getElementById("editClubAvatarUrl").value = "";
+	    editClubAvatarRmBtn.style.display = "none";
+	    if (editClubAvatarSt) editClubAvatarSt.textContent = "已移除头像";
+	  });
+
+	  console.log("✅ 管理员事件已初始化");
+	}
 
 // ==========================================
 // 刊物管理模块
 // ==========================================
 let publications = [];
+let currentPubFilter = 'all';
 
 async function loadPublications() {
   try {
@@ -2570,24 +4318,56 @@ const statusMap = {
 function renderPublicationList() {
   const container = document.getElementById('publicationList');
   if (!container) return;
-  if (!publications.length) {
+
+  // Filter logic
+  const filtered = currentPubFilter === 'all'
+    ? publications
+    : publications.filter(p => p.status === currentPubFilter);
+
+  // Update filter tab active state
+  document.querySelectorAll('.pub-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === currentPubFilter);
+  });
+
+  if (!filtered.length) {
     container.innerHTML = '<div class="empty-text" style="text-align: center; padding: 40px;">暂无刊物信息，欢迎投稿~</div>';
     return;
   }
-  const isAdmin = adminMode;
-  container.innerHTML = publications.map(pub => {
+  const isAdmin = hasRole('manager');
+  container.innerHTML = filtered.map(pub => {
     const status = statusMap[pub.status] || statusMap.planning;
-    // 优先显示投稿账号/邮箱，如果没有则显示链接
     const contactInfo = pub.submitContact || pub.submitLink || '';
     const isEmail = contactInfo.includes('@') && !contactInfo.startsWith('http');
-    const contactDisplay = isEmail 
+    const contactDisplay = isEmail
       ? `<a href="mailto:${contactInfo}" class="pub-link">✉️ ${contactInfo}</a>`
-      : (contactInfo.startsWith('http') 
+      : (contactInfo.startsWith('http')
           ? `<a href="${contactInfo}" target="_blank" rel="noopener noreferrer" class="pub-link">🔗 投稿入口</a>`
           : (contactInfo ? `<span class="pub-contact">📧 ${contactInfo}</span>` : ''));
-    
+
+    const desc = pub.description || '暂无介绍';
+    const shortDesc = desc.length > 100 ? desc.slice(0, 100) + '…' : desc;
+
     return `
       <div class="publication-item" data-id="${pub.id}">
+        ${pub.image_url ? `
+        <div class="pub-layout-has-image">
+          <div class="pub-image-wrap">
+            <img src="${Utils.escapeHTML(pub.image_url)}" alt="" loading="lazy">
+          </div>
+          <div class="pub-content">
+            <div class="pub-header">
+              <span class="pub-club-name">${Utils.escapeHTML(pub.clubName)}</span>
+              <span class="pub-status ${status.class}">${status.text}</span>
+            </div>
+            <div class="pub-name">📖 ${Utils.escapeHTML(pub.publicationName)}</div>
+            <div class="pub-info">
+              ${contactDisplay ? `<div class="pub-contact-info">${contactDisplay}</div>` : ''}
+              ${pub.deadline ? `<span class="pub-deadline">⏰ 截止：${pub.deadline}</span>` : ''}
+            </div>
+            <div class="pub-description">${Utils.escapeHTML(shortDesc)}</div>
+            ${isAdmin ? `<button class="pub-edit-btn" data-id="${pub.id}">✏️ 编辑</button>` : ''}
+          </div>
+        </div>` : `
         <div class="pub-header">
           <span class="pub-club-name">${Utils.escapeHTML(pub.clubName)}</span>
           <span class="pub-status ${status.class}">${status.text}</span>
@@ -2597,13 +4377,12 @@ function renderPublicationList() {
           ${contactDisplay ? `<div class="pub-contact-info">${contactDisplay}</div>` : ''}
           ${pub.deadline ? `<span class="pub-deadline">⏰ 截止：${pub.deadline}</span>` : ''}
         </div>
-        <div class="pub-description">${Utils.escapeHTML(pub.description || '暂无介绍')}</div>
-        ${isAdmin ? `<button class="pub-edit-btn" data-id="${pub.id}">✏️ 编辑</button>` : ''}
-      </div>
-    `;
+        <div class="pub-description">${Utils.escapeHTML(shortDesc)}</div>
+        ${isAdmin ? `<button class="pub-edit-btn" data-id="${pub.id}">✏️ 编辑</button>` : ''}`}
+      </div>`;
   }).join('');
-  
-  if (isAdminMode()) {
+
+  if (hasRole('manager')) {
     document.querySelectorAll('.pub-edit-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = parseInt(btn.dataset.id);
@@ -2612,6 +4391,9 @@ function renderPublicationList() {
       });
     });
   }
+  // 同步添加按钮可见性
+  const addBtn = document.getElementById('addPublicationBtn');
+  if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
 }
 
 function openPublicationEditor(publication = null) {
@@ -2621,12 +4403,12 @@ function openPublicationEditor(publication = null) {
   const clubName = document.getElementById('pubClubName');
   const pubName = document.getElementById('pubName');
   const status = document.getElementById('pubStatus');
-  const submitContact = document.getElementById('pubSubmitContact');  // 改为投稿账号/邮箱
-  const submitLink = document.getElementById('pubSubmitLink');        // 保留链接字段
+  const submitContact = document.getElementById('pubSubmitContact');
+  const submitLink = document.getElementById('pubSubmitLink');
   const deadline = document.getElementById('pubDeadline');
   const description = document.getElementById('pubDescription');
   const deleteBtn = document.getElementById('pubDeleteBtn');
-  
+
   if (publication) {
     title.textContent = '✏️ 编辑刊物';
     if (pubId) pubId.value = publication.id;
@@ -2638,6 +4420,18 @@ function openPublicationEditor(publication = null) {
     if (deadline) deadline.value = publication.deadline || '';
     if (description) description.value = publication.description || '';
     if (deleteBtn) deleteBtn.style.display = 'block';
+    const pubImgPreview = document.getElementById('pubImagePreview');
+    const pubImgUrl = document.getElementById('pubImageUrl');
+    const pubImgRemoveBtn = document.getElementById('pubImageRemoveBtn');
+    if (publication.image_url) {
+      if (pubImgPreview) { pubImgPreview.src = publication.image_url; pubImgPreview.style.display = ''; }
+      if (pubImgUrl) pubImgUrl.value = publication.image_url;
+      if (pubImgRemoveBtn) pubImgRemoveBtn.style.display = '';
+    } else {
+      if (pubImgPreview) { pubImgPreview.src = ''; pubImgPreview.style.display = 'none'; }
+      if (pubImgUrl) pubImgUrl.value = '';
+      if (pubImgRemoveBtn) pubImgRemoveBtn.style.display = 'none';
+    }
   } else {
     title.textContent = '➕ 添加刊物';
     if (pubId) pubId.value = '';
@@ -2649,6 +4443,14 @@ function openPublicationEditor(publication = null) {
     if (deadline) deadline.value = '';
     if (description) description.value = '';
     if (deleteBtn) deleteBtn.style.display = 'none';
+    const pubImgPreview2 = document.getElementById('pubImagePreview');
+    const pubImgUrl2 = document.getElementById('pubImageUrl');
+    const pubImgRemoveBtn2 = document.getElementById('pubImageRemoveBtn');
+    if (pubImgPreview2) { pubImgPreview2.src = ''; pubImgPreview2.style.display = 'none'; }
+    if (pubImgUrl2) pubImgUrl2.value = '';
+    if (pubImgRemoveBtn2) pubImgRemoveBtn2.style.display = 'none';
+    const pubImgStatus = document.getElementById('pubImageStatus');
+    if (pubImgStatus) pubImgStatus.textContent = '';
   }
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
@@ -2671,27 +4473,27 @@ async function savePublication() {
   const submitLink = document.getElementById('pubSubmitLink').value.trim();
   const deadline = document.getElementById('pubDeadline').value;
   const description = document.getElementById('pubDescription').value.trim();
-  
+
   if (!clubName) { alert('请填写同好会名称'); return; }
   if (!pubName) { alert('请填写刊物名称'); return; }
-  
-  const adminToken = localStorage.getItem('admin_token');
+
   const isEdit = pubId !== '';
-  const data = { 
-    clubName, 
-    publicationName: pubName, 
-    status, 
-    submitContact,  // 投稿账号/邮箱
-    submitLink,     // 投稿链接（备用）
-    deadline, 
-    description 
+  const data = {
+    clubName,
+    publicationName: pubName,
+    status,
+    submitContact,
+    submitLink,
+    deadline,
+    description,
+    image_url: document.getElementById('pubImageUrl')?.value || '',
   };
   if (isEdit) data.id = parseInt(pubId);
-  
+
   try {
     const response = await fetch('./api/publications.php', {
       method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     const result = await response.json();
@@ -2712,11 +4514,10 @@ async function deletePublication() {
   const pubId = document.getElementById('pubEditId').value;
   if (!pubId) return;
   if (!confirm('⚠️ 确定要删除这个刊物吗？此操作不可撤销！')) return;
-  const adminToken = localStorage.getItem('admin_token');
   try {
     const response = await fetch('./api/publications.php', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: parseInt(pubId) })
     });
     const result = await response.json();
@@ -2741,8 +4542,10 @@ function initPublicationEvents() {
   const editorCloseBtn = document.getElementById('publicationEditorClose');
   const saveBtn = document.getElementById('pubSaveBtn');
   const deleteBtn = document.getElementById('pubDeleteBtn');
+
   publicationBtn?.addEventListener('click', () => {
     renderPublicationList();
+    if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
     modal?.classList.add('open');
     modal?.setAttribute('aria-hidden', 'false');
   });
@@ -2752,16 +4555,60 @@ function initPublicationEvents() {
   });
   modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
   addBtn?.addEventListener('click', () => {
-    if (!adminMode) { alert('请先开启管理员模式'); return; }
+    if (!hasRole('manager')) { alert('权限不足'); return; }
     openPublicationEditor(null);
   });
   editorCloseBtn?.addEventListener('click', closePublicationEditor);
   saveBtn?.addEventListener('click', savePublication);
   deleteBtn?.addEventListener('click', deletePublication);
-  window.addEventListener('adminModeChanged', () => {
-    const addBtnElem = document.getElementById('addPublicationBtn');
-    if (addBtnElem) addBtnElem.style.display = adminMode ? 'block' : 'none';
-    renderPublicationList();
+
+  // Filter tabs
+  document.getElementById('pubFilterTabs')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pub-filter-btn');
+    if (btn) {
+      currentPubFilter = btn.dataset.filter;
+      renderPublicationList();
+    }
+  });
+
+  // 刊物图片上传
+  const pubImageBtn = document.getElementById('pubImageBtn');
+  const pubImageInput = document.getElementById('pubImageInput');
+  const pubImageRemoveBtn = document.getElementById('pubImageRemoveBtn');
+  const pubImageStatus = document.getElementById('pubImageStatus');
+
+  pubImageBtn?.addEventListener('click', () => pubImageInput?.click());
+
+  pubImageInput?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const pid = document.getElementById('pubEditId')?.value || 'new_' + Date.now();
+    const fd = new FormData();
+    fd.append('image', file);
+    fd.append('id', pid);
+    if (pubImageStatus) pubImageStatus.textContent = '上传中...';
+    try {
+      const r = await fetch('./api/club_avatar.php?scope=publication', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.success) {
+        document.getElementById('pubImagePreview').src = j.image_url;
+        document.getElementById('pubImagePreview').style.display = '';
+        document.getElementById('pubImageUrl').value = j.image_url;
+        if (pubImageRemoveBtn) pubImageRemoveBtn.style.display = '';
+        if (pubImageStatus) pubImageStatus.textContent = '✅ 上传成功';
+      } else {
+        if (pubImageStatus) pubImageStatus.textContent = '❌ ' + (j.message || '上传失败');
+      }
+    } catch { if (pubImageStatus) pubImageStatus.textContent = '❌ 网络错误'; }
+    pubImageInput.value = '';
+  });
+
+  pubImageRemoveBtn?.addEventListener('click', () => {
+    document.getElementById('pubImagePreview').src = '';
+    document.getElementById('pubImagePreview').style.display = 'none';
+    document.getElementById('pubImageUrl').value = '';
+    pubImageRemoveBtn.style.display = 'none';
+    if (pubImageStatus) pubImageStatus.textContent = '已移除图片';
   });
 }
 
@@ -2788,7 +4635,7 @@ function initPublicationEvents() {
     const fabPublication = document.getElementById('fabPublication');
     if (fabChina) fabChina.onclick = () => switchToChinaMap();
     if (fabJapan) fabJapan.onclick = () => switchToJapanMap();
-    if (fabOther) fabOther.onclick = () => { setGlobalSearchEnabled(false); State.selectedProvinceKey = '其他'; showProvinceDetails('其他'); hideMapBubble(); };
+    if (fabOther) fabOther.onclick = () => { switchToOverseas(); };
     if (fabCalendar) fabCalendar.onclick = () => { document.getElementById('calendarModal')?.classList.add('open'); };
     if (fabPublication) fabPublication.onclick = () => { document.getElementById('publicationToggleBtn')?.click(); };
   }
@@ -2804,36 +4651,33 @@ function initPublicationEvents() {
         const zoomInBtn = document.getElementById('drawerZoomInBtn');
         const zoomOutBtn = document.getElementById('drawerZoomOutBtn');
         const resetBtn = document.getElementById('drawerResetBtn');
-        const originalZoomIn = document.getElementById('zoomInBtn');
-        const originalZoomOut = document.getElementById('zoomOutBtn');
-        const originalReset = document.getElementById('resetViewBtn');
-        
-        if (!originalZoomIn || !originalZoomOut || !originalReset || !zoomInBtn || !zoomOutBtn || !resetBtn) {
+
+        if (!zoomInBtn || !zoomOutBtn || !resetBtn) {
             setTimeout(init, 500);
             return;
         }
-        
+
         zoomInBtn.onclick = function(e) {
             e.stopPropagation();
-            originalZoomIn.click();
+            stepScale(1.2);
         };
-        
+
         zoomOutBtn.onclick = function(e) {
             e.stopPropagation();
-            originalZoomOut.click();
+            stepScale(1 / 1.2);
         };
-        
+
         resetBtn.onclick = function(e) {
             e.stopPropagation();
-            console.log('移动端重置按钮被点击');
-            if (originalReset) {
-                originalReset.click();
+            if (State.mapViewState) {
+                const { svg, zoom, baseScale, baseTranslate } = State.mapViewState;
+                svg.call(zoom.transform, d3.zoomIdentity.translate(baseTranslate[0], baseTranslate[1]).scale(baseScale));
             }
         };
-        
-        console.log('✅ 移动端三个按钮绑定完成');
+
+        console.log('✅ 缩放控件绑定完成');
     }
-    
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
@@ -2849,10 +4693,26 @@ function initPublicationEvents() {
     const isMobile = window.innerWidth <= 720;
     if (!isMobile) return;
     const introCard = document.getElementById('introCard');
-    if (introCard) {
-      introCard.onclick = function(e) { if (e.target.closest('a') || e.target.closest('.submit-btn')) return; this.classList.toggle('mobile-expanded'); };
-    }
     const selectedCard = document.getElementById('selectedCard');
+    if (introCard) {
+      introCard.onclick = function(e) {
+        if (e.target.closest('a') || e.target.closest('.submit-btn')) return;
+        const isExpanding = !this.classList.contains('mobile-expanded');
+        this.classList.toggle('mobile-expanded');
+        if (isExpanding && selectedCard) {
+          selectedCard.classList.remove('expanded');
+          selectedCard.style.maxHeight = '';
+        }
+      };
+      // 移动端 "收起" 按钮关闭展开态
+      const closeBtn = document.getElementById('introCloseBtn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          introCard.classList.remove('mobile-expanded');
+        });
+      }
+    }
     const sheetHandle = document.getElementById('mobileSheetHandle');
     if (selectedCard && sheetHandle) {
       let startY = 0, startHeight = 0, isDragging = false;
@@ -2979,7 +4839,11 @@ async function init() {
     if (svgEl) {
     svgEl.innerHTML = '';
     renderChinaMap();
-    updateSummaryUI(State.currentDataSource);
+    // 默认显示国内同好会列表
+    State.currentDetailProvinceName = '国内同好会';
+    State.currentDetailRows = State.bandoriRows.filter(item => item.province !== '海外');
+    State.listSort = 'default';
+    updateSortButtonView();
     renderCurrentDetail();
 }
     // 其他初始化...
@@ -3018,12 +4882,12 @@ async function init() {
 // 专门加载中国数据的函数
 async function loadChinaData() {
     try {
-        const resp = await fetch('./data/clubs.json', { cache: 'no-store' });
+        const resp = await fetch('./api/clubs.php', { credentials: 'same-origin' });
         if (resp.ok) {
             const json = await resp.json();
             if (json?.data && Array.isArray(json.data)) {
                 State.bandoriRows = json.data;
-                State.currentDataSource = '本地JSON';
+                State.currentDataSource = __('sourceLocalJSON');
                 
                 // 构建省份分组
                 State.provinceGroupsMap = new Map();
@@ -3050,17 +4914,19 @@ async function loadChinaData() {
 // 中国模拟数据（备用）
 function useMockChinaData() {
     State.bandoriRows = [
-        { id: 1, name: "北京大学视觉小说同好会", province: "北京", info: "123456789", type: "school", created_at: "2023-01-01", verified: 1 },
+        { id: 1, name: "北京大学视觉小说同好会", province: "北京", info: "123456789", type: "school", created_at: "2023-01-01", verified: 1, external_links: "B站: https://space.bilibili.com/3494366688704339\n微博: https://weibo.com/u/7890123456" },
         { id: 2, name: "清华大学Gal社", province: "北京", info: "987654321", type: "school", created_at: "2023-02-01", verified: 1 },
-        { id: 3, name: "复旦大学Galgame同好会", province: "上海", info: "111222333", type: "school", created_at: "2023-03-01", verified: 1 },
-        { id: 4, name: "浙江大学视觉小说社", province: "浙江", info: "444555666", type: "school", created_at: "2023-04-01", verified: 1 }
+        { id: 3, name: "复旦大学Galgame同好会", province: "上海", info: "111222333", type: "school", created_at: "2023-03-01", verified: 1, external_links: "B站: https://space.bilibili.com/3494366688704339" },
+        { id: 4, name: "浙江大学视觉小说社", province: "浙江", info: "444555666", type: "school", created_at: "2023-04-01", verified: 1 },
+        { id: 231, name: "University of New South Wales Visual Novel Club", province: "海外", info: "https://discord.gg/M7wKYHeRk4", type: "school", created_at: "2026-05-10", verified: 1, school: "University of New South Wales", external_links: "" }
     ];
-    State.currentDataSource = '模拟数据';
-    
+    State.currentDataSource = __('sourceMock');
+
     // 构建省份分组
     State.provinceGroupsMap = new Map();
     State.bandoriRows.forEach(item => {
-        const key = Utils.normalizeProvinceName(item.province);
+        const key = item.type === 'non-regional' ? '__non_regional__' : Utils.normalizeProvinceName(item.province);
+        if (!key) return;
         if (!State.provinceGroupsMap.has(key)) State.provinceGroupsMap.set(key, []);
         State.provinceGroupsMap.get(key).push(item);
     });
@@ -3075,7 +4941,7 @@ async function reloadBandoriData() {
 // 修改原有 loadJapanData，确保数据加载后同时构建分组
 async function loadJapanData() {
     try {
-        const resp = await fetch('./data/clubs_japan.json', { cache: 'no-store' });
+        const resp = await fetch('./api/clubs_japan.php', { credentials: 'same-origin' });
         if (resp.ok) {
             const json = await resp.json();
             if (json?.data && Array.isArray(json.data)) {
