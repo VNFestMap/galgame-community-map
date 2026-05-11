@@ -4803,7 +4803,16 @@ function initMobileDrawer() {
     if (fabJapan) fabJapan.onclick = () => switchToJapanMap();
     if (fabOther) fabOther.onclick = () => { switchToOverseas(); };
     if (fabCalendar) fabCalendar.onclick = () => { document.getElementById('calendarModal')?.classList.add('open'); };
-    if (fabPublication) fabPublication.onclick = () => { document.getElementById('publicationToggleBtn')?.click(); };
+    if (fabPublication) fabPublication.onclick = () => {
+      const pubModal = document.getElementById('publicationModal');
+      if (pubModal) {
+        if (typeof renderPublicationList === 'function') renderPublicationList();
+        const addBtn = document.getElementById('addPublicationBtn');
+        if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
+        pubModal.classList.add('open');
+        pubModal.setAttribute('aria-hidden', 'false');
+      }
+    };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
