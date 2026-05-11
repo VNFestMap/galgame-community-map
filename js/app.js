@@ -50,8 +50,7 @@ function getTopEls() {
     accountBtn: document.getElementById('topAccountBtn'),
     adminBtn: document.getElementById('topAdminBtn'),
     navRow: document.getElementById('userNavRow'),
-    card: document.getElementById('userInfoCard'),
-    expandArrow: document.getElementById('mobileExpandArrow')
+    card: document.getElementById('userInfoCard')
   };
 }
 
@@ -135,7 +134,7 @@ function updateUserUI() {
 
     // 更新顶层用户信息框
     const top = getTopEls();
-    if (!top.name) return;
+    if (!top.name || !top.loginBtn || !top.accountBtn) return;
     if (currentUser?.logged_in && currentUser?.user) {
         top.loginBtn.style.display = 'none';
         top.accountBtn.style.display = '';
