@@ -45,7 +45,67 @@
     <!-- 主地图容器 -->
     <main id="map" role="main">
         <svg id="mapSvg"></svg>
-        
+
+    <!-- 顶层用户信息框 -->
+    <div id="userInfoCard" class="user-info-card">
+      <div class="user-info-row">
+        <div class="user-avatar" id="topUserAvatar">?</div>
+        <div class="user-name" id="topUserName">访客</div>
+        <span class="user-role-badge" id="topUserRoleBadge" style="display:none;"></span>
+        <button id="topLoginBtn" class="top-login-btn">登录 / 注册</button>
+        <button id="topAccountBtn" class="top-account-btn" style="display:none;">账号</button>
+        <a id="topAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">同好会管理</a>
+        <button class="mobile-expand-arrow" id="mobileExpandArrow">▼</button>
+      </div>
+      <div class="user-nav-row" id="userNavRow">
+        <button class="user-nav-btn" data-action="china">中国同好会</button>
+        <button class="user-nav-btn" data-action="japan">日本同好会</button>
+        <button class="user-nav-btn" data-action="overseas">海外同好会</button>
+        <button class="user-nav-btn" data-action="calendar">活动日历</button>
+        <button class="user-nav-btn" data-action="publication">刊物投稿</button>
+      </div>
+    </div>
+
+    <!-- 移动端汉堡菜单按钮 -->
+    <button id="hamburgerBtn" class="hamburger-btn" aria-label="菜单">☰</button>
+
+    <!-- 移动端左侧抽屉 -->
+    <div id="mobileDrawer" class="mobile-drawer" aria-hidden="true">
+      <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop"></div>
+      <div class="mobile-drawer-content">
+        <button class="mobile-drawer-close" id="mobileDrawerClose">✕</button>
+        <h2 class="card-title">全国Galgame同好会地图</h2>
+        <img class="drawer-logo" src="./images/VNF.png" alt="VNFest 视觉小说高校学园祭" width="640" height="196" />
+        <p class="card-body">本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。</p>
+        <p class="card-body">数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。</p>
+        <label class="md3-switch" for="invertCtrlSwitch">
+          <input id="invertCtrlSwitchDrawer" type="checkbox" />
+          <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+          <span class="md3-switch-label">反转操作（默认关）</span>
+        </label>
+        <label class="md3-switch" for="themeSwitch">
+          <input id="themeSwitchDrawer" type="checkbox" />
+          <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+          <span class="md3-switch-label">暗黑模式（跟随系统）</span>
+        </label>
+        <div class="intro-links">
+          <div class="submit-buttons">
+            <a class="submit-btn" href="https://github.com/kokubunshu/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer">开源仓库</a>
+            <button class="submit-btn primary" id="submitClubBtnDrawer" type="button">提交同好会信息</button>
+            <button class="submit-btn" id="submitEventBtnDrawer" type="button">添加活动信息</button>
+            <button class="submit-btn" id="submitPublicationBtnDrawer" type="button">投稿刊物征集</button>
+            <div class="lang-switch-group">
+              <button class="lang-btn" id="langZhBtnDrawer"><span class="lang-text">中文</span></button>
+              <button class="lang-btn" id="langJaBtnDrawer"><span class="lang-text">日本語</span></button>
+            </div>
+          </div>
+          <p class="card-body gpl-text" style="margin-top: 8px; font-size: 11px; text-align: center;">
+            基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
         <!-- 简介卡片 -->
         <section id="introCard" class="md3-card">
             <button id="introCloseBtn" class="intro-action-btn" type="button">收起</button>
@@ -165,12 +225,6 @@
             <div id="groupList" class="group-list"></div>
         </section>
 
-        <!-- 侧边按钮组 - 桌面端显示 -->
-        <button id="chinaToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn active" type="button">中国同好会</button>
-        <button id="japanToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">日本同好会</button>
-        <button id="overseasToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">海外同好会</button>
-        <button id="calendarToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">活动日历</button>
-        <button id="publicationToggleBtn" class="md3-btn md3-btn-tonal side-toggle-btn" type="button">刊物投稿</button>
 
         <!-- 移动端悬浮菜单 -->
         <div class="fab-menu" id="fabMenu">
@@ -229,16 +283,36 @@
                 <div class="modal-handle"></div>
                 <button id="calendarModalClose" class="calendar-modal-close" type="button">×</button>
                 <div class="calendar-modal-scroll">
-                    <div class="calendar-header">
-                        <button id="calendarPrevBtn" class="calendar-nav-btn" type="button">‹</button>
-                        <h3 id="calendarTitle" class="calendar-title">Galgame活动日历</h3>
-                        <button id="calendarNextBtn" class="calendar-nav-btn" type="button">›</button>
+                    <!-- 视图切换标签栏 -->
+                    <div class="calendar-view-tabs">
+                        <button class="view-tab active" data-view="calendar">📅 月历</button>
+                        <button class="view-tab" data-view="list">📋 列表</button>
                     </div>
-                    <div id="calendarGrid" class="calendar-grid"></div>
-                    <div id="calendarEventList" class="calendar-event-list"></div>
-                    
-                    <!-- 添加活动按钮（管理员模式显示） -->
-                    <button id="calendarAddEventBtn" class="md3-btn" style="margin-top: 20px; width: 100%; display: none;">添加活动</button>
+
+                    <!-- 月历视图 -->
+                    <div class="calendar-view-content" id="calendarGridView">
+                        <div class="calendar-header">
+                            <button id="calendarPrevBtn" class="calendar-nav-btn" type="button">‹</button>
+                            <h3 id="calendarTitle" class="calendar-title">Galgame活动日历</h3>
+                            <button id="calendarNextBtn" class="calendar-nav-btn" type="button">›</button>
+                        </div>
+                        <div id="calendarGrid" class="calendar-grid"></div>
+                        <div id="calendarEventList" class="calendar-event-list"></div>
+
+                        <!-- 添加活动按钮（管理员模式显示） -->
+                        <button id="calendarAddEventBtn" class="md3-btn" style="margin-top: 20px; width: 100%; display: none;">添加活动</button>
+                    </div>
+
+                    <!-- 列表视图 -->
+                    <div class="calendar-view-content" id="listView" style="display:none;">
+                        <div class="list-view-filters">
+                            <button class="filter-tab active" data-filter="all">全部</button>
+                            <button class="filter-tab" data-filter="upcoming">即将开始</button>
+                            <button class="filter-tab" data-filter="ongoing">进行中</button>
+                            <button class="filter-tab" data-filter="ended">已结束</button>
+                        </div>
+                        <div class="event-list-container" id="eventListContainer"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -338,8 +412,12 @@
                         <input type="text" id="eventEditorName" class="md3-input" placeholder="例：樱之诗·春之祭典" style="width: 100%;">
                     </div>
                     <div style="margin: 12px 0;">
-                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">活动日期 *</label>
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">开始日期 *</label>
                         <input type="date" id="eventEditorDate" class="md3-input" style="width: 100%;">
+                    </div>
+                    <div style="margin: 12px 0;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600;">结束日期 <span style="font-weight: 400; color: var(--md-on-surface-variant);">(可选，多日活动)</span></label>
+                        <input type="date" id="eventEditorDateEnd" class="md3-input" style="width: 100%;">
                     </div>
                     <div style="margin: 12px 0;">
                         <label style="display: block; margin-bottom: 6px; font-weight: 600;">活动简介</label>
