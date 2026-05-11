@@ -52,13 +52,17 @@ function findClubIdByName(string $clubName): int {
 /**
  * 检查用户是否有权限管理指定俱乐部
  */
-function canManagePublicationClub(array $user, int $clubId): bool {
+function canManagePublicationClub(array $user, int $clubId, string $country = ''): bool {
     if ($user['role'] === 'super_admin') return true;
     $db = getDB();
-    $stmt = $db->prepare(
-        "SELECT id FROM club_memberships WHERE user_id = ? AND club_id = ? AND role IN ('representative', 'manager') AND status = 'active'"
-    );
-    $stmt->execute([$user['id'], $clubId]);
+    $sql = "SELECT id FROM club_memberships WHERE user_id = ? AND club_id = ? AND role IN ('representative', 'manager') AND status = 'active'";
+    $params = [$user['id'], $clubId];
+    if ($country) {
+        $sql .= " AND country = ?";
+        $params[] = $country;
+    }
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     return (bool)$stmt->fetch();
 }
 
@@ -67,9 +71,17 @@ function canManagePublicationClub(array $user, int $clubId): bool {
  */
 function canManagePublication(array $user, array $publication): bool {
     if ($user['role'] === 'super_admin') return true;
-    $clubId = findClubIdByName($publication['clubName'] ?? '');
-    if ($clubId > 0) {
-        return canManagePublicationClub($user, $clubId);
+    $clubIds = $publication['club_ids'] ?? [];
+    if (empty($clubIds)) {
+        // 向后兼容：尝试通过 clubName 查找
+        $clubId = findClubIdByName($publication['clubName'] ?? '');
+        if ($clubId > 0) {
+            return canManagePublicationClub($user, $clubId);
+        }
+        return false;
+    }
+    foreach ($clubIds as $c) {
+        if (canManagePublicationClub($user, $c['id'], $c['country'] ?? '')) return true;
     }
     return false;
 }
@@ -84,6 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 权限检查: super_admin 或可管理该俱乐部的负责人
     $clubId = isset($input['club_id']) ? (int)$input['club_id'] : 0;
+    // 兼容前端发送 club_ids 数组的情况
+    if ($clubId === 0 && !empty($input['club_ids']) && is_array($input['club_ids'])) {
+        $clubId = (int)$input['club_ids'][0]['id'];
+    }
     $canManage = false;
     if ($authUser['role'] === 'super_admin') {
         $canManage = true;
@@ -114,6 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'deadline' => $input['deadline'] ?? '',
         'description' => $input['description'] ?? '',
         'image_url' => $input['image_url'] ?? '',
+        'club_ids' => $input['club_ids'] ?? [],
         'created_at' => date('Y-m-d H:i:s'),
         'updated_at' => date('Y-m-d H:i:s')
     ];
@@ -159,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             $publications[$i]['deadline'] = $input['deadline'] ?? $item['deadline'];
             $publications[$i]['description'] = $input['description'] ?? $item['description'];
             $publications[$i]['image_url'] = $input['image_url'] ?? $item['image_url'] ?? '';
+            $publications[$i]['club_ids'] = $input['club_ids'] ?? $item['club_ids'] ?? [];
             $publications[$i]['updated_at'] = date('Y-m-d H:i:s');
             $updated = true;
             break;

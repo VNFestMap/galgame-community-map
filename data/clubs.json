@@ -277,16 +277,21 @@
         },
         {
             "id": 23,
-            "province": "福建",
+            "province": "福建省",
             "school": "厦门大学",
             "name": "厦门大学_现代视觉文化研究社人际关系分部 xmu ver",
-            "display_name": "厦门大学_厦门大学_现代视觉文化研究社人际关系分部 xmu ver",
+            "display_name": "厦门大学_现代视觉文化研究社人际关系分部 xmu ver",
             "info": "853107180",
             "type": "school",
             "verified": 1,
-            "raw_text": "厦门大学_厦门大学_现代视觉文化研究社人际关系分部 xmu ver 853107180",
+            "raw_text": "厦门大学_现代视觉文化研究社人际关系分部 xmu ver 853107180",
             "created_at": "2023-06-05 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "这里是厦门大学xmu的galgame同好群，欢迎本校及外校的同好们加入！",
+            "logo_url": "",
+            "external_links": "B站: https:\/\/b23.tv\/sFuq4Wb",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 24,
@@ -316,16 +321,21 @@
         },
         {
             "id": 26,
-            "province": "甘肃",
+            "province": "甘肃省",
             "school": "西北民族大学",
-            "name": "西北民族大学_光板高校吹奏部",
-            "display_name": "西北民族大学_西北民族大学_光板高校吹奏部",
+            "name": "西北民族大学_民大Galgame同好会",
+            "display_name": "西北民族大学_民大Galgame同好会",
             "info": "796307007",
             "type": "school",
             "verified": 1,
-            "raw_text": "西北民族大学_西北民族大学_光板高校吹奏部 796307007",
+            "raw_text": "西北民族大学_民大Galgame同好会 796307007",
             "created_at": "2023-09-21 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "University of the Highlands and Islands, Perth College\n由英国高地与群岛大学联合创建的西北民大Galgame爱好者协会，仅供本校毕业或者在校学生作为日常兴趣交流使用\n\n官方网站：xbmu.mygalgame.top\n总会邮件:yyddtj@yyddtj.top\n英国高地与群岛大学分会电话：+1 4028821169",
+            "logo_url": "",
+            "external_links": "官网: https:\/\/xbmu.mygalgame.org\nB站: https:\/\/b23.tv\/bPSUKfl",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 27,
@@ -877,16 +887,21 @@
         },
         {
             "id": 69,
-            "province": "湖北",
+            "province": "湖北省",
             "school": "江汉大学",
             "name": "江汉大学_三角湖galgame同好会",
-            "display_name": "江汉大学_江汉大学_三角湖galgame同好会",
+            "display_name": "江汉大学_三角湖galgame同好会",
             "info": "1018296544",
             "type": "school",
             "verified": 1,
-            "raw_text": "江汉大学_江汉大学_三角湖galgame同好会 1018296544",
+            "raw_text": "江汉大学_三角湖galgame同好会 1018296544",
             "created_at": "2024-12-24 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "暂无介绍",
+            "logo_url": "",
+            "external_links": "",
+            "country": "china",
+            "visible_by_default": true
         },
         {
             "id": 70,
@@ -968,16 +983,21 @@
         },
         {
             "id": 76,
-            "province": "湖北",
+            "province": "湖北省",
             "school": "中国地质大学（武汉）",
             "name": "中国地质大学（武汉）_星光咖啡馆地大分店",
-            "display_name": "中国地质大学（武汉）_中国地质大学（武汉）_星光咖啡馆地大分店",
-            "info": "1082813828",
+            "display_name": "中国地质大学（武汉）_星光咖啡馆地大分店",
+            "info": "640284479",
             "type": "school",
             "verified": 1,
-            "raw_text": "中国地质大学（武汉）_中国地质大学（武汉）_星光咖啡馆地大分店 1082813828",
+            "raw_text": "中国地质大学（武汉）_星光咖啡馆地大分店 640284479",
             "created_at": "2023-06-12 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "暂无介绍",
+            "logo_url": "",
+            "external_links": "",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 77,
@@ -1124,16 +1144,21 @@
         },
         {
             "id": 88,
-            "province": "湖南",
+            "province": "湖南省",
             "school": "湖南科技大学",
             "name": "湖南科技大学_湖科大御樱gal结社",
-            "display_name": "湖南科技大学_湖南科技大学_湖科大御樱gal结社",
+            "display_name": "湖南科技大学_湖科大御樱gal结社",
             "info": "166926200",
             "type": "school",
             "verified": 1,
-            "raw_text": "湖南科技大学_湖南科技大学_湖科大御樱gal结社 166926200",
+            "raw_text": "湖南科技大学_湖科大御樱gal结社 166926200",
             "created_at": "2023-11-13 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "湖南科技大学的gal同好交流群",
+            "logo_url": "data\/club_avatars\/88.png?t=1778438000",
+            "external_links": "QQ: 166926200\nB站: 【湖科 https:\/\/b23.tv\/alhISoe",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 89,
@@ -1245,16 +1270,21 @@
         },
         {
             "id": 97,
-            "province": "江苏",
+            "province": "江苏省",
             "school": "南京信息工程大学",
             "name": "南京信息工程大学_信爱❤️龙王山视觉小说同好会 VNLKD",
-            "display_name": "南京信息工程大学_南京信息工程大学_信爱❤️龙王山视觉小说同好会 VNLKD",
+            "display_name": "南京信息工程大学_信爱❤️龙王山视觉小说同好会 VNLKD",
             "info": "685078253",
             "type": "school",
             "verified": 1,
-            "raw_text": "南京信息工程大学_南京信息工程大学_信爱❤️龙王山视觉小说同好会 VNLKD 685078253",
+            "raw_text": "南京信息工程大学_信爱❤️龙王山视觉小说同好会 VNLKD 685078253",
             "created_at": "2021-01-26 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "暂无介绍",
+            "logo_url": "",
+            "external_links": "",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 98,
@@ -1477,7 +1507,7 @@
             "created_at": "2023-10-12 00:00:00",
             "project": "galgame",
             "remark": "暂无介绍（visual novel circle of YCIT)\n盐城工学院橘柚视觉小说同好会。欢迎各位盐工同学的到来。\n我们是一个非官方性质的同好会，是一群由喜爱gal的盐工学生组成的同好会。\n在群内，可以和大家一起聊有关视觉小说的内容，对此进行讨论等，群内也不定期会有各种大大小小的活动。\n对于外校同好，我们也表示欢迎，但请在入群问题内写明自己的学校。",
-            "logo_url": "data\/club_avatars\/114.png?t=1778393730",
+            "logo_url": "data\/club_avatars\/114.png?t=1778425478",
             "external_links": "B站: https:\/\/space.bilibili.com\/3546557003598336\nTwitter: https:\/\/x.com\/Ycitgalgame",
             "visible_by_default": false,
             "country": "china"
@@ -1995,16 +2025,21 @@
         },
         {
             "id": 154,
-            "province": "陕西",
+            "province": "陕西省",
             "school": "西北工业大学",
             "name": "西北工业大学_女仆U Galgame（学习）交流群",
-            "display_name": "西北工业大学_西北工业大学_女仆U Galgame（学习）交流群",
+            "display_name": "西北工业大学_女仆U Galgame（学习）交流群",
             "info": "745535859",
             "type": "school",
             "verified": 1,
-            "raw_text": "西北工业大学_西北工业大学_女仆U Galgame（学习）交流群 745535859",
+            "raw_text": "西北工业大学_女仆U Galgame（学习）交流群 745535859",
             "created_at": "2023-03-07 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "暂无介绍",
+            "logo_url": "",
+            "external_links": "",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 155,
@@ -2646,16 +2681,21 @@
         },
         {
             "id": 204,
-            "province": "浙江",
+            "province": "浙江省",
             "school": "浙江万里学院",
             "name": "浙江万里学院_zwu视觉小说同好会",
-            "display_name": "浙江万里学院_浙江万里学院_zwu视觉小说同好会",
+            "display_name": "浙江万里学院_zwu视觉小说同好会",
             "info": "651617084",
             "type": "school",
             "verified": 1,
-            "raw_text": "浙江万里学院_浙江万里学院_zwu视觉小说同好会 651617084",
+            "raw_text": "浙江万里学院_zwu视觉小说同好会 651617084",
             "created_at": "2025-10-27 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "浙江万里学院视觉小说同好会(Visual Novel Circle of Zhejiang Wanli University)旨在为热爱视觉小说\/Galgame的人们提供一个交流分享的平台，本群成员以万里学院的学生及其他浙江高校学生为主。\n无论资历新老，无论品味差异 , 你都能在这里与各位玩家友好地探讨问题、分享心得感想——祈祷吧，愿你今后的人生 , 永远都有幸福的“魔法”相伴；出发吧，去选择那独一无二的明天。",
+            "logo_url": "data\/club_avatars\/204.png?t=1778469261",
+            "external_links": "",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 205,
@@ -2698,16 +2738,21 @@
         },
         {
             "id": 208,
-            "province": "浙江",
+            "province": "浙江省",
             "school": "宁波大学",
-            "name": "宁波大学_ＮＢＵｷﾞｬﾙｹﾞ-Ｃｉｒｃｌｅ",
-            "display_name": "宁波大学_宁波大学_ＮＢＵｷﾞｬﾙｹﾞ-Ｃｉｒｃｌｅ",
+            "name": "宁波大学风宁晚视觉小说同好会",
+            "display_name": "宁波大学风宁晚视觉小说同好会",
             "info": "1004176784",
             "type": "school",
             "verified": 1,
-            "raw_text": "宁波大学_宁波大学_ＮＢＵｷﾞｬﾙｹﾞ-Ｃｉｒｃｌｅ 1004176784",
+            "raw_text": "宁波大学风宁晚视觉小说同好会 1004176784",
             "created_at": "2024-11-26 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "暂无介绍",
+            "logo_url": "data\/club_avatars\/208.png?t=1778426960",
+            "external_links": "",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 209,
@@ -2724,16 +2769,21 @@
         },
         {
             "id": 210,
-            "province": "浙江",
+            "province": "浙江省",
             "school": "浙江师范大学",
-            "name": "浙江师范大学_ZJNU樱缘星华视觉小说同好会（纸上魔法使.Ver）",
-            "display_name": "浙江师范大学_浙江师范大学_ZJNU樱缘星华视觉小说同好会（纸上魔法使.Ver）",
+            "name": "浙江师范大学_ZJNU樱缘星华视觉小说同好会",
+            "display_name": "浙江师范大学_ZJNU樱缘星华视觉小说同好会",
             "info": "872144093",
             "type": "school",
             "verified": 1,
-            "raw_text": "浙江师范大学_浙江师范大学_ZJNU樱缘星华视觉小说同好会（纸上魔法使.Ver） 872144093",
+            "raw_text": "浙江师范大学_ZJNU樱缘星华视觉小说同好会 872144093",
             "created_at": "2023-06-25 00:00:00",
-            "project": "galgame"
+            "project": "galgame",
+            "remark": "全国最大的师范高校旮旯同好会、浙江省第二大高校旮旯同好会，欢迎浙师大本校的galgame爱好者和金丽衢本地的galgame爱好者加入～获取群号请QQ联系：2121177979或2013596581",
+            "logo_url": "data\/club_avatars\/210.png?t=1778460423",
+            "external_links": "B站: https:\/\/b23.tv\/HWuJ0qA",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 211,
@@ -2936,16 +2986,20 @@
         {
             "id": 227,
             "province": "台湾省",
-            "school": "",
+            "school": "發跡於清華大學，主要在線上",
             "name": "鲲岛galgame同好会",
             "display_name": "鲲岛galgame同好会",
-            "info": "@galgame122948",
+            "info": "FB: https:\/\/www.facebook.com\/profile.php?id=61587255845771",
             "type": "school",
             "verified": 1,
-            "raw_text": "鲲岛galgame同好会 @galgame122948",
+            "raw_text": "鲲岛galgame同好会 FB: https:\/\/www.facebook.com\/profile.php?id=61587255845771",
             "created_at": "2026-05-08 09:35:26",
             "project": "galgame",
-            "remark": ""
+            "remark": "🎮 Galgame 同好會\n📅  2023.11 創立 \n📜 從劇情到討論、從遊戲到人生\n💬 遊戲心得 | GAL名言 | 討論與分享 | 實體活動資訊\n主要在 FB 發文",
+            "logo_url": "data\/club_avatars\/227.png?t=1778425551",
+            "external_links": "Twitter: https:\/\/x.com\/galgame122948",
+            "country": "china",
+            "visible_by_default": false
         },
         {
             "id": 229,
@@ -2991,7 +3045,9 @@
             "project": "galgame",
             "remark": "我们是学生会承认的正规社团哦，欢迎全澳galgame高手通过rubric加入！",
             "logo_url": "",
-            "external_links": ""
+            "external_links": "Twitter: https:\/\/x.com\/unswvnc?s=21",
+            "country": "overseas",
+            "visible_by_default": false
         },
         {
             "id": 232,

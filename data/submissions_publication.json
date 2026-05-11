@@ -13,5 +13,20 @@
         "approved_at": "2026-05-10T07:29:50.503Z",
         "rejected_at": null,
         "publication_id": 9
+    },
+    {
+        "id": 2,
+        "clubName": "湖科大御樱gal结社",
+        "publicationName": "湖科大御樱gal结社三周年合刊",
+        "submitContact": "加入刊物群:289407693",
+        "submitLink": "加入刊物群:289407693",
+        "deadline": "2026-06-30",
+        "description": "湖科大gal同好会群刊企划立项中，可以将作品长文感想，情感分析，作品评价，作品杂谈，角色作品同人文，声优画师脚本家会社音乐人研究等等撰写成文投稿至刊物群，本刊物预计由画师同人图，活动记录，文章正文等部分组成。",
+        "image_url": "",
+        "status": "pending",
+        "submitted_at": "2026-05-11 02:50:54",
+        "approved_at": null,
+        "rejected_at": null,
+        "publication_id": null
     }
 ]

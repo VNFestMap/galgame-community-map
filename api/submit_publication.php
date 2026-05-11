@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['action'])) {
         'deadline' => $input['deadline'] ?? '',
         'description' => $input['description'] ?? '',
         'image_url' => $input['image_url'] ?? '',
+        'club_ids' => $input['club_ids'] ?? [],
         'status' => 'pending',
         'submitted_at' => date('Y-m-d H:i:s'),
         'approved_at' => null,

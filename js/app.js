@@ -98,40 +98,6 @@ function hasRole(minRole) {
 }
 
 function updateUserUI() {
-    const bar = document.getElementById('mainUserBar');
-    const profile = document.getElementById('mainUserProfile');
-    if (!bar || !profile) return;
-
-    if (currentUser?.logged_in && currentUser?.user) {
-        bar.style.display = 'none';
-        profile.style.display = 'flex';
-        const avatar = document.getElementById('mainUserAvatar');
-        const name = document.getElementById('mainUserName');
-        if (avatar) avatar.src = currentUser.user.avatar_url || '';
-        if (name) name.textContent = currentUser.user.nickname || currentUser.user.username || '用户';
-        // 左侧等级徽章
-        const badge = document.getElementById('mainUserRoleBadge');
-        if (badge) {
-            const sidebarRoleNames = { visitor: '访客', member: '成员', manager: '管理员', representative: '会长', super_admin: '超级管理员' };
-            const roleText = sidebarRoleNames[getEffectiveRole()] || '';
-            const roleStyles = {
-                visitor: { bg: 'rgba(128,128,128,0.12)', color: '#888' },
-                member: { bg: 'rgba(76,175,80,0.12)', color: '#4caf50' },
-                manager: { bg: 'rgba(33,150,243,0.12)', color: '#2196f3' },
-                representative: { bg: 'rgba(255,152,0,0.12)', color: '#ff9800' },
-                super_admin: { bg: 'rgba(233,30,99,0.12)', color: '#e91e63' },
-            };
-            const s = roleStyles[getEffectiveRole()] || roleStyles.visitor;
-            badge.textContent = roleText;
-            badge.style.display = 'inline';
-            badge.style.background = s.bg;
-            badge.style.color = s.color;
-        }
-    } else {
-        bar.style.display = 'block';
-        profile.style.display = 'none';
-    }
-
     // 更新顶层用户信息框
     const top = getTopEls();
     if (!top.name || !top.loginBtn || !top.accountBtn) return;
@@ -159,14 +125,23 @@ function updateUserUI() {
                 representative: { bg: 'rgba(255,152,0,0.12)', color: '#ff9800' },
                 super_admin: { bg: 'rgba(233,30,99,0.12)', color: '#e91e63' }
             };
-            const role = getEffectiveRole();
-            const text = roleNames[role] || '';
-            const s = roleColors[role] || roleColors.visitor;
+            var text, s;
+            if (currentUser.user.is_audit) {
+                text = '活动审核';
+                s = { bg: 'rgba(233,30,99,0.12)', color: '#e91e63' };
+            } else {
+                const role = getEffectiveRole();
+                text = roleNames[role] || '';
+                s = roleColors[role] || roleColors.visitor;
+            }
             top.badge.textContent = text;
-            top.badge.style.display = '';
+            top.badge.style.display = text ? '' : 'none';
             top.badge.style.background = s.bg;
             top.badge.style.color = s.color;
         }
+        // Audit badge (for is_audit users) — using same element as role badge
+        var oldAuditBadge = document.getElementById('topAuditBadge');
+        if (oldAuditBadge) oldAuditBadge.style.display = 'none';
         // Admin button
         if (top.adminBtn) {
             top.adminBtn.style.display = hasRole('manager') ? '' : 'none';
@@ -200,6 +175,17 @@ function openAccountModal(view) {
     if (rm) rm.textContent = '';
     // 触发 OAuth 配置检测
     if (view === 'login') checkOAuthConfig();
+    if (view === 'settings') {
+        // 默认激活档案标签
+        const defaultTab = document.querySelector('.vn-tab[data-tab="profile"]');
+        if (defaultTab) switchVnTab(defaultTab);
+        renderVNProfile();
+        // 填充签名输入框
+        var bioInput = document.getElementById('accBioInput');
+        if (bioInput && currentUser?.user) {
+            bioInput.value = currentUser.user.profile_bio || '';
+        }
+    }
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
 }
@@ -216,21 +202,6 @@ function closeAccountModal() {
 
 // 页面加载时检查登录状态
 checkAuth();
-
-// 主页面 — 登录/注册按钮 → 打开账号弹窗（登录视图）
-document.addEventListener('click', (e) => {
-    if (e.target.id === 'mainLoginBtn') {
-        openAccountModal('login');
-    }
-});
-
-// 主页面 — 账号按钮 → 打开个人设置
-document.addEventListener('click', (e) => {
-    if (e.target.id === 'mainAccountBtn') {
-        openAccountModal('settings');
-        refreshProfile();
-    }
-});
 
 // 关闭弹窗
 document.addEventListener('click', (e) => {
@@ -349,6 +320,14 @@ document.addEventListener('click', async (e) => {
     }
 });
 
+// VN 档案标签切换
+document.addEventListener('click', function(e) {
+    var tab = e.target.closest('.vn-tab');
+    if (tab) { switchVnTab(tab); return; }
+    var colTab = e.target.closest('.vn-collection-tab');
+    if (colTab) { renderCollection(colTab.dataset.collection); return; }
+});
+
 // ====== 个人设置刷新 ======
 async function refreshProfile() {
     if (!currentUser?.logged_in || !currentUser?.user) return;
@@ -403,6 +382,209 @@ async function refreshProfile() {
 
     // 加载同好会列表
     renderClubMemberships();
+    // 更新 VN 档案卡
+    renderVNProfile();
+}
+
+// ====== VN 账号页标签切换 ======
+function switchVnTab(tabEl) {
+    if (!tabEl) return;
+    var tabBar = tabEl.closest('.vn-tab-bar');
+    if (!tabBar) return;
+    tabBar.querySelectorAll('.vn-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.vn-tab-content').forEach(function(c) { c.classList.remove('active'); });
+    tabEl.classList.add('active');
+    var tabName = tabEl.dataset.tab;
+    var targetMap = { profile: 'vnProfileTab', collection: 'vnCollectionTab', settings: 'vnSettingsTab' };
+    var target = document.getElementById(targetMap[tabName]);
+    if (target) target.classList.add('active');
+    if (tabName === 'profile') renderVNProfile();
+    if (tabName === 'collection') renderCollection('clubs');
+}
+
+// ====== VN 档案卡渲染 ======
+function renderVNProfile() {
+    if (!currentUser?.logged_in || !currentUser?.user) return;
+    var user = currentUser.user;
+    var memberships = currentUser.memberships || [];
+    var activeMemberships = memberships.filter(function(m) { return m.status === 'active'; });
+
+    // 角色名
+    var nameEl = document.getElementById('vnCharName');
+    if (nameEl) nameEl.textContent = user.nickname || user.username || '';
+
+    // 称号
+    var titleEl = document.getElementById('vnCharTitle');
+    var roleNames = { visitor: '见习同好', member: '同好会成员', manager: '同好会管理员', representative: '同好会会长', super_admin: '超级管理员' };
+    var effectiveRole = getEffectiveRole();
+    if (titleEl) titleEl.textContent = '—— ' + (roleNames[effectiveRole] || '同好') + ' ——';
+
+    // 头像
+    var avatarEl = document.getElementById('vnAvatar');
+    if (avatarEl) {
+        var frame = avatarEl.parentElement;
+        var fallback = frame.querySelector('.vn-avatar-fallback');
+        if (!fallback) {
+            fallback = document.createElement('span');
+            fallback.className = 'vn-avatar-fallback';
+            frame.appendChild(fallback);
+        }
+        if (user.avatar_url) {
+            avatarEl.src = user.avatar_url;
+            avatarEl.style.display = '';
+            fallback.textContent = '';
+            frame.style.background = '';
+        } else {
+            avatarEl.style.display = 'none';
+            fallback.textContent = (user.nickname || user.username || 'U')[0].toUpperCase();
+            frame.style.background = '#e74c3c';
+            frame.style.color = '#fff';
+            frame.style.display = 'flex';
+            frame.style.alignItems = 'center';
+            frame.style.justifyContent = 'center';
+            frame.style.fontSize = '28px';
+            frame.style.fontWeight = '700';
+        }
+    }
+
+    // 个性签名
+    var sigEl = document.getElementById('vnSignature');
+    if (sigEl) {
+        sigEl.textContent = user.profile_bio
+            ? '“' + user.profile_bio + '”'
+            : '“这个人很懒，还没有填写签名”';
+    }
+
+    // === 同好会 ===
+    var clubList = document.getElementById('vnClubList');
+    var statClubs = document.getElementById('statClubs');
+    var clubCount = 0;
+    if (clubList) {
+        if (activeMemberships.length === 0) {
+            clubList.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:var(--md-on-surface-variant);">还没有加入同好会</div>';
+        } else {
+            var allClubs = [];
+            if (typeof State !== 'undefined') {
+                allClubs = (State.bandoriRows || []).concat(State.japanRows || []);
+            }
+            clubCount = activeMemberships.length;
+            var roleClassMap = { member: 'vn-role-member', manager: 'vn-role-manager', representative: 'vn-role-representative', visitor: 'vn-role-visitor', super_admin: 'vn-role-super_admin' };
+            var roleLabels = { member: '成员', manager: '管理员', representative: '会长', visitor: '访客', super_admin: '超级管理员' };
+            clubList.innerHTML = activeMemberships.map(function(m) {
+                var club = allClubs.find(function(c) { return parseInt(c.id) === parseInt(m.club_id) && (c.country || 'china') === (m.country || 'china'); });
+                var clubName = club ? (club.display_name || club.name) : ('同好会 #' + m.club_id);
+                var avatarHtml = club && club.logo_url
+                    ? '<img src="' + escapeHtml(club.logo_url) + '" alt="" class="vn-club-avatar" loading="lazy">'
+                    : '<span class="vn-club-avatar">' + (clubName[0] || '?') + '</span>';
+                var roleClass = roleClassMap[m.role] || 'vn-role-member';
+                var roleLabel = roleLabels[m.role] || m.role;
+                var joinDate = m.created_at ? m.created_at.split(' ')[0] : '';
+                return '<div class="vn-club-item">' +
+                    avatarHtml +
+                    '<div class="vn-club-info"><div class="vn-club-name">' + escapeHtml(clubName) + '</div>' +
+                    (joinDate ? '<div class="vn-club-date">' + joinDate + ' 加入</div>' : '') +
+                    '</div>' +
+                    '<span class="vn-club-role ' + roleClass + '">' + roleLabel + '</span>' +
+                    '</div>';
+            }).join('');
+        }
+    }
+    if (statClubs) statClubs.textContent = String(clubCount);
+
+    // 统计数据
+    var statPubs = document.getElementById('statPubs');
+    if (statPubs) statPubs.textContent = '0';
+    var statEvents = document.getElementById('statEvents');
+    if (statEvents) {
+        var userId = user.id;
+        fetch('./api/events.php?action=registrations').then(function(r) { return r.json(); }).then(function(d) {
+            var count = (d.registrations || []).filter(function(r) { return r.user_id === userId; }).length;
+            if (statEvents) statEvents.textContent = String(count);
+        }).catch(function() {});
+    }
+    var statDays = document.getElementById('statDays');
+    if (statDays) statDays.textContent = '0';
+
+    // 底部
+    var memberSince = document.getElementById('vnMemberSince');
+    if (memberSince) {
+        var since = user.created_at || '';
+        memberSince.textContent = since ? since.split(' ')[0] + ' 加入' : '';
+    }
+    var lastActive = document.getElementById('vnLastActive');
+    if (lastActive) {
+        lastActive.textContent = user.last_login_at ? user.last_login_at.split(' ')[0] + ' 活跃' : '';
+    }
+}
+
+// ====== 图鉴渲染 ======
+function renderCollection(type) {
+    var grid = document.getElementById('vnCollectionGrid');
+    if (!grid) return;
+
+    // 更新子标签状态
+    document.querySelectorAll('.vn-collection-tab').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.collection === type);
+    });
+
+    if (type === 'clubs') {
+        var memberships = currentUser?.memberships || [];
+        var activeMemberships = memberships.filter(function(m) { return m.status === 'active'; });
+        if (activeMemberships.length === 0) {
+            grid.innerHTML = '<div class="vn-collection-empty">还没有加入同好会，去地图上找一个吧！</div>';
+            return;
+        }
+        var allClubs = [];
+        if (typeof State !== 'undefined') {
+            allClubs = (State.bandoriRows || []).concat(State.japanRows || []);
+        }
+        grid.innerHTML = activeMemberships.map(function(m) {
+            var club = allClubs.find(function(c) { return parseInt(c.id) === parseInt(m.club_id) && (c.country || 'china') === (m.country || 'china'); });
+            var clubName = club ? club.name : ('同好会 #' + m.club_id);
+            var roleLabels = { member: '成员', manager: '管理员', representative: '会长' };
+            var iconHtml = club && club.logo_url
+                ? '<img src="' + escapeHtml(club.logo_url) + '" alt="" loading="lazy">'
+                : '🏫';
+            return '<div class="vn-collection-card">' +
+                '<div class="vn-cc-icon">' + iconHtml + '</div>' +
+                '<span class="vn-cc-name">' + escapeHtml(clubName) + '</span>' +
+                '<span class="vn-cc-meta">' + (roleLabels[m.role] || m.role) + '</span>' +
+                '</div>';
+        }).join('');
+    } else if (type === 'publications') {
+        grid.innerHTML = '<div class="vn-collection-empty">📖 刊物收集功能开发中</div>';
+    } else if (type === 'events') {
+        var userId = currentUser?.user?.id;
+        if (!userId) {
+            grid.innerHTML = '<div class="vn-collection-empty">请先登录</div>';
+            return;
+        }
+        // 同时获取报名数据和活动数据
+        Promise.all([
+            fetch('./api/events.php?action=registrations').then(function(r) { return r.json(); }),
+            fetch('./data/events.json').then(function(r) { return r.json(); })
+        ]).then(function(results) {
+            var regData = results[0];
+            var eventsData = results[1];
+            var myRegs = (regData.registrations || []).filter(function(r) { return r.user_id === userId; });
+            var allEvents = eventsData.events || [];
+            if (myRegs.length === 0) {
+                grid.innerHTML = '<div class="vn-collection-empty">📅 还没有报名过活动，去日历看看吧！</div>';
+                return;
+            }
+            grid.innerHTML = myRegs.map(function(r) {
+                var ev = allEvents.find(function(e) { return e.id === r.event_id; });
+                var evName = ev ? ev.event : ('活动 #' + r.event_id);
+                return '<div class="vn-collection-card">' +
+                    '<div class="vn-cc-icon">📅</div>' +
+                    '<span class="vn-cc-name">' + escapeHtml(evName) + '</span>' +
+                    '<span class="vn-cc-meta">' + (r.registered_at || '').split(' ')[0] + '</span>' +
+                    '</div>';
+            }).join('');
+        }).catch(function() {
+            grid.innerHTML = '<div class="vn-collection-empty">加载失败</div>';
+        });
+    }
 }
 
 // ====== 第三方绑定状态显示 ======
@@ -786,7 +968,7 @@ document.addEventListener('click', (e) => {
                 if (data.success && currentUser?.user) {
                     currentUser.user.avatar_url = data.avatar_url;
                     document.getElementById('accUserAvatar').src = data.avatar_url;
-                    document.getElementById('mainUserAvatar').src = data.avatar_url;
+                    renderVNProfile();
                     if (statusEl) { statusEl.textContent = '✅ 头像更新成功'; statusEl.style.color = '#27ae60'; }
                     setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
                 } else {
@@ -1050,6 +1232,51 @@ document.addEventListener('click', async (e) => {
             }
         } catch {
             alert('网络错误');
+        }
+    }
+});
+
+// ====== 个性签名保存 ======
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'accBioSaveBtn') {
+        var input = document.getElementById('accBioInput');
+        if (!input) return;
+        var bio = input.value.trim();
+        if (bio.length > 300) {
+            alert('个性签名不能超过 300 个字符');
+            return;
+        }
+        fetch('./api/auth.php?action=update_profile', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile_bio: bio })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success && currentUser?.user) {
+                currentUser.user.profile_bio = bio;
+                renderVNProfile();
+                var statusEl = document.getElementById('accBioStatus');
+                if (statusEl) { statusEl.textContent = '✅ 保存成功'; statusEl.style.color = '#27ae60'; }
+                setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000);
+            } else {
+                alert(d.message || '保存失败');
+            }
+        })
+        .catch(function() { alert('网络错误'); });
+    }
+});
+
+// ====== 点击签名直接编辑 ======
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'vnSignature' && currentUser?.logged_in) {
+        var settingsTab = document.querySelector('.vn-tab[data-tab="settings"]');
+        if (settingsTab) settingsTab.click();
+        var bioInput = document.getElementById('accBioInput');
+        if (bioInput) {
+            bioInput.value = currentUser.user.profile_bio || '';
+            bioInput.focus();
         }
     }
 });
@@ -1736,16 +1963,7 @@ function updateUILanguage() {
         }
     }
     
-    const chinaBtn = document.getElementById('chinaToggleBtn');
-    const japanBtn = document.getElementById('japanToggleBtn');
-    const otherBtn = document.getElementById('overseasToggleBtn');
-    const calendarBtn = document.getElementById('calendarToggleBtn');
-    const publicationBtn = document.getElementById('publicationToggleBtn');
-    if (chinaBtn) chinaBtn.textContent = t.chinaBtn;
-    if (japanBtn) japanBtn.textContent = t.japanBtn;
-    if (otherBtn) otherBtn.textContent = t.otherBtn;
-    if (calendarBtn) calendarBtn.textContent = t.calendarBtn;
-    if (publicationBtn) publicationBtn.textContent = t.publicationBtn;
+    // side toggle buttons have been removed; nav is in top card
     
 
     const searchInput = document.getElementById('searchInput');
@@ -1833,16 +2051,10 @@ function applyMobileModeLayout() {
   };
   if (!els.map || !els.selectedCard || !els.introCard || !els.sheetHandle) return;
 
-  const calendarBtn = document.getElementById('calendarToggleBtn');
-
   if (Utils.isMobileViewport()) {
     if (els.sheetHandle.parentElement !== els.selectedCard) {
       els.selectedCard.insertBefore(els.sheetHandle, els.selectedCard.firstChild);
-      if (calendarBtn) {
-        els.selectedCard.insertBefore(calendarBtn, els.sheetHandle.nextSibling);
-      }
     }
-    calendarBtn?.classList.add('mobile-inside');
 
     els.introCard.classList.add('collapsed');
 
@@ -1852,13 +2064,9 @@ function applyMobileModeLayout() {
       els.selectedCard.style.height = '46vh';
     }
   } else {
-    if (calendarBtn && calendarBtn.parentElement !== els.map) {
-      els.map.insertBefore(calendarBtn, els.map.firstChild);
-    }
     if (els.sheetHandle.parentElement !== els.map) {
       els.map.insertBefore(els.sheetHandle, els.map.firstChild);
     }
-    calendarBtn?.classList.remove('mobile-inside');
 
     els.selectedCard.style.height = '';
   }
@@ -2202,6 +2410,7 @@ function renderGroupList(rows) {
       infoHidden: isHidden,
       canApply: canApply,
       type: type,
+      rawType: item.type,
       verifyMeta: verifyMeta,
       province: item.province || '',
       remark: item.remark || __('listNoRemark'),
@@ -2301,7 +2510,8 @@ function showClubDetail(club) {
   const avatarHtml = club.logo_url
     ? `<img src="${esc(club.logo_url)}" alt="" class="club-detail-avatar">`
     : `<div class="club-detail-avatar club-detail-avatar-fallback">🏫</div>`;
-  const typeLabel = club.type === 'region' ? __('detailTypeRegion') : club.type === 'vnfest' ? __('detailTypeVnfest') : __('detailTypeSchool');
+  const rawType = club.rawType || club.type;
+  const typeLabel = rawType === 'region' ? __('detailTypeRegion') : rawType === 'vnfest' ? __('detailTypeVnfest') : __('detailTypeSchool');
   const headerHtml = `
     <div class="club-detail-header">
       ${avatarHtml}
@@ -2746,6 +2956,7 @@ function renderGroupListWithLocation(rows) {
             canApply: canApply,
             detectedUrl: '',
             type: type,
+            rawType: item.type,
             verifyMeta: verifyMeta,
             province: locationText,
             remark: item.remark || __('listNoRemark'),
@@ -3835,20 +4046,6 @@ function bindAllStaticEvents() {
     // =======================================
 }
 
-// 同好会管理按钮
-function initFAB() {
-  const fab = document.getElementById('fabAdminBtn');
-  if (!fab) return;
-
-  // 仅系统 manager 以上角色显示
-  if (!hasRole('manager')) {
-    fab.style.display = 'none';
-    return;
-  }
-
-  fab.style.display = 'inline-flex';
-}
-
 // 解析外部链接字符串为数组
 function parseExternalLinksStr(str) {
   if (!str || !str.trim()) return [];
@@ -3936,6 +4133,8 @@ function openEditPanel(club = null, isNew = false) {
     document.querySelectorAll('.ext-link-url').forEach(el => el.value = '');
     document.querySelectorAll('.ext-link-platform').forEach(el => el.value = '');
     if (editVisible) editVisible.checked = false;
+    const editProtectedReset = document.getElementById('editClubProtected');
+    if (editProtectedReset) editProtectedReset.checked = false;
     if (adminDeleteBtn) adminDeleteBtn.style.display = 'none';
     currentEditClubId = null;
     toggleRegionFields('china');
@@ -3947,11 +4146,13 @@ function openEditPanel(club = null, isNew = false) {
     if (editName) editName.value = club.name || '';
     if (club.province) setSelectValue(editProvince, club.province);
     if (club.prefecture) setSelectValue(editPrefecture, club.prefecture);
-    if (editType) editType.value = club.type || 'school';
+    if (editType) editType.value = club.rawType || club.type || 'school';
     if (editInfo) editInfo.value = club.originalInfo || club.info || '';
     if (editRemark) editRemark.value = club.remark || '';
     if (editSchool) editSchool.value = club.school || '';
     if (editVisible) editVisible.checked = club.visible_by_default === true;
+    const editProtectedLoad = document.getElementById('editClubProtected');
+    if (editProtectedLoad) editProtectedLoad.checked = club.protected === true;
     if (adminDeleteBtn) adminDeleteBtn.style.display = 'block';
     currentEditClubId = club.id;
     toggleRegionFields(country);
@@ -4017,6 +4218,7 @@ async function saveClub() {
     verified: 1,
     country: country,
     visible_by_default: document.getElementById('editVisibleByDefault')?.checked || false,
+    protected: document.getElementById('editClubProtected')?.checked || false,
     logo_url: document.getElementById('editClubAvatarUrl')?.value || '',
     external_links: getExternalLinksStr(),
   };
@@ -4181,7 +4383,6 @@ async function renderPendingApprovals() {
 }
 
 function initAdminEvents() {
-	  initFAB();
 
 	  const addClubBtn = document.getElementById("addClubBtn");
 	  const adminCancelBtn = document.getElementById("adminCancelBtn");
@@ -4326,6 +4527,9 @@ function initAdminEvents() {
 // ==========================================
 let publications = [];
 let currentPubFilter = 'all';
+// 同好会名称/头像映射（用于刊物列表解析 club_ids）
+let clubDataCn = [];
+let clubDataJp = [];
 
 async function loadPublications() {
   try {
@@ -4343,6 +4547,29 @@ async function loadPublications() {
   renderPublicationList();
 }
 
+async function loadClubDataForPublications() {
+  try {
+    const [cn, jp] = await Promise.all([
+      fetch('./data/clubs.json', { cache: 'no-store' }).then(r => r.json()),
+      fetch('./data/clubs_japan.json', { cache: 'no-store' }).then(r => r.json())
+    ]);
+    clubDataCn = cn.data || [];
+    clubDataJp = jp.data || [];
+  } catch (e) {
+    console.error('加载俱乐部数据失败:', e);
+  }
+}
+
+function getClubInfo(clubId, country) {
+  const list = country === 'japan' ? clubDataJp : clubDataCn;
+  const club = list.find(c => c.id === clubId);
+  if (!club) return { name: '同好会 #' + clubId, logo_url: '' };
+  return {
+    name: club.name || club.school || '未知',
+    logo_url: club.logo_url || ''
+  };
+}
+
 const statusMap = {
   'planning': { text: '📋 策划中', class: 'planning' },
   'writing': { text: '✍️ 征稿中', class: 'writing' },
@@ -4352,83 +4579,54 @@ const statusMap = {
   'suspended': { text: '⏸️ 暂停', class: 'suspended' }
 };
 
+let selectedClubIds = []; // [{id, country, name}]
+
 function renderPublicationList() {
   const container = document.getElementById('publicationList');
   if (!container) return;
 
-  // Filter logic
   const filtered = currentPubFilter === 'all'
     ? publications
     : publications.filter(p => p.status === currentPubFilter);
 
-  // Update filter tab active state
   document.querySelectorAll('.pub-filter-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === currentPubFilter);
   });
 
   if (!filtered.length) {
-    container.innerHTML = '<div class="empty-text" style="text-align: center; padding: 40px;">暂无刊物信息，欢迎投稿~</div>';
+    container.innerHTML = '<div class="empty-text" style="text-align:center;padding:40px;">暂无刊物信息，欢迎投稿~</div>';
     return;
   }
-  const isAdmin = hasRole('manager');
+
   container.innerHTML = filtered.map(pub => {
     const status = statusMap[pub.status] || statusMap.planning;
-    const contactInfo = pub.submitContact || pub.submitLink || '';
-    const isEmail = contactInfo.includes('@') && !contactInfo.startsWith('http');
-    const contactDisplay = isEmail
-      ? `<a href="mailto:${contactInfo}" class="pub-link">✉️ ${contactInfo}</a>`
-      : (contactInfo.startsWith('http')
-          ? `<a href="${contactInfo}" target="_blank" rel="noopener noreferrer" class="pub-link">🔗 投稿入口</a>`
-          : (contactInfo ? `<span class="pub-contact">📧 ${contactInfo}</span>` : ''));
+    const clubIds = pub.club_ids || [];
+    const firstClub = clubIds.length > 0 ? getClubInfo(clubIds[0].id, clubIds[0].country) : null;
+    const avatarHtml = firstClub && firstClub.logo_url
+      ? `<img src="${Utils.escapeHTML(firstClub.logo_url)}" alt="" class="pub-list-avatar-img">`
+      : `<span class="pub-list-avatar-text">${(firstClub ? firstClub.name[0] : (pub.clubName || '?')[0])}</span>`;
+    const clubDisplay = firstClub ? Utils.escapeHTML(firstClub.name) : Utils.escapeHTML(pub.clubName || '未知同好会');
 
-    const desc = pub.description || '暂无介绍';
-    const shortDesc = desc.length > 100 ? desc.slice(0, 100) + '…' : desc;
-
-    return `
-      <div class="publication-item" data-id="${pub.id}">
-        ${pub.image_url ? `
-        <div class="pub-layout-has-image">
-          <div class="pub-image-wrap">
-            <img src="${Utils.escapeHTML(pub.image_url)}" alt="" loading="lazy">
-          </div>
-          <div class="pub-content">
-            <div class="pub-header">
-              <span class="pub-club-name">${Utils.escapeHTML(pub.clubName)}</span>
-              <span class="pub-status ${status.class}">${status.text}</span>
-            </div>
-            <div class="pub-name">📖 ${Utils.escapeHTML(pub.publicationName)}</div>
-            <div class="pub-info">
-              ${contactDisplay ? `<div class="pub-contact-info">${contactDisplay}</div>` : ''}
-              ${pub.deadline ? `<span class="pub-deadline">⏰ 截止：${pub.deadline}</span>` : ''}
-            </div>
-            <div class="pub-description">${Utils.escapeHTML(shortDesc)}</div>
-            ${isAdmin ? `<button class="pub-edit-btn" data-id="${pub.id}">✏️ 编辑</button>` : ''}
-          </div>
-        </div>` : `
-        <div class="pub-header">
-          <span class="pub-club-name">${Utils.escapeHTML(pub.clubName)}</span>
-          <span class="pub-status ${status.class}">${status.text}</span>
-        </div>
-        <div class="pub-name">📖 ${Utils.escapeHTML(pub.publicationName)}</div>
-        <div class="pub-info">
-          ${contactDisplay ? `<div class="pub-contact-info">${contactDisplay}</div>` : ''}
-          ${pub.deadline ? `<span class="pub-deadline">⏰ 截止：${pub.deadline}</span>` : ''}
-        </div>
-        <div class="pub-description">${Utils.escapeHTML(shortDesc)}</div>
-        ${isAdmin ? `<button class="pub-edit-btn" data-id="${pub.id}">✏️ 编辑</button>` : ''}`}
-      </div>`;
+    return `<div class="publication-item pub-list-item" data-id="${pub.id}">
+      <div class="pub-list-avatar">${avatarHtml}</div>
+      <div class="pub-list-info">
+        <div class="pub-list-name">${Utils.escapeHTML(pub.publicationName)}</div>
+        <div class="pub-list-club">${clubDisplay}</div>
+      </div>
+      <span class="pub-list-status ${status.class}">${status.text}</span>
+      ${pub.deadline ? `<span class="pub-list-deadline">截稿 ${pub.deadline}</span>` : ''}
+      <span class="pub-list-arrow">→</span>
+    </div>`;
   }).join('');
 
-  if (hasRole('manager')) {
-    document.querySelectorAll('.pub-edit-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const id = parseInt(btn.dataset.id);
-        const pub = publications.find(p => p.id === id);
-        if (pub) openPublicationEditor(pub);
-      });
+  container.querySelectorAll('.pub-list-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const id = parseInt(item.dataset.id);
+      const pub = publications.find(p => p.id === id);
+      if (pub) openPublicationDetail(pub);
     });
-  }
-  // 同步添加按钮可见性
+  });
+
   const addBtn = document.getElementById('addPublicationBtn');
   if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
 }
@@ -4469,6 +4667,12 @@ function openPublicationEditor(publication = null) {
       if (pubImgUrl) pubImgUrl.value = '';
       if (pubImgRemoveBtn) pubImgRemoveBtn.style.display = 'none';
     }
+    // 初始化关联同好会
+    selectedClubIds = (publication.club_ids || []).map(c => {
+      const info = getClubInfo(c.id, c.country);
+      return { id: c.id, country: c.country, name: info.name };
+    });
+    renderSelectedPubClubs();
   } else {
     title.textContent = '➕ 添加刊物';
     if (pubId) pubId.value = '';
@@ -4488,6 +4692,8 @@ function openPublicationEditor(publication = null) {
     if (pubImgRemoveBtn2) pubImgRemoveBtn2.style.display = 'none';
     const pubImgStatus = document.getElementById('pubImageStatus');
     if (pubImgStatus) pubImgStatus.textContent = '';
+    selectedClubIds = [];
+    renderSelectedPubClubs();
   }
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
@@ -4511,7 +4717,7 @@ async function savePublication() {
   const deadline = document.getElementById('pubDeadline').value;
   const description = document.getElementById('pubDescription').value.trim();
 
-  if (!clubName) { alert('请填写同好会名称'); return; }
+  if (!clubName && selectedClubIds.length === 0) { alert('请填写同好会名称或选择关联同好会'); return; }
   if (!pubName) { alert('请填写刊物名称'); return; }
 
   const isEdit = pubId !== '';
@@ -4524,6 +4730,7 @@ async function savePublication() {
     deadline,
     description,
     image_url: document.getElementById('pubImageUrl')?.value || '',
+    club_ids: selectedClubIds.map(s => ({ id: s.id, country: s.country })),
   };
   if (isEdit) data.id = parseInt(pubId);
 
@@ -4571,8 +4778,97 @@ async function deletePublication() {
   }
 }
 
+function initPubClubSelector() {
+  const searchInput = document.getElementById('pubClubSearchInput');
+  const searchBtn = document.getElementById('pubClubSearchBtn');
+  const results = document.getElementById('pubClubSearchResults');
+  if (!searchInput || !searchBtn || !results) return;
+
+  async function doSearch() {
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) { results.style.display = 'none'; return; }
+    const matches = [];
+    (clubDataCn || []).forEach(c => {
+      if ((c.name || '').toLowerCase().includes(q) || (c.school || '').toLowerCase().includes(q)) {
+        matches.push({ id: c.id, country: 'china', name: c.name || c.school || '未知', logo_url: c.logo_url || '' });
+      }
+    });
+    (clubDataJp || []).forEach(c => {
+      if ((c.name || '').toLowerCase().includes(q) || (c.school || '').toLowerCase().includes(q)) {
+        matches.push({ id: c.id, country: 'japan', name: c.name || c.school || '未知', logo_url: c.logo_url || '' });
+      }
+    });
+    if (matches.length === 0) {
+      results.innerHTML = '<div style="padding:12px;color:#999;font-size:13px;">未找到同好会</div>';
+    } else {
+      results.innerHTML = matches.slice(0, 20).map(m => {
+        const already = selectedClubIds.some(s => s.id === m.id && s.country === m.country);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border-radius:6px;${already ? 'opacity:0.4;' : ''}"
+          onclick="${already ? '' : 'addPubClub(' + m.id + ',\'' + m.country + '\')'}">
+          <span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0;overflow:hidden;">
+            ${m.logo_url ? '<img src="' + Utils.escapeHTML(m.logo_url) + '" style="width:100%;height:100%;object-fit:cover;">' : (m.name[0] || '?')}
+          </span>
+          <span style="font-size:13px;">${Utils.escapeHTML(m.name)}</span>
+          <span style="font-size:10px;color:#999;">${m.country === 'japan' ? '🇯🇵' : '🇨🇳'}</span>
+          ${already ? '<span style="margin-left:auto;font-size:11px;color:#999;">已选择</span>' : ''}
+        </div>`;
+      }).join('');
+    }
+    results.style.display = '';
+  }
+
+  searchBtn.addEventListener('click', doSearch);
+  searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+  // Close results when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#pubClubSearchInput') && !e.target.closest('#pubClubSearchBtn') && !e.target.closest('#pubClubSearchResults')) {
+      results.style.display = 'none';
+    }
+  });
+}
+
+function addPubClub(id, country) {
+  const list = country === 'japan' ? (clubDataJp || []) : (clubDataCn || []);
+  const club = list.find(c => c.id === id);
+  if (!club) return;
+  if (selectedClubIds.some(s => s.id === id && s.country === country)) return;
+  selectedClubIds.push({ id, country, name: club.name || club.school || '未知' });
+  renderSelectedPubClubs();
+  const results = document.getElementById('pubClubSearchResults');
+  const input = document.getElementById('pubClubSearchInput');
+  if (results) results.style.display = 'none';
+  if (input) input.value = '';
+}
+
+function removePubClub(id, country) {
+  selectedClubIds = selectedClubIds.filter(s => !(s.id === id && s.country === country));
+  renderSelectedPubClubs();
+}
+
+function renderSelectedPubClubs() {
+  const container = document.getElementById('pubClubIdsContainer');
+  if (!container) return;
+  if (selectedClubIds.length === 0) {
+    container.innerHTML = '<span style="font-size:12px;color:#999;">暂未选择同好会</span>';
+    return;
+  }
+  container.innerHTML = selectedClubIds.map(s =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px 4px 6px;border-radius:20px;font-size:12px;background:var(--md-surface-container-high);border:1px solid var(--md-outline-variant);">
+      <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;flex-shrink:0;overflow:hidden;"></span>
+      ${Utils.escapeHTML(s.name)}
+      <span style="cursor:pointer;opacity:0.6;margin-left:2px;" onclick="removePubClub(${s.id},'${s.country}')">✕</span>
+    </span>`
+  ).join('');
+
+  // 自动同步 clubName 输入框
+  const clubNameInput = document.getElementById('pubClubName');
+  if (clubNameInput) {
+    const names = selectedClubIds.map(s => s.name).filter(Boolean);
+    clubNameInput.value = names.join('、');
+  }
+}
+
 function initPublicationEvents() {
-  const publicationBtn = document.getElementById('publicationToggleBtn');
   const modal = document.getElementById('publicationModal');
   const closeBtn = document.getElementById('publicationModalClose');
   const addBtn = document.getElementById('addPublicationBtn');
@@ -4580,12 +4876,6 @@ function initPublicationEvents() {
   const saveBtn = document.getElementById('pubSaveBtn');
   const deleteBtn = document.getElementById('pubDeleteBtn');
 
-  publicationBtn?.addEventListener('click', () => {
-    renderPublicationList();
-    if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
-    modal?.classList.add('open');
-    modal?.setAttribute('aria-hidden', 'false');
-  });
   closeBtn?.addEventListener('click', () => {
     modal?.classList.remove('open');
     modal?.setAttribute('aria-hidden', 'true');
@@ -4647,6 +4937,177 @@ function initPublicationEvents() {
     pubImageRemoveBtn.style.display = 'none';
     if (pubImageStatus) pubImageStatus.textContent = '已移除图片';
   });
+
+  document.getElementById('pubDetailClose')?.addEventListener('click', closePublicationDetail);
+  document.getElementById('publicationDetailModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closePublicationDetail();
+  });
+  document.getElementById('manuscriptUploadBtn')?.addEventListener('click', uploadManuscript);
+  initPubClubSelector();
+}
+
+function openPublicationDetail(pub) {
+  const modal = document.getElementById('publicationDetailModal');
+  const cover = document.getElementById('pubDetailCover');
+  const name = document.getElementById('pubDetailName');
+  const clubs = document.getElementById('pubDetailClubs');
+  const meta = document.getElementById('pubDetailMeta');
+  const contact = document.getElementById('pubDetailContact');
+  const desc = document.getElementById('pubDetailDesc');
+
+  if (pub.image_url) {
+    cover.innerHTML = `<img src="${Utils.escapeHTML(pub.image_url)}" alt="封面" loading="lazy">`;
+    cover.style.display = '';
+  } else {
+    cover.style.display = 'none';
+  }
+
+  name.textContent = pub.publicationName || '';
+
+  const clubIds = pub.club_ids || [];
+  if (clubIds.length > 0) {
+    clubs.innerHTML = clubIds.map(c => {
+      const info = getClubInfo(c.id, c.country);
+      const avatar = info.logo_url
+        ? `<img src="${Utils.escapeHTML(info.logo_url)}" alt="">`
+        : `<span>${Utils.escapeHTML(info.name[0] || '?')}</span>`;
+      return `<span class="pub-detail-club-tag">
+        <span class="cdt-avatar">${avatar}</span>
+        ${Utils.escapeHTML(info.name)}
+      </span>`;
+    }).join('');
+  } else if (pub.clubName) {
+    clubs.textContent = pub.clubName;
+  } else {
+    clubs.textContent = '';
+  }
+
+  const st = statusMap[pub.status] || statusMap.planning;
+  let metaHtml = `<span class="pub-list-status ${st.class}">${st.text}</span>`;
+  if (pub.deadline) metaHtml += ` <span style="margin-left:12px;">截稿 ${Utils.escapeHTML(pub.deadline)}</span>`;
+  meta.innerHTML = metaHtml;
+
+  if (pub.submitContact) {
+    contact.innerHTML = `<strong>投稿联系方式：</strong>${Utils.escapeHTML(pub.submitContact)}`;
+    contact.style.display = '';
+  } else {
+    contact.style.display = 'none';
+  }
+
+  if (pub.description) {
+    desc.textContent = pub.description;
+    desc.style.display = '';
+  } else {
+    desc.textContent = '暂无简介';
+    desc.style.display = '';
+  }
+
+  loadManuscripts(pub.id);
+  modal.dataset.pubId = pub.id;
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  const scrollEl = document.getElementById('pubDetailScroll');
+  if (scrollEl) scrollEl.scrollTop = 0;
+}
+
+function closePublicationDetail() {
+  const modal = document.getElementById('publicationDetailModal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function loadManuscripts(pubId) {
+  const container = document.getElementById('pubDetailManuscripts');
+  if (!container) return;
+  try {
+    const resp = await fetch(`./api/manuscripts.php?action=list_by_publication&publication_id=${pubId}`);
+    const json = await resp.json();
+    const manuscripts = json.manuscripts || [];
+    if (manuscripts.length === 0) {
+      container.innerHTML = '<div class="empty-text" style="padding:20px;text-align:center;">暂无稿件</div>';
+      return;
+    }
+    container.innerHTML = manuscripts.map(m => {
+      const isOwner = currentUser?.user?.id === m.submitter_id;
+      const isAdmin = hasRole('manager');
+      const canManage = isOwner || isAdmin;
+      const actionsHtml = canManage ? `<div style="display:flex;gap:4px;flex-shrink:0;">
+        <a class="md3-btn" style="font-size:12px;padding:2px 10px;text-decoration:none;" href="./api/manuscripts.php?action=download&id=${m.id}" target="_blank">⬇</a>
+        <button class="md3-btn manuscript-delete-btn" style="font-size:12px;padding:2px 10px;" data-id="${m.id}">🗑</button>
+      </div>` : '';
+      return `<div class="manuscript-item" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eee;">
+        <span style="font-size:20px;">📄</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${Utils.escapeHTML(m.file_name)}</div>
+          <div style="font-size:12px;color:#888;">${Utils.escapeHTML(m.submitter_name || '匿名')}${m.created_at ? ' · ' + Utils.escapeHTML(m.created_at) : ''}${m.contact ? ' · ' + Utils.escapeHTML(m.contact) : ''}</div>
+        </div>
+        ${actionsHtml}
+      </div>`;
+    }).join('');
+    container.querySelectorAll('.manuscript-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteManuscript(parseInt(btn.dataset.id)));
+    });
+  } catch {
+    container.innerHTML = '<div class="empty-text" style="padding:20px;text-align:center;">加载稿件失败</div>';
+  }
+}
+
+async function uploadManuscript() {
+  const modal = document.getElementById('publicationDetailModal');
+  const pubId = modal?.dataset?.pubId;
+  const fileInput = document.getElementById('manuscriptFileInput');
+  const contactInput = document.getElementById('manuscriptContactInput');
+  const status = document.getElementById('manuscriptStatus');
+  const file = fileInput?.files?.[0];
+  const contact = contactInput?.value?.trim();
+
+  if (!pubId) { if (status) status.textContent = '❌ 未指定刊物'; return; }
+  if (!file) { if (status) status.textContent = '❌ 请选择文件'; return; }
+  if (!contact) { if (status) status.textContent = '❌ 请填写联系方式'; return; }
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('contact', contact);
+  fd.append('publication_id', pubId);
+
+  if (status) status.textContent = '上传中...';
+  try {
+    const resp = await fetch('./api/manuscripts.php?action=upload', { method: 'POST', body: fd });
+    const json = await resp.json();
+    if (json.success) {
+      if (status) status.textContent = '✅ 上传成功';
+      if (fileInput) fileInput.value = '';
+      if (contactInput) contactInput.value = '';
+      loadManuscripts(pubId);
+    } else {
+      if (status) status.textContent = '❌ ' + (json.message || '上传失败');
+    }
+  } catch {
+    if (status) status.textContent = '❌ 网络错误';
+  }
+}
+
+async function deleteManuscript(id) {
+  if (!confirm('确定要删除这份稿件吗？')) return;
+  try {
+    const resp = await fetch('./api/manuscripts.php?action=delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    const json = await resp.json();
+    if (json.success) {
+      const modal = document.getElementById('publicationDetailModal');
+      const pubId = modal?.dataset?.pubId;
+      if (pubId) loadManuscripts(pubId);
+    } else {
+      alert('删除失败：' + (json.message || '未知错误'));
+    }
+  } catch {
+    alert('删除失败，请检查网络连接');
+  }
 }
 
 // ===== 顶层用户信息框交互 =====
@@ -4778,46 +5239,6 @@ function initMobileDrawer() {
 }
 
 // ==========================================
-// 移动端悬浮菜单
-// ==========================================
-(function initFabMenu() {
-  function init() {
-    const fabMenu = document.getElementById('fabMenu');
-    const fabMainBtn = document.getElementById('fabMainBtn');
-    if (!fabMenu || !fabMainBtn) { setTimeout(init, 500); return; }
-    const isMobile = window.innerWidth <= 720;
-    if (!isMobile) { fabMenu.style.display = 'none'; return; }
-    fabMenu.style.display = 'flex';
-    fabMainBtn.onclick = function(e) { e.stopPropagation(); fabMenu.classList.toggle('open'); };
-    document.addEventListener('click', function(e) { if (fabMenu.classList.contains('open') && !fabMenu.contains(e.target)) fabMenu.classList.remove('open'); });
-    document.querySelectorAll('.fab-menu-item').forEach(item => {
-      item.onclick = function(e) { e.stopPropagation(); fabMenu.classList.remove('open'); };
-    });
-    const fabChina = document.getElementById('fabChina');
-    const fabJapan = document.getElementById('fabJapan');
-    const fabOther = document.getElementById('fabOther');
-    const fabCalendar = document.getElementById('fabCalendar');
-    const fabPublication = document.getElementById('fabPublication');
-    if (fabChina) fabChina.onclick = () => switchToChinaMap();
-    if (fabJapan) fabJapan.onclick = () => switchToJapanMap();
-    if (fabOther) fabOther.onclick = () => { switchToOverseas(); };
-    if (fabCalendar) fabCalendar.onclick = () => { document.getElementById('calendarModal')?.classList.add('open'); };
-    if (fabPublication) fabPublication.onclick = () => {
-      const pubModal = document.getElementById('publicationModal');
-      if (pubModal) {
-        if (typeof renderPublicationList === 'function') renderPublicationList();
-        const addBtn = document.getElementById('addPublicationBtn');
-        if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
-        pubModal.classList.add('open');
-        pubModal.setAttribute('aria-hidden', 'false');
-      }
-    };
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-})();
-
-// ==========================================
 // 移动端抽屉控件
 // ==========================================
 (function initDrawerControls() {
@@ -4866,6 +5287,9 @@ function initMobileDrawer() {
   function init() {
     const isMobile = window.innerWidth <= 720;
     if (!isMobile) return;
+    // 移动端汉堡按钮 GalOnly 同款流光动效
+    const hb = document.getElementById('hamburgerBtn');
+    if (hb) hb.classList.add('galonly-glow-mobile');
     const introCard = document.getElementById('introCard');
     const selectedCard = document.getElementById('selectedCard');
     if (introCard) {
@@ -5000,6 +5424,7 @@ async function init() {
         loadJapanData()
     ]);
     await loadPublications();
+    await loadClubDataForPublications();
     console.log('✅ 数据加载完成 - 中国:', State.bandoriRows.length, '日本:', State.japanRows.length);
     
     // 数据加载完成后再渲染地图

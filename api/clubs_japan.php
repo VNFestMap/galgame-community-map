@@ -50,7 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // 管理员及以上系统角色可查看所有学校的信息
 
         // 联系方式可见性: 非成员 + 非公开 + 非管理员 → 隐藏
-        $item['info_hidden'] = !$isMember && !$visibleByDefault && !$canSeeAllInfo;
+        $isProtected = !empty($item['protected']);
+        if ($isProtected) {
+            // 保护模式：仅成员或 super_admin 可见
+            $isSuperAdmin = $user && ($user['role'] ?? '') === 'super_admin';
+            $item['info_hidden'] = !$isMember && !$isSuperAdmin;
+        } else {
+            $item['info_hidden'] = !$isMember && !$visibleByDefault && !$canSeeAllInfo;
+        }
         // 申请资格: 已登录 + 非该俱乐部成员 → 可申请（与可见性解耦）
         $item['can_apply'] = ($user !== null) && !$isMember;
         if ($item['info_hidden']) {
@@ -113,7 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'remark' => $input['remark'] ?? '',
         'country' => 'japan',
         'logo_url' => $input['logo_url'] ?? '',
-        'external_links' => $input['external_links'] ?? ''
+        'external_links' => $input['external_links'] ?? '',
+        'protected' => $input['protected'] ?? false,
     ];
     
     $rows[] = $newItem;
@@ -162,6 +170,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             $rows[$i]['external_links'] = $input['external_links'] ?? $item['external_links'] ?? '';
             if (isset($input['visible_by_default'])) {
                 $rows[$i]['visible_by_default'] = $input['visible_by_default'] ? true : false;
+            }
+            if (isset($input['protected'])) {
+                $rows[$i]['protected'] = $input['protected'] ? true : false;
             }
             $rows[$i]['country'] = 'japan';
             $updated = true;

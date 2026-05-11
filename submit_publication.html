@@ -143,6 +143,17 @@
             </div>
 
             <div class="form-group">
+                <label>关联同好会（可多选）</label>
+                <div id="clubIdsContainer" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;"></div>
+                <div style="display:flex;gap:6px;">
+                    <input type="text" id="clubSearchInput" placeholder="搜索同好会..." style="flex:1;padding:8px 12px;border:2px solid #e0e0e0;border-radius:12px;font-size:13px;outline:none;">
+                    <button type="button" id="clubSearchBtn" style="padding:8px 16px;border-radius:40px;border:2px solid #e0e0e0;background:white;cursor:pointer;font-size:13px;">搜索</button>
+                </div>
+                <div id="clubSearchResults" style="max-height:200px;overflow-y:auto;margin-top:6px;display:none;border:2px solid #e0e0e0;border-radius:12px;padding:4px;background:white;"></div>
+                <div class="hint">从数据库中选择已有的同好会，也可手动输入同好会名称</div>
+            </div>
+
+            <div class="form-group">
                 <label>刊物名称 <span class="required">*</span></label>
                 <input type="text" id="publicationName" placeholder="例：《旮之旯》" />
             </div>
@@ -188,6 +199,25 @@
 
     <script>
     const API = './api/submit_publication.php';
+
+    // 同好会数据（用于关联同好会选择器）
+    let clubDataCn = [];
+    let clubDataJp = [];
+    let selectedClubIds = []; // [{id, country, name}]
+
+    async function loadClubData() {
+      try {
+        const [cn, jp] = await Promise.all([
+          fetch('./data/clubs.json', { cache: 'no-store' }).then(r => r.json()),
+          fetch('./data/clubs_japan.json', { cache: 'no-store' }).then(r => r.json())
+        ]);
+        clubDataCn = cn.data || [];
+        clubDataJp = jp.data || [];
+      } catch (e) {
+        console.error('加载俱乐部数据失败:', e);
+      }
+    }
+    loadClubData();
 
     // 图片上传
     document.getElementById('uploadBtn').addEventListener('click', () => {
@@ -244,7 +274,8 @@
             submitLink: document.getElementById('submitLink').value.trim(),
             deadline: document.getElementById('deadline').value,
             description: document.getElementById('description').value.trim(),
-            image_url: document.getElementById('imageUrl').value
+            image_url: document.getElementById('imageUrl').value,
+            club_ids: selectedClubIds.map(s => ({ id: s.id, country: s.country }))
         };
 
         const btn = document.getElementById('submitBtn');
@@ -288,6 +319,88 @@
         el.className = 'message ' + type;
         el.style.display = 'block';
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // ====== 关联同好会选择器 ======
+    document.getElementById('clubSearchBtn').addEventListener('click', doClubSearch);
+    document.getElementById('clubSearchInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doClubSearch();
+    });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#clubSearchInput') && !e.target.closest('#clubSearchBtn') && !e.target.closest('#clubSearchResults')) {
+            document.getElementById('clubSearchResults').style.display = 'none';
+        }
+    });
+
+    function doClubSearch() {
+        const input = document.getElementById('clubSearchInput');
+        const results = document.getElementById('clubSearchResults');
+        const q = (input.value || '').trim().toLowerCase();
+        if (!q) { results.style.display = 'none'; return; }
+        const matches = [];
+        clubDataCn.forEach(c => {
+            if ((c.name || '').toLowerCase().includes(q) || (c.school || '').toLowerCase().includes(q)) {
+                matches.push({ id: c.id, country: 'china', name: c.name || c.school || '未知', logo_url: c.logo_url || '' });
+            }
+        });
+        clubDataJp.forEach(c => {
+            if ((c.name || '').toLowerCase().includes(q) || (c.school || '').toLowerCase().includes(q)) {
+                matches.push({ id: c.id, country: 'japan', name: c.name || c.school || '未知', logo_url: c.logo_url || '' });
+            }
+        });
+        if (matches.length === 0) {
+            results.innerHTML = '<div style="padding:12px;color:#999;font-size:13px;">未找到同好会</div>';
+        } else {
+            results.innerHTML = matches.slice(0, 20).map(m => {
+                const already = selectedClubIds.some(s => s.id === m.id && s.country === m.country);
+                return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border-radius:8px;${already ? 'opacity:0.4;' : ''}"
+                    onclick="${already ? '' : 'addPubClub(' + m.id + ',\'' + m.country + '\')'}">
+                    <span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0;overflow:hidden;">
+                        ${m.logo_url ? '<img src="' + m.logo_url + '" style="width:100%;height:100%;object-fit:cover;">' : (m.name[0] || '?')}
+                    </span>
+                    <span style="font-size:13px;">${m.name}</span>
+                    <span style="font-size:10px;color:#999;">${m.country === 'japan' ? '🇯🇵' : '🇨🇳'}</span>
+                    ${already ? '<span style="margin-left:auto;font-size:11px;color:#999;">已选择</span>' : ''}
+                </div>`;
+            }).join('');
+        }
+        results.style.display = '';
+    }
+
+    function addPubClub(id, country) {
+        const list = country === 'japan' ? clubDataJp : clubDataCn;
+        const club = list.find(c => c.id === id);
+        if (!club || selectedClubIds.some(s => s.id === id && s.country === country)) return;
+        selectedClubIds.push({ id, country, name: club.name || club.school || '未知' });
+        renderSelectedClubs();
+        document.getElementById('clubSearchResults').style.display = 'none';
+        document.getElementById('clubSearchInput').value = '';
+    }
+
+    function removePubClub(id, country) {
+        selectedClubIds = selectedClubIds.filter(s => !(s.id === id && s.country === country));
+        renderSelectedClubs();
+    }
+
+    function renderSelectedClubs() {
+        const container = document.getElementById('clubIdsContainer');
+        if (!container) return;
+        if (selectedClubIds.length === 0) {
+            container.innerHTML = '<span style="font-size:12px;color:#999;">暂未选择同好会</span>';
+            return;
+        }
+        container.innerHTML = selectedClubIds.map(s =>
+            `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px 4px 6px;border-radius:20px;font-size:12px;background:#f0f0f0;border:1px solid #e0e0e0;">
+                ${s.name}
+                <span style="cursor:pointer;opacity:0.6;margin-left:2px;" onclick="removePubClub(${s.id},'${s.country}')">✕</span>
+            </span>`
+        ).join('');
+        // 同步 clubName
+        const clubNameInput = document.getElementById('clubName');
+        if (clubNameInput) {
+            const names = selectedClubIds.map(s => s.name).filter(Boolean);
+            clubNameInput.value = names.join('、');
+        }
     }
     </script>
 </body>

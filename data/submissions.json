@@ -110,5 +110,50 @@
         "id": 7,
         "submitted_at": "2026-05-10 20:46:52",
         "approved_at": "2026-05-10T12:57:39.616Z"
+    },
+    {
+        "name": "集美大学galgame交流群",
+        "country": "china",
+        "province": "福建",
+        "prefecture": "",
+        "info": "965511241",
+        "type": "school",
+        "created_at": "2024-08-14",
+        "remark": "我去，柚子厨？！\n这里是集大gal社，欢迎各位对galgame感兴趣的小伙伴进来聊天",
+        "submitter": "1160181519",
+        "timestamp": "2026-05-11T03:51:19.349Z",
+        "status": "pending",
+        "id": 8,
+        "submitted_at": "2026-05-11 11:51:20"
+    },
+    {
+        "name": "集美大学galgame交流群",
+        "country": "china",
+        "province": "福建",
+        "prefecture": "",
+        "info": "965511241",
+        "type": "school",
+        "created_at": "2024-08-14",
+        "remark": "我去，柚子厨？！\n这里是集大gal社，欢迎各位对galgame感兴趣的小伙伴进来聊天\n入群密码记得填庄重文以及随便一两个gal会社",
+        "submitter": "1160181519",
+        "timestamp": "2026-05-11T03:55:41.689Z",
+        "status": "pending",
+        "id": 9,
+        "submitted_at": "2026-05-11 11:55:42"
+    },
+    {
+        "name": "集美大学galgame交流群",
+        "country": "china",
+        "province": "福建",
+        "prefecture": "",
+        "info": "965511241",
+        "type": "school",
+        "created_at": "2024-08-14",
+        "remark": "我去，柚子厨？！\n这里是集大gal社，欢迎各位对galgame感兴趣的小伙伴进来聊天\n入群密码记得填庄重文以及随便一两个gal会社",
+        "submitter": "1160181519",
+        "timestamp": "2026-05-11T03:57:23.103Z",
+        "status": "pending",
+        "id": 10,
+        "submitted_at": "2026-05-11 11:57:24"
     }
 ]

@@ -2,6 +2,9 @@
     "publications": [
         {
             "id": 2,
+            "club_ids": [
+                {"id": 114, "country": "china"}
+            ],
             "clubName": "盐城工学院橘柚视觉小说同好会",
             "publicationName": "同好会年刊Vol2",
             "status": "writing",
@@ -15,6 +18,12 @@
         },
         {
             "id": 3,
+            "club_ids": [
+                {"id": 210, "country": "china"},
+                {"id": 207, "country": "china"},
+                {"id": 208, "country": "china"},
+                {"id": 203, "country": "china"}
+            ],
             "clubName": "浙江师范大学樱缘星华视觉小说同好会（主导）、杭州师范大学雪结月色视觉小说同好会、宁波大学风宁晚视觉小说同好会、浙江外国语学院远空galgame同好会",
             "publicationName": "浙江四校视觉小说联刊（《旮在浙途》）",
             "status": "editing",
@@ -27,6 +36,9 @@
         },
         {
             "id": 4,
+            "club_ids": [
+                {"id": 88, "country": "china"}
+            ],
             "clubName": "湖南科技大学御樱gal结社",
             "publicationName": "待定",
             "status": "writing",
@@ -39,6 +51,13 @@
         },
         {
             "id": 5,
+            "club_ids": [
+                {"id": 155, "country": "china"},
+                {"id": 154, "country": "china"},
+                {"id": 23, "country": "china"},
+                {"id": 153, "country": "china"},
+                {"id": 232, "country": "china"}
+            ],
             "clubName": "西安电子科技大学、西北工业大学、厦门大学、长安大学、苏州大学",
             "publicationName": "杂话Gal vol.002",
             "status": "writing",
@@ -51,6 +70,9 @@
         },
         {
             "id": 6,
+            "club_ids": [
+                {"id": 117, "country": "china"}
+            ],
             "clubName": "HAU｜巡樱阁视觉小说同好会",
             "publicationName": "巡樱阁群刊",
             "status": "writing",
@@ -63,6 +85,11 @@
         },
         {
             "id": 7,
+            "club_ids": [
+                {"id": 219, "country": "china"},
+                {"id": 220, "country": "china"},
+                {"id": 221, "country": "china"}
+            ],
             "clubName": "西南政法大学 重庆邮电大学 重庆理工大学",
             "publicationName": "待定",
             "status": "writing",
@@ -75,6 +102,9 @@
         },
         {
             "id": 8,
+            "club_ids": [
+                {"id": 94, "country": "china"}
+            ],
             "clubName": "江苏大学玄唐Galgame交流会",
             "publicationName": "玄唐GalMagazine Vol.2",
             "status": "writing",
@@ -88,6 +118,9 @@
         },
         {
             "id": 9,
+            "club_ids": [
+                {"id": 87, "country": "china"}
+            ],
             "clubName": "csust这不是一群英雄的故事",
             "publicationName": "暂未确定",
             "status": "writing",
@@ -101,6 +134,9 @@
         },
         {
             "id": 10,
+            "club_ids": [
+                {"id": 88, "country": "china"}
+            ],
             "clubName": "湖科大御樱gal结社",
             "publicationName": "暂定",
             "status": "writing",

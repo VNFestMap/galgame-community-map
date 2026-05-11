@@ -27,13 +27,27 @@ function getCurrentUser(): ?array {
     }
 
     $db = getDB();
-    $stmt = $db->prepare(
-        'SELECT u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.qq_openid, u.discord_id
-         FROM users u
-         WHERE u.id = ? AND u.status = \'active\''
-    );
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch();
+    try {
+        $stmt = $db->prepare(
+            'SELECT u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio
+             FROM users u
+             WHERE u.id = ? AND u.status = \'active\''
+        );
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+    } catch (PDOException $e) {
+        // profile_bio 列尚不存在（迁移未执行），回退到不带该列的查询
+        $stmt = $db->prepare(
+            'SELECT u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.qq_openid, u.discord_id, u.is_audit
+             FROM users u
+             WHERE u.id = ? AND u.status = \'active\''
+        );
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        if ($user) {
+            $user['profile_bio'] = '';
+        }
+    }
 
     if (!$user) {
         unset($_SESSION['user_id']);
@@ -141,4 +155,9 @@ function canManageClub(array $user, int $clubId): bool {
     );
     $stmt->execute([$user['id'], $clubId]);
     return (bool)$stmt->fetch();
+}
+
+function hasAuditPermission(array $user): bool {
+    if ($user['role'] === 'super_admin') return true;
+    return !empty($user['is_audit']);
 }

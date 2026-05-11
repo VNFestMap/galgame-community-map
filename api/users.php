@@ -248,6 +248,11 @@ switch ($action) {
             }
         }
 
+        if (isset($input['is_audit'])) {
+            $updates[] = 'is_audit = ?';
+            $params[] = (int)(bool)$input['is_audit'];
+        }
+
         if (empty($updates)) {
             echo json_encode(['success' => false, 'message' => '没有可更新的字段']);
             exit();

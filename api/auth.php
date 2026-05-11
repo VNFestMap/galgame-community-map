@@ -75,6 +75,7 @@ switch ($action) {
                 'email' => '',
                 'qq_openid' => '',
                 'discord_id' => '',
+                'profile_bio' => '',
             ]
         ]);
         exit();
@@ -136,6 +137,8 @@ switch ($action) {
                 'email' => $user['email'] ?? '',
                 'qq_openid' => $user['qq_openid'] ?? '',
                 'discord_id' => $user['discord_id'] ?? '',
+                'profile_bio' => $user['profile_bio'] ?? '',
+                'is_audit' => (int)($user['is_audit'] ?? 0),
             ],
             'memberships' => $stmt->fetchAll(),
         ]);
@@ -182,6 +185,8 @@ switch ($action) {
                     'email' => $user['email'] ?? '',
                     'qq_openid' => $user['qq_openid'] ?? '',
                     'discord_id' => $user['discord_id'] ?? '',
+                    'profile_bio' => $user['profile_bio'] ?? '',
+                    'is_audit' => (int)($user['is_audit'] ?? 0),
                 ],
                 'memberships' => $memberships,
             ]);
@@ -363,19 +368,37 @@ switch ($action) {
         }
         $user = requireLogin();
         $input = json_decode(file_get_contents('php://input'), true);
-        $nickname = trim($input['nickname'] ?? '');
 
-        if (!$nickname || mb_strlen($nickname) < 1 || mb_strlen($nickname) > 30) {
+        $nickname = isset($input['nickname']) ? trim($input['nickname']) : null;
+        $bio = isset($input['profile_bio']) ? trim($input['profile_bio']) : null;
+
+        if ($nickname === null && $bio === null) {
+            echo json_encode(['success' => false, 'message' => '没有需要更新的字段']);
+            exit();
+        }
+
+        // 先验证所有字段，再执行更新
+        if ($nickname !== null && (mb_strlen($nickname) < 1 || mb_strlen($nickname) > 30)) {
             echo json_encode(['success' => false, 'message' => '昵称需为 1-30 个字符']);
+            exit();
+        }
+        if ($bio !== null && mb_strlen($bio) > 300) {
+            echo json_encode(['success' => false, 'message' => '个性签名不能超过 300 个字符']);
             exit();
         }
 
         $db = getDB();
-        $db->prepare("UPDATE users SET nickname = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-            ->execute([$nickname, $user['id']]);
+        if ($nickname !== null) {
+            $db->prepare("UPDATE users SET nickname = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                ->execute([$nickname, $user['id']]);
+        }
+        if ($bio !== null) {
+            $db->prepare("UPDATE users SET profile_bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                ->execute([$bio, $user['id']]);
+        }
 
-        logAction('user.update_profile', 'user', $user['id'], ['nickname' => $nickname]);
-        echo json_encode(['success' => true, 'message' => '昵称已更新', 'nickname' => $nickname]);
+        logAction('user.update_profile', 'user', $user['id'], ['nickname' => $nickname, 'bio' => $bio]);
+        echo json_encode(['success' => true, 'message' => '已更新']);
         exit();
 
     case 'qq_auth':

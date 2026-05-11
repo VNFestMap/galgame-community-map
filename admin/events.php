@@ -293,11 +293,11 @@
                     link: submissions[index].link || ''
                 };
                 
-                // 调用正式活动API
-                await fetch('../api/events.php', {
+                // 调用正式活动API（使用 action=add 追加，避免覆盖已有活动）
+                await fetch('../api/events.php?action=add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ events: [eventData] })
+                    body: JSON.stringify(eventData)
                 });
                 
                 loadSubmissions();

@@ -994,6 +994,7 @@ body::after {
     <button class="tab-btn" data-tab="approved">✅ 已通过</button>
     <button class="tab-btn" data-tab="members">👥 成员</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
+    <button class="tab-btn" data-tab="manuscripts">📄 刊物稿件</button>
     <button class="tab-btn" data-tab="users" id="usersTabBtn" style="display:none;">👥 用户管理</button>
   </div>
 
@@ -1312,6 +1313,11 @@ function renderList(tab) {
   }
   if (tab === 'settings') {
     renderSettings();
+    return;
+  }
+
+  if (tab === 'manuscripts') {
+    renderManuscripts();
     return;
   }
 
@@ -1874,6 +1880,121 @@ async function transferRepresentative(membershipId, clubId, targetName) {
       renderMembers();
     } else {
       showToast(data.message || '操作失败', 'error');
+    }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+// ====== 刊物稿件模块 ======
+let pubDataForManager = [];
+
+async function loadPublicationsForManager() {
+  try {
+    const r = await fetch('../data/publications.json', { cache: 'no-store' });
+    const json = await r.json();
+    pubDataForManager = json.publications || [];
+  } catch { pubDataForManager = []; }
+}
+
+async function renderManuscripts() {
+  const container = document.getElementById('listContainer');
+  if (!selectedClubId || selectedClubId <= 0) {
+    container.innerHTML = '<div class="empty">👆 请先在上方选择一个同好会</div>';
+    return;
+  }
+
+  await loadPublicationsForManager();
+
+  // Filter publications that are associated with the selected club
+  const relatedPubs = pubDataForManager.filter(pub => {
+    const ids = pub.club_ids || [];
+    return ids.some(c => c.id === selectedClubId && c.country === selectedCountry);
+  });
+
+  if (relatedPubs.length === 0) {
+    container.innerHTML = '<div class="empty">📭 该同好会暂未关联任何刊物</div>';
+    return;
+  }
+
+  let html = '';
+  for (const pub of relatedPubs) {
+    let manuscriptCount = 0;
+    try {
+      const r = await fetch('../api/manuscripts.php?action=list_by_publication&publication_id=' + pub.id);
+      const data = await r.json();
+      manuscriptCount = (data.manuscripts || []).length;
+    } catch {}
+
+    html += `<div class="card" style="cursor:pointer;" onclick="viewManuscriptsForPub(${pub.id}, '${escapeHtml(pub.publicationName)}')">
+      <div class="card-header">
+        <span class="card-title">${escapeHtml(pub.publicationName)}</span>
+        <span class="badge" style="background:rgba(100,181,246,0.12);color:var(--accent-blue);border:1px solid rgba(100,181,246,0.15);">📄 ${manuscriptCount} 份稿件</span>
+      </div>
+      <div class="card-body">
+        <div class="row"><span class="label">状态</span>${pub.status || '未知'}</div>
+        ${pub.deadline ? `<div class="row"><span class="label">截稿</span>${escapeHtml(pub.deadline)}</div>` : ''}
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+async function viewManuscriptsForPub(pubId, pubName) {
+  const container = document.getElementById('listContainer');
+  try {
+    const r = await fetch(`../api/manuscripts.php?action=list_by_publication&publication_id=${pubId}`);
+    const data = await r.json();
+    const list = data.manuscripts || [];
+    let html = `<div style="margin-bottom:16px;">
+      <button class="btn btn-glass" onclick="renderManuscripts()">← 返回列表</button>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📄 ${escapeHtml(pubName)} — 稿件 (${list.length})</span>
+      </div>
+    </div>`;
+
+    if (list.length === 0) {
+      html += '<div class="empty">暂无稿件</div>';
+    } else {
+      html += '<div class="list">';
+      list.forEach(m => {
+        html += `<div class="card">
+          <div class="card-header">
+            <span class="card-title">📎 ${escapeHtml(m.file_name)}</span>
+            <div style="display:flex;gap:6px;">
+              <a class="btn btn-glass btn-sm" href="../api/manuscripts.php?action=download&id=${m.id}" target="_blank">⬇ 下载</a>
+              <button class="btn btn-reject btn-sm" onclick="deleteClubManuscript(${m.id})">🗑 删除</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row"><span class="label">投稿人</span>${escapeHtml(m.submitter_name)}</div>
+            <div class="row"><span class="label">联系方式</span>${escapeHtml(m.contact || '未填写')}</div>
+            <div class="row"><span class="label">时间</span>${m.submitted_at || '未知'}</div>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+    container.innerHTML = html;
+  } catch {
+    container.innerHTML = '<div class="empty">❌ 加载失败</div>';
+  }
+}
+
+async function deleteClubManuscript(id) {
+  if (!confirm('确定删除此稿件吗？')) return;
+  try {
+    const r = await fetch('../api/manuscripts.php?action=delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    const data = await r.json();
+    if (data.success) {
+      showToast('✅ 已删除', 'success');
+      renderManuscripts();
+    } else {
+      showToast(data.message || '删除失败', 'error');
     }
   } catch { showToast('网络错误', 'error'); }
 }
