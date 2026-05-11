@@ -40,6 +40,21 @@ const State = {
 let currentUser = null;
 let currentEditClubId = null;
 
+// 顶层用户信息框元素引用
+function getTopEls() {
+  return {
+    avatar: document.getElementById('topUserAvatar'),
+    name: document.getElementById('topUserName'),
+    badge: document.getElementById('topUserRoleBadge'),
+    loginBtn: document.getElementById('topLoginBtn'),
+    accountBtn: document.getElementById('topAccountBtn'),
+    adminBtn: document.getElementById('topAdminBtn'),
+    navRow: document.getElementById('userNavRow'),
+    card: document.getElementById('userInfoCard'),
+    expandArrow: document.getElementById('mobileExpandArrow')
+  };
+}
+
 const ROLE_HIERARCHY = { visitor: 0, member: 1, manager: 2, representative: 3, super_admin: 4 };
 
 async function checkAuth() {
@@ -116,6 +131,59 @@ function updateUserUI() {
     } else {
         bar.style.display = 'block';
         profile.style.display = 'none';
+    }
+
+    // 更新顶层用户信息框
+    const top = getTopEls();
+    if (!top.name) return;
+    if (currentUser?.logged_in && currentUser?.user) {
+        top.loginBtn.style.display = 'none';
+        top.accountBtn.style.display = '';
+        // Update avatar
+        if (top.avatar) {
+            if (currentUser.user.avatar_url) {
+                top.avatar.innerHTML = '<img src="' + currentUser.user.avatar_url + '" alt="" />';
+            } else {
+                top.avatar.textContent = (currentUser.user.nickname || currentUser.user.username || 'U')[0].toUpperCase();
+                top.avatar.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
+                top.avatar.style.color = '#fff';
+            }
+        }
+        if (top.name) top.name.textContent = currentUser.user.nickname || currentUser.user.username || '用户';
+        // Role badge
+        if (top.badge) {
+            const roleNames = { visitor: '访客', member: '成员', manager: '管理员', representative: '会长', super_admin: '超级管理员' };
+            const roleColors = {
+                visitor: { bg: 'rgba(128,128,128,0.12)', color: '#888' },
+                member: { bg: 'rgba(76,175,80,0.12)', color: '#4caf50' },
+                manager: { bg: 'rgba(33,150,243,0.12)', color: '#2196f3' },
+                representative: { bg: 'rgba(255,152,0,0.12)', color: '#ff9800' },
+                super_admin: { bg: 'rgba(233,30,99,0.12)', color: '#e91e63' }
+            };
+            const role = getEffectiveRole();
+            const text = roleNames[role] || '';
+            const s = roleColors[role] || roleColors.visitor;
+            top.badge.textContent = text;
+            top.badge.style.display = '';
+            top.badge.style.background = s.bg;
+            top.badge.style.color = s.color;
+        }
+        // Admin button
+        if (top.adminBtn) {
+            top.adminBtn.style.display = hasRole('manager') ? '' : 'none';
+        }
+    } else {
+        top.loginBtn.style.display = '';
+        top.accountBtn.style.display = 'none';
+        if (top.adminBtn) top.adminBtn.style.display = 'none';
+        if (top.avatar) {
+            top.avatar.textContent = '?';
+            top.avatar.style.background = '#e0e0e0';
+            top.avatar.style.color = '#999';
+            top.avatar.innerHTML = '';
+        }
+        if (top.name) top.name.textContent = '访客';
+        if (top.badge) top.badge.style.display = 'none';
     }
 }
 
@@ -3419,9 +3487,6 @@ function showJapanMapBubble(provinceName, anchorX, anchorY) {
 function switchToChinaMap() {
     if (State.currentCountry === 'china') return;
     State.currentCountry = 'china';
-    document.getElementById('chinaToggleBtn')?.classList.add('active');
-    document.getElementById('japanToggleBtn')?.classList.remove('active');
-    document.getElementById('overseasToggleBtn')?.classList.remove('active');
     const svgEl = document.getElementById('mapSvg');
     if (svgEl) svgEl.innerHTML = '';
     setTimeout(() => {
@@ -3449,10 +3514,6 @@ function switchToJapanMap() {
 
     console.log('切换到日本地图');
     State.currentCountry = 'japan';
-
-    document.getElementById('japanToggleBtn')?.classList.add('active');
-    document.getElementById('chinaToggleBtn')?.classList.remove('active');
-    document.getElementById('overseasToggleBtn')?.classList.remove('active');
 
     State.globalSearchEnabled = false;
     State.listQuery = '';
@@ -3485,10 +3546,6 @@ function switchToOverseas() {
 
     setGlobalSearchEnabled(false);
     State.currentCountry = 'overseas';
-
-    document.getElementById('overseasToggleBtn')?.classList.add('active');
-    document.getElementById('chinaToggleBtn')?.classList.remove('active');
-    document.getElementById('japanToggleBtn')?.classList.remove('active');
 
     // 清除地图
     const svgEl = document.getElementById('mapSvg');
@@ -3643,23 +3700,6 @@ function bindAllStaticEvents() {
 
 
 
-  document.getElementById('overseasToggleBtn')?.addEventListener('click', switchToOverseas);
-
-  document.getElementById('nonRegionalToggleBtn')?.addEventListener('click', () => {
-    setGlobalSearchEnabled(false);
-    const allDomesticRows = State.bandoriRows.filter(item => item.province !== '海外');
-    State.currentDetailProvinceName = '国内同好会';
-    State.currentDetailRows = allDomesticRows;
-    renderCurrentDetail();
-    hideMapBubble();
-    State.mapViewState?.g.selectAll('.province').classed('selected', false);
-  });
-
-  document.getElementById('calendarToggleBtn')?.addEventListener('click', () => {
-    document.getElementById('calendarModal')?.classList.add('open');
-    document.getElementById('calendarModal')?.setAttribute('aria-hidden', 'false');
-  });
-
   document.getElementById('map')?.addEventListener('click', (e) => {
     if (!e.target.closest('#badgeBubble') && !e.target.closest('.count-badge')) hideMapBubble();
   });
@@ -3754,8 +3794,6 @@ function bindAllStaticEvents() {
     if (Utils.isMobileViewport() && !e.target.closest('#map')) e.preventDefault(); 
   }, { passive: false }));
 
-  document.getElementById('chinaToggleBtn')?.addEventListener('click', switchToChinaMap);
-  document.getElementById('japanToggleBtn')?.addEventListener('click', switchToJapanMap);
   document.getElementById('map')?.addEventListener('click', function(e) {
         const provincePath = e.target.closest('.province');
         if (!provincePath) return;
@@ -4612,6 +4650,134 @@ function initPublicationEvents() {
   });
 }
 
+// ===== 顶层用户信息框交互 =====
+function initTopUserBar() {
+  // 导航按钮点击
+  document.querySelectorAll('.user-nav-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const action = this.dataset.action;
+      switch (action) {
+        case 'china': switchToChinaMap(); break;
+        case 'japan': switchToJapanMap(); break;
+        case 'overseas': switchToOverseas(); break;
+        case 'calendar':
+          document.getElementById('calendarModal')?.classList.add('open');
+          document.getElementById('calendarModal')?.setAttribute('aria-hidden', 'false');
+          break;
+        case 'publication':
+          (function() {
+            const pubModal = document.getElementById('publicationModal');
+            if (pubModal) {
+              if (typeof renderPublicationList === 'function') renderPublicationList();
+              const addBtn = document.getElementById('addPublicationBtn');
+              if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
+              pubModal.classList.add('open');
+              pubModal.setAttribute('aria-hidden', 'false');
+            }
+          })();
+          break;
+      }
+    });
+  });
+
+  // 登录按钮
+  document.getElementById('topLoginBtn')?.addEventListener('click', function(e) {
+    e.stopPropagation();
+    openAccountModal('login');
+  });
+
+  // 账号按钮
+  document.getElementById('topAccountBtn')?.addEventListener('click', function(e) {
+    e.stopPropagation();
+    openAccountModal('settings');
+    refreshProfile();
+  });
+
+  // 移动端：点击卡片切换折叠/展开
+  const card = document.getElementById('userInfoCard');
+  if (card) {
+    card.addEventListener('click', function(e) {
+      if (window.innerWidth > 720) return;
+      if (e.target.closest('button') || e.target.closest('a')) return;
+      this.classList.toggle('mobile-expanded');
+      const arrow = document.getElementById('mobileExpandArrow');
+      if (arrow) arrow.classList.toggle('expanded');
+    });
+  }
+
+  // 移动端折叠状态跟随窗口resize重置
+  let resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      if (window.innerWidth > 720 && card) {
+        card.classList.remove('mobile-expanded');
+      }
+    }, 200);
+  });
+}
+
+// ===== 移动端左侧抽屉 =====
+function initMobileDrawer() {
+  // 汉堡按钮
+  document.getElementById('hamburgerBtn')?.addEventListener('click', function() {
+    document.getElementById('mobileDrawer')?.classList.add('open');
+    document.getElementById('mobileDrawer')?.setAttribute('aria-hidden', 'false');
+  });
+
+  // 遮罩关闭
+  document.getElementById('mobileDrawerBackdrop')?.addEventListener('click', function() {
+    document.getElementById('mobileDrawer')?.classList.remove('open');
+    document.getElementById('mobileDrawer')?.setAttribute('aria-hidden', 'true');
+  });
+
+  // 关闭按钮
+  document.getElementById('mobileDrawerClose')?.addEventListener('click', function() {
+    document.getElementById('mobileDrawer')?.classList.remove('open');
+    document.getElementById('mobileDrawer')?.setAttribute('aria-hidden', 'true');
+  });
+
+  // 抽屉内提交按钮事件代理
+  document.getElementById('submitClubBtnDrawer')?.addEventListener('click', function() {
+    window.location.href = 'submit.html';
+  });
+  document.getElementById('submitEventBtnDrawer')?.addEventListener('click', function() {
+    window.location.href = 'submit_event.html';
+  });
+  document.getElementById('submitPublicationBtnDrawer')?.addEventListener('click', function() {
+    window.location.href = 'submit_publication.html';
+  });
+
+  // 抽屉内语言切换
+  document.getElementById('langZhBtnDrawer')?.addEventListener('click', function() {
+    currentLang = 'zh';
+    localStorage.setItem('language', 'zh');
+    updateUILanguage();
+    renderCurrentDetail();
+    document.getElementById('mobileDrawer')?.classList.remove('open');
+  });
+  document.getElementById('langJaBtnDrawer')?.addEventListener('click', function() {
+    currentLang = 'ja';
+    localStorage.setItem('language', 'ja');
+    updateUILanguage();
+    renderCurrentDetail();
+    document.getElementById('mobileDrawer')?.classList.remove('open');
+  });
+
+  // 抽屉内开关同步到主开关
+  document.getElementById('invertCtrlSwitchDrawer')?.addEventListener('change', function() {
+    const main = document.getElementById('invertCtrlSwitch');
+    if (main) main.checked = this.checked;
+    main?.dispatchEvent(new Event('change'));
+  });
+  document.getElementById('themeSwitchDrawer')?.addEventListener('change', function() {
+    const main = document.getElementById('themeSwitch');
+    if (main) main.checked = this.checked;
+    main?.dispatchEvent(new Event('change'));
+  });
+}
+
 // ==========================================
 // 移动端悬浮菜单
 // ==========================================
@@ -4830,11 +4996,7 @@ async function init() {
     
     // 数据加载完成后再渲染地图
     State.currentCountry = 'china';
-    const chinaBtn = document.getElementById('chinaToggleBtn');
-    const japanBtn = document.getElementById('japanToggleBtn');
-    if (chinaBtn) chinaBtn.classList.add('active');
-    if (japanBtn) japanBtn.classList.remove('active');
-    
+
     const svgEl = document.getElementById('mapSvg');
     if (svgEl) {
     svgEl.innerHTML = '';
@@ -4849,7 +5011,9 @@ async function init() {
     // 其他初始化...
     initAdminEvents();
     initPublicationEvents();
-    
+    initTopUserBar();
+    initMobileDrawer();
+
     // 语言设置
     const savedLang = localStorage.getItem('language');
     if (savedLang === 'ja') {
