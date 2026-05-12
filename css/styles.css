@@ -2352,6 +2352,10 @@ body {
         display: none !important;
     }
 
+    .user-info-card.notif-open {
+        overflow: visible !important;
+    }
+
     .mobile-expand-arrow {
         display: flex !important;
     }
@@ -5735,10 +5739,47 @@ body {
 }
 
 /* 响应式 */
-@media (max-width: 600px) {
+@media (max-width: 720px) {
     .notif-panel {
-        width: calc(100vw - 32px);
+        position: fixed;
+        top: 56px;
         left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        width: calc(100vw - 24px);
+    }
+    .notif-panel.open {
+        transform: translateX(-50%) translateY(0);
+    }
+    .notif-panel .notif-panel-arrow {
+        display: none;
+    }
+    .notif-panel .notif-panel-header {
+        padding: 10px 12px 8px;
+    }
+    .notif-panel .notif-panel-title {
+        font-size: 13px;
+    }
+    .notif-panel .notif-list {
+        max-height: 280px;
+    }
+    .notif-panel .notif-item {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+    .notif-panel .notif-title {
+        font-size: 13px;
+    }
+    .notif-panel .notif-message {
+        font-size: 12px;
+    }
+    .notif-panel .notif-time {
+        font-size: 11px;
+    }
+    .notif-panel .notif-icon {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        font-size: 13px;
     }
 }
 

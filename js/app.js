@@ -6152,6 +6152,9 @@ init();
         if (!panel) return;
         isPanelOpen = true;
         panel.classList.add('open');
+        // mobile: prevent parent overflow:hidden from clipping the dropdown
+        var infoCard = document.getElementById('userInfoCard');
+        if (infoCard) infoCard.classList.add('notif-open');
         fetchNotifications(1, 5).then(function (data) {
             renderDropdown(data.notifications);
         });
@@ -6160,6 +6163,8 @@ init();
         if (!panel) return;
         isPanelOpen = false;
         panel.classList.remove('open');
+        var infoCard = document.getElementById('userInfoCard');
+        if (infoCard) infoCard.classList.remove('notif-open');
     }
 
     // ---- detail dialog ----
