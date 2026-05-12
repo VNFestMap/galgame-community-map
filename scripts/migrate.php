@@ -104,6 +104,25 @@ if ($isMysql) {
     echo "[OK] rate_limits 表已创建\n";
 
     $db->exec("
+        CREATE TABLE IF NOT EXISTS notifications (
+            id            INT AUTO_INCREMENT PRIMARY KEY,
+            user_id       INT NOT NULL,
+            type          VARCHAR(50) NOT NULL,
+            title         VARCHAR(255) NOT NULL,
+            message       TEXT NOT NULL,
+            link          VARCHAR(500) DEFAULT '',
+            related_type  VARCHAR(50) DEFAULT '',
+            related_id    INT DEFAULT 0,
+            is_read       TINYINT(1) NOT NULL DEFAULT 0,
+            created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            read_at       DATETIME,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_notif_user ON notifications(user_id, is_read, created_at)");
+    echo "[OK] notifications 表已创建\n";
+
+    $db->exec("
         CREATE TABLE IF NOT EXISTS club_memberships (
             id       INT AUTO_INCREMENT PRIMARY KEY,
             user_id  INT NOT NULL,
@@ -136,6 +155,44 @@ if ($isMysql) {
     ");
     $tryIndex("CREATE INDEX idx_verify_codes_club ON club_verification_codes(club_id)");
     echo "[OK] club_verification_codes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS club_recommendations (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            club_id     INT NOT NULL,
+            country     VARCHAR(20) DEFAULT 'china',
+            bangumi_id  INT NOT NULL,
+            title       VARCHAR(255) NOT NULL,
+            image_url   VARCHAR(500) DEFAULT '',
+            rating      DECIMAL(3,1) DEFAULT 0,
+            summary     TEXT,
+            sort_order  INT DEFAULT 0,
+            created_by  INT NOT NULL,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recommendations_club ON club_recommendations(club_id, sort_order)");
+    echo "[OK] club_recommendations 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS club_comments (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            club_id     INT NOT NULL,
+            country     VARCHAR(20) DEFAULT 'china',
+            user_id     INT NOT NULL,
+            content     TEXT NOT NULL,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME,
+            is_deleted  TINYINT(1) DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_comments_club ON club_comments(club_id, created_at)");
+    echo "[OK] club_comments 表已创建\n";
+
+    $tryAlter("ALTER TABLE club_verification_codes ADD COLUMN country VARCHAR(20) DEFAULT 'china'");
+    echo "[OK] club_verification_codes.country 列已添加\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS email_verifications (
@@ -215,6 +272,23 @@ if ($isMysql) {
     ");
     $tryIndex("CREATE INDEX idx_galonly_votes_app ON galonly_votes(application_id)");
     echo "[OK] galonly_votes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS announcements (
+            id            INT AUTO_INCREMENT PRIMARY KEY,
+            title         VARCHAR(255) NOT NULL,
+            content       TEXT NOT NULL,
+            type          VARCHAR(50) NOT NULL DEFAULT 'info',
+            status        VARCHAR(50) NOT NULL DEFAULT 'draft',
+            is_persistent TINYINT(1) NOT NULL DEFAULT 1,
+            created_by    INT NOT NULL,
+            created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            published_at  DATETIME,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_announce_status ON announcements(status)");
+    echo "[OK] announcements 表已创建\n";
 
     $tryAlter("ALTER TABLE users ADD COLUMN is_audit TINYINT(1) NOT NULL DEFAULT 0");
     echo "[OK] users.is_audit 列已添加\n";
@@ -317,6 +391,42 @@ if ($isMysql) {
     echo "[OK] rate_limits 表已创建\n";
 
     $db->exec("
+        CREATE TABLE IF NOT EXISTS notifications (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER NOT NULL REFERENCES users(id),
+            type          TEXT NOT NULL,
+            title         TEXT NOT NULL,
+            message       TEXT NOT NULL,
+            link          TEXT DEFAULT '',
+            related_type  TEXT DEFAULT '',
+            related_id    INTEGER DEFAULT 0,
+            is_read       INTEGER NOT NULL DEFAULT 0,
+            created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+            read_at       TEXT
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read, created_at)");
+    echo "[OK] notifications 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS announcements (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            title         TEXT NOT NULL,
+            content       TEXT NOT NULL,
+            type          TEXT NOT NULL DEFAULT 'info'
+                          CHECK(type IN ('info','warning','important','update')),
+            status        TEXT NOT NULL DEFAULT 'draft'
+                          CHECK(status IN ('draft','published')),
+            is_persistent INTEGER NOT NULL DEFAULT 1,
+            created_by    INTEGER NOT NULL REFERENCES users(id),
+            created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+            published_at  TEXT
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_announce_status ON announcements(status)");
+    echo "[OK] announcements 表已创建\n";
+
+    $db->exec("
         CREATE TABLE IF NOT EXISTS club_memberships (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     INTEGER NOT NULL REFERENCES users(id),
@@ -349,6 +459,42 @@ if ($isMysql) {
     ");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_verify_codes_club ON club_verification_codes(club_id)");
     echo "[OK] club_verification_codes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS club_recommendations (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            club_id     INTEGER NOT NULL,
+            country     TEXT DEFAULT 'china',
+            bangumi_id  INTEGER NOT NULL,
+            title       TEXT NOT NULL,
+            image_url   TEXT DEFAULT '',
+            rating      REAL DEFAULT 0,
+            summary     TEXT DEFAULT '',
+            sort_order  INTEGER DEFAULT 0,
+            created_by  INTEGER NOT NULL REFERENCES users(id),
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recommendations_club ON club_recommendations(club_id, sort_order)");
+    echo "[OK] club_recommendations 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS club_comments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            club_id     INTEGER NOT NULL,
+            country     TEXT DEFAULT 'china',
+            user_id     INTEGER NOT NULL REFERENCES users(id),
+            content     TEXT NOT NULL,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at  TEXT,
+            is_deleted  INTEGER DEFAULT 0
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_comments_club ON club_comments(club_id, created_at)");
+    echo "[OK] club_comments 表已创建\n";
+
+    $tryAlter("ALTER TABLE club_verification_codes ADD COLUMN country TEXT DEFAULT 'china'");
+    echo "[OK] club_verification_codes.country 列已添加\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS email_verifications (

@@ -74,6 +74,29 @@
         <div class="user-avatar" id="topUserAvatar">?</div>
         <div class="user-name" id="topUserName">访客</div>
         <span class="user-role-badge" id="topUserRoleBadge" style="display:none;"></span>
+
+        <!-- 🔔 通知铃铛 + 下拉面板 -->
+        <div class="notif-bell-wrap" id="notifBellWrap" style="display:none;">
+            <button class="notif-bell" id="notifBell" aria-label="通知">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="notif-badge" id="notifBadge"></span>
+            </button>
+            <div class="notif-panel" id="notifPanel">
+                <div class="notif-panel-arrow"></div>
+                <div class="notif-panel-header">
+                    <div class="notif-panel-title"><span class="icon">🔔</span> 通知</div>
+                    <button class="mark-all-read" id="notifMarkAllRead">全部已读 →</button>
+                </div>
+                <div class="notif-list" id="notifPanelList"></div>
+                <div class="notif-panel-footer">
+                    <button class="notif-view-all" id="notifViewAll">查看全部通知 →</button>
+                </div>
+            </div>
+        </div>
+
         <button id="topLoginBtn" class="top-login-btn">登录 / 注册</button>
         <button id="topAccountBtn" class="top-account-btn" style="display:none;">账号</button>
         <a id="topAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">同好会管理</a>
@@ -86,6 +109,14 @@
         <button class="user-nav-btn" data-action="calendar">活动日历</button>
         <button class="user-nav-btn" data-action="publication">刊物投稿</button>
       </div>
+      <!-- 公告横幅 -->
+      <div class="announcement-banner" id="announcementBanner" style="display:none;">
+        <div class="announcement-banner-header" id="announcementBannerToggle">
+          <span class="announcement-banner-title">📢 全站公告 <span class="announcement-banner-persistent">长期</span></span>
+          <span class="announcement-banner-arrow" id="announcementBannerArrow">▼</span>
+        </div>
+        <div class="announcement-banner-body" id="announcementBannerBody"></div>
+      </div>
     </div>
 
     <!-- 移动端汉堡菜单按钮 -->
@@ -96,9 +127,9 @@
       <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop"></div>
       <div class="mobile-drawer-content">
         <button class="mobile-drawer-close" id="mobileDrawerClose">✕</button>
-        <h2 class="card-title">全国Galgame同好会地图</h2>
+        <h2 id="drawerTitle" class="card-title">全国Galgame同好会地图</h2>
         <img class="drawer-logo" src="./images/VNF.png" alt="VNFest 视觉小说高校学园祭" width="640" height="196" />
-        <p class="card-body">本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。</p>
+        <p id="drawerDesc1" class="card-body">本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。</p>
         <p class="card-body">数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。</p>
         <label class="md3-switch" for="invertCtrlSwitchDrawer">
           <input id="invertCtrlSwitchDrawer" type="checkbox" />
@@ -515,8 +546,7 @@
             <div class="club-detail-modal-card" role="dialog" aria-modal="true">
                 <button id="clubDetailClose" class="club-detail-modal-close" type="button">×</button>
                 <div class="club-detail-modal-scroll">
-                    <h3 id="clubDetailName"></h3>
-                    <div id="clubDetailContent"></div>
+                    <div id="clubDetailContent" class="club-detail-grid"></div>
                 </div>
             </div>
         </div>
@@ -734,6 +764,11 @@
                         <!-- 同好会管理 -->
                         <div class="settings-section">
                             <h4 class="settings-section-title">我的同好会</h4>
+                            <div class="bind-code-row">
+                                <input type="text" id="bindCodeInput" class="md3-input" placeholder="输入绑定码加入同好会" maxlength="20" style="flex:1;min-width:0;">
+                                <button id="bindCodeJoinBtn" class="btn-small primary" style="flex-shrink:0;height:36px;align-self:center;">加入</button>
+                            </div>
+                            <div id="bindCodeMessage" class="settings-hint" style="font-size:12px;min-height:18px;margin:4px 0 8px;"></div>
                             <div id="accClubList"></div>
                         </div>
 
@@ -902,6 +937,9 @@
                 </div>
 
                 <input type="text" id="editSchool" placeholder="学校/组织">
+
+                <input type="date" id="editCreatedAt">
+                <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:-8px;">成立时间（可选）</div>
             </div>
 
             <!-- ===== 对外平台 ===== -->
@@ -1002,16 +1040,32 @@
             <!-- ===== 其他设置 ===== -->
             <div class="admin-panel-section">
                 <div class="admin-panel-section-title">其他设置</div>
-                <label class="md3-switch" for="editVisibleByDefault">
-                    <input type="checkbox" id="editVisibleByDefault" />
-                    <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
-                    <span class="md3-switch-label">公开显示联系方式</span>
-                </label>
-                <label class="md3-switch" for="editClubProtected" style="margin-top:8px;">
-                    <input type="checkbox" id="editClubProtected" />
-                    <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
-                    <span class="md3-switch-label">同好会保护（仅绑定成员可见联系方式）</span>
-                </label>
+                <div class="privacy-radio-group">
+                    <label class="privacy-radio-item">
+                        <input type="radio" name="privacyLevel" value="public">
+                        <span class="privacy-radio-dot"></span>
+                        <span class="privacy-radio-text">
+                            <span class="privacy-radio-title">公开显示联系方式</span>
+                            <span class="privacy-radio-desc">无需登录即可查看联系方式</span>
+                        </span>
+                    </label>
+                    <label class="privacy-radio-item">
+                        <input type="radio" name="privacyLevel" value="members" checked>
+                        <span class="privacy-radio-dot"></span>
+                        <span class="privacy-radio-text">
+                            <span class="privacy-radio-title">默认成员以上级别可见</span>
+                            <span class="privacy-radio-desc">登录成员（含外校同好会成员）可查看</span>
+                        </span>
+                    </label>
+                    <label class="privacy-radio-item">
+                        <input type="radio" name="privacyLevel" value="protected">
+                        <span class="privacy-radio-dot"></span>
+                        <span class="privacy-radio-text">
+                            <span class="privacy-radio-title">仅同好会成员可见</span>
+                            <span class="privacy-radio-desc">只有绑定了本同好会的成员可查看联系方式</span>
+                        </span>
+                    </label>
+                </div>
             </div>
 
             <div class="admin-panel-buttons">
@@ -1106,5 +1160,30 @@
             }
         });
     </script>
+
+    <!-- ===== 通知中心弹窗 ===== -->
+    <div class="notif-center-overlay" id="notifCenterOverlay">
+        <div class="notif-center-modal">
+            <div class="notif-center-header">
+                <h2><span>🔔</span> 通知中心</h2>
+                <div class="notif-center-actions">
+                    <button class="notif-center-all-read" id="notifCenterMarkAll">全部已读</button>
+                    <button class="notif-center-close" id="notifCenterClose">✕</button>
+                </div>
+            </div>
+            <div class="notif-center-tabs">
+                <button class="notif-center-tab active" data-filter="all">全部 <span class="notif-center-tab-count" id="tabCountAll">0</span></button>
+                <button class="notif-center-tab" data-filter="audit">审核通知 <span class="notif-center-tab-count" id="tabCountAudit">0</span></button>
+                <button class="notif-center-tab" data-filter="club">同好会 <span class="notif-center-tab-count" id="tabCountClub">0</span></button>
+                <button class="notif-center-tab" data-filter="system">系统 <span class="notif-center-tab-count" id="tabCountSystem">0</span></button>
+            </div>
+            <div class="notif-center-batch">
+                <button class="batch-action-btn" id="notifCenterSelectAll">全选</button>
+                <button class="batch-action-btn" id="notifCenterBatchRead">标记为已读</button>
+            </div>
+            <div class="notif-center-list" id="notifCenterList"></div>
+            <div class="notif-center-pagination" id="notifCenterPagination"></div>
+        </div>
+    </div>
 </body>
 </html>

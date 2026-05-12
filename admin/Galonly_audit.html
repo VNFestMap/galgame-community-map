@@ -962,7 +962,11 @@ function renderAppCard(app) {
   }
 
   var isResolved = (app.status === 'approved' || app.status === 'rejected');
-  var hasImage = app.image_path && app.image_path.trim() !== '';
+
+  var images = app.image_paths;
+  if (!images || !Array.isArray(images)) {
+    images = (app.image_path && app.image_path.trim()) ? [app.image_path.trim()] : [];
+  }
 
   // Determine header badge
   var headerBadgeHtml = '';
@@ -1004,12 +1008,18 @@ function renderAppCard(app) {
   var upgradeDisplay = parseInt(app.wants_upgrade) === 1 ? '是' : '否';
 
   var imageHtml = '';
-  if (hasImage) {
-    var imgUrl = '../' + app.image_path;
-    imageHtml = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-      '<img src="' + escapeHtml(imgUrl) + '" class="app-image-thumb" onclick="openImageModal(\'' + escapeHtml(imgUrl) + '\')" alt="制品图片">' +
-      '<a href="' + escapeHtml(imgUrl) + '" download style="color:var(--accent-orange);font-size:12px;text-decoration:underline;">下载</a>' +
-      '</div>';
+  if (images.length > 0) {
+    var imgs = [];
+    for (var ii = 0; ii < images.length; ii++) {
+      var imgUrl = '../' + images[ii];
+      imgs.push(
+        '<div style="position:relative;display:inline-block;">' +
+        '<img src="' + escapeHtml(imgUrl) + '" class="app-image-thumb" onclick="openImageModal(\'' + escapeHtml(imgUrl) + '\')" alt="制品图片 ' + (ii + 1) + '">' +
+        '<a href="' + escapeHtml(imgUrl) + '" download style="color:var(--accent-orange);font-size:12px;text-decoration:underline;display:block;text-align:center;margin-top:2px;">下载</a>' +
+        '</div>'
+      );
+    }
+    imageHtml = '<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">' + imgs.join('') + '</div>';
   } else {
     imageHtml = '<span style="color:var(--text-muted);">无</span>';
   }

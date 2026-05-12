@@ -14,8 +14,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/audit.php';
+require_once __DIR__ . '/../includes/notifications.php';
 
 $action = $_GET['action'] ?? '';
+
+/**
+ * 从 JSON 文件中查找同好会名称
+ */
+function getClubName($clubId, $country = 'china') {
+    $file = $country === 'japan'
+        ? __DIR__ . '/../data/clubs_japan.json'
+        : __DIR__ . '/../data/clubs.json';
+    if (!file_exists($file)) return '同好会#' . $clubId;
+    $json = json_decode(file_get_contents($file), true);
+    if (!is_array($json)) return '同好会#' . $clubId;
+    foreach (($json['data'] ?? []) as $club) {
+        if (($club['id'] ?? 0) == $clubId) {
+            return $club['name'] ?? $club['display_name'] ?? '同好会#' . $clubId;
+        }
+    }
+    return '同好会#' . $clubId;
+}
 
 switch ($action) {
     case 'my':
@@ -255,6 +274,7 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '未找到待审批的申请']);
             exit();
         }
+        $clubName = getClubName($membership['club_id'], $membership['country'] ?? 'china');
 
         // 权限检查（按 club_id + country，避免中日 ID 重叠）
         if (!canManageClubInCountry($currentUser, $membership['club_id'], $membership['country'] ?? 'china')) {
@@ -280,6 +300,17 @@ switch ($action) {
                 'club_id' => $membership['club_id'],
             ]);
             $db->commit();
+
+            // 发送通知
+            createNotification(
+                $membership['user_id'],
+                'join_approved',
+                '加入申请已通过',
+                '你在同好会「' . $clubName . '」的加入申请已通过审核',
+                'index.html',
+                'club_membership',
+                $membershipId
+            );
         } catch (Exception $e) {
             $db->rollBack();
             echo json_encode(['success' => false, 'message' => '操作失败：' . $e->getMessage()]);
@@ -310,6 +341,7 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '未找到待审批的申请']);
             exit();
         }
+        $clubName = getClubName($membership['club_id'], $membership['country'] ?? 'china');
 
         // 权限检查（按 club_id + country）
         if (!canManageClubInCountry($currentUser, $membership['club_id'], $membership['country'] ?? 'china')) {
@@ -335,6 +367,17 @@ switch ($action) {
                 'club_id' => $membership['club_id'],
             ]);
             $db->commit();
+
+            // 发送通知
+            createNotification(
+                $membership['user_id'],
+                'join_rejected',
+                '加入申请未通过',
+                '你在同好会「' . $clubName . '」的加入申请未通过审核',
+                'index.html',
+                'club_membership',
+                $membershipId
+            );
         } catch (Exception $e) {
             $db->rollBack();
             echo json_encode(['success' => false, 'message' => '操作失败：' . $e->getMessage()]);
@@ -423,7 +466,7 @@ switch ($action) {
         $db = getDB();
 
         // 获取目标成员记录
-        $stmt = $db->prepare("SELECT * FROM club_memberships WHERE id = ?");
+        $stmt = $db->prepare("SELECT cm.*, cm.club_id FROM club_memberships cm WHERE cm.id = ?");
         $stmt->execute([$membershipId]);
         $membership = $stmt->fetch();
 
@@ -431,6 +474,7 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '未找到活跃的成员记录']);
             exit();
         }
+        $clubName = getClubName($membership['club_id'], $membership['country'] ?? 'china');
 
         // 权限检查：是否可管理该俱乐部（按 club_id + country）
         if (!canManageClubInCountry($currentUser, $membership['club_id'], $membership['country'] ?? 'china')) {
@@ -468,6 +512,18 @@ switch ($action) {
             'club_id' => $membership['club_id'],
             'target_user_id' => $membership['user_id'],
         ]);
+
+        // 发送通知
+        createNotification(
+            $membership['user_id'],
+            'member_kicked',
+            '你已被移出同好会',
+            '你已被移出同好会「' . $clubName . '」',
+            'index.html',
+            'club_membership',
+            $membershipId
+        );
+
         echo json_encode(['success' => true, 'message' => '已踢出成员']);
         exit();
 
@@ -496,7 +552,7 @@ switch ($action) {
         $db = getDB();
 
         // 获取目标成员记录
-        $stmt = $db->prepare("SELECT * FROM club_memberships WHERE id = ?");
+        $stmt = $db->prepare("SELECT cm.*, cm.club_id FROM club_memberships cm WHERE cm.id = ?");
         $stmt->execute([$membershipId]);
         $membership = $stmt->fetch();
 
@@ -504,6 +560,7 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '未找到活跃的成员记录']);
             exit();
         }
+        $clubName = getClubName($membership['club_id'], $membership['country'] ?? 'china');
 
         // 权限检查：是否可管理该俱乐部（按 club_id + country）
         if (!canManageClubInCountry($currentUser, $membership['club_id'], $membership['country'] ?? 'china')) {
@@ -547,6 +604,20 @@ switch ($action) {
             'old_role' => $oldRole,
             'new_role' => $newRole,
         ]);
+
+        // 发送通知
+        $roleNames = ['member' => '成员', 'manager' => '管理员', 'representative' => '负责人'];
+        $newRoleName = $roleNames[$newRole] ?? $newRole;
+        createNotification(
+            $membership['user_id'],
+            'role_changed',
+            '你的角色已变更',
+            '你在同好会「' . $clubName . '」的角色已变更为「' . $newRoleName . '」',
+            'index.html',
+            'club_membership',
+            $membershipId
+        );
+
         echo json_encode(['success' => true, 'message' => '角色已更新']);
         exit();
 

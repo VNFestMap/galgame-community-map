@@ -16,6 +16,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../includes/audit.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/notifications.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -62,6 +63,7 @@ switch ($action) {
 
         createSession($userId);
         logAction('user.register', 'user', $userId, ['provider' => 'local']);
+        backfillAnnouncements((int)$userId);
 
         echo json_encode([
             'success' => true,

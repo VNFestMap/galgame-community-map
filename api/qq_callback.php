@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/oauth_qq.php';
 require_once __DIR__ . '/../includes/audit.php';
+require_once __DIR__ . '/../includes/notifications.php';
 
 initSession();
 
@@ -80,6 +81,7 @@ if (!$user) {
 
     createSession($userId);
     logAction('user.register', 'user', $userId, ['provider' => 'qq']);
+    backfillAnnouncements((int)$userId);
     header('Location: ../index.html?oauth=success&message=QQ登录成功');
     exit();
 }

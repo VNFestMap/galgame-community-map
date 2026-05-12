@@ -200,29 +200,28 @@ body::after {
 
 .stat-card .label {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
-/* ── Tabs ── */
+/* ── Tabs (mockup-aligned) ── */
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   margin-bottom: 20px;
-  padding: 4px;
+  padding: 6px;
   background: var(--card-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-card);
   border: 1px solid var(--card-border);
   overflow-x: auto;
 }
 
 .tab-btn {
-  flex: 1;
-  padding: 10px 14px;
+  padding: 10px 18px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
@@ -234,12 +233,12 @@ body::after {
 }
 .tab-btn:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.05);
 }
 .tab-btn.active {
-  background: rgba(233,30,99,0.15);
-  color: var(--accent-pink);
-  box-shadow: 0 2px 8px rgba(233,30,99,0.1);
+  background: linear-gradient(135deg, rgba(233,30,99,0.2), rgba(155,89,182,0.2));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(233,30,99,0.2);
 }
 
 /* ── Toolbar ── */
@@ -251,17 +250,37 @@ body::after {
 }
 
 .btn {
-  padding: 8px 18px;
-  border: none;
-  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
 }
-.btn:hover { transform: translateY(-1px); }
+.btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--accent-pink);
+}
 .btn:active { transform: translateY(0); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  border: none;
+  color: #fff;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(233,30,99,0.3);
+  border-color: transparent;
+}
 
 .btn-glass {
   background: var(--card-bg);
@@ -299,7 +318,7 @@ body::after {
 .btn-reject:hover { box-shadow: 0 6px 20px rgba(239,83,80,0.35); }
 
 .btn-sm {
-  padding: 5px 14px;
+  padding: 6px 12px;
   font-size: 12px;
 }
 
@@ -939,6 +958,129 @@ body::after {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Binding Codes ── */
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.form-hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.item-list { display: flex; flex-direction: column; gap: 6px; }
+.item-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; background: rgba(0,0,0,0.15);
+  border-radius: var(--radius-sm); border: 1px solid transparent;
+  transition: var(--transition); flex-wrap: wrap;
+}
+.item-row:hover { border-color: var(--card-border); background: rgba(0,0,0,0.2); }
+.item-row .col { flex: 1; min-width: 0; }
+.item-row .col-code { font-family: monospace; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: var(--accent-gold); }
+.item-row .col-sm { flex: 0 0 80px; text-align: center; }
+.item-row .col-xs { flex: 0 0 60px; text-align: center; }
+.item-row .col-actions { flex: 0 0 auto; display: flex; gap: 6px; }
+.item-meta { font-size: 11px; color: var(--text-muted); display: block; }
+
+/* ── Section Card (mockup-aligned) ── */
+.section-card {
+  background: var(--card-bg); backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-card); border: 1px solid var(--card-border);
+  padding: 24px; box-shadow: var(--shadow-card);
+}
+.section-card + .section-card { margin-top: 16px; }
+.section-title {
+  font-size: 15px; font-weight: 700; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-sub {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 12px;
+}
+
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.btn-ghost:hover { color: var(--accent-pink); background: transparent; border-color: transparent; }
+.btn-danger { color: #ff6b6b; border-color: rgba(255,107,107,0.2); }
+.btn-danger:hover { background: rgba(255,107,107,0.1); border-color: #ff6b6b; }
+
+.badge-active, .badge-disabled, .badge-expired, .badge-full {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.badge-active { background: rgba(76,175,80,0.15); color: var(--accent-green); border: 1px solid rgba(76,175,80,0.25); }
+.badge-disabled { background: rgba(255,152,0,0.15); color: var(--accent-orange); border: 1px solid rgba(255,152,0,0.25); }
+.badge-expired { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.25); }
+.badge-full { background: rgba(100,181,246,0.15); color: var(--accent-blue); border: 1px solid rgba(100,181,246,0.25); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  border: none; color: #fff;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(233,30,99,0.3); }
+
+/* ── Recommendations ── */
+.rec-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.rec-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+.rec-card {
+  background: rgba(0,0,0,0.2); border-radius: var(--radius-sm);
+  overflow: hidden; border: 1px solid var(--card-border);
+  position: relative; transition: var(--transition);
+}
+.rec-card:hover { border-color: var(--accent-pink); transform: translateY(-2px); }
+.rec-card .cover {
+  width: 100%; aspect-ratio: 3/4;
+  background: rgba(255,255,255,0.05);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 24px;
+  overflow: hidden;
+}
+.rec-card .cover img { width: 100%; height: 100%; object-fit: cover; }
+.rec-card .info { padding: 6px 8px; }
+.rec-card .title { font-size: 11px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rec-card .rating { font-size: 10px; color: var(--accent-gold); margin-top: 2px; }
+.rec-card .remove-btn {
+  position: absolute; top: 4px; right: 4px;
+  width: 22px; height: 22px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,0.6); color: #fff; font-size: 12px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: var(--transition);
+}
+.rec-card:hover .remove-btn { opacity: 1; }
+.rec-card .remove-btn:hover { background: rgba(255,107,107,0.8); }
+.rec-card-empty { background: transparent; border: 1px dashed var(--card-border); }
+.rec-card-empty .cover { background: transparent; }
+
+.search-input-wrap { display: flex; gap: 8px; }
+.search-results {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 360px; overflow-y: auto;
+  margin-top: 10px;
+}
+.search-results::-webkit-scrollbar { width: 4px; }
+.search-results::-webkit-scrollbar-thumb { background: var(--accent-pink); border-radius: 4px; }
+.search-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px; background: rgba(0,0,0,0.15);
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: var(--transition); border: 1px solid transparent;
+}
+.search-item:hover { border-color: var(--accent-pink); background: rgba(233,30,99,0.05); }
+.search-item .thumb {
+  width: 36px; height: 48px; border-radius: 6px; flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.search-item .thumb img { width: 100%; height: 100%; object-fit: cover; }
+.search-item .item-info { flex: 1; min-width: 0; }
+.search-item .item-title { font-size: 13px; font-weight: 600; }
+.search-item .item-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.search-item .add-btn {
+  flex-shrink: 0; padding: 4px 14px; border-radius: var(--radius-sm);
+  border: none; background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+
+@media (max-width: 720px) { .rec-layout { grid-template-columns: 1fr; } }
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .container { padding: 12px; }
@@ -959,6 +1101,16 @@ body::after {
   .user-card .club-tags { order: 4; max-width: 100%; }
   .user-card .actions { order: 5; width: 100%; justify-content: flex-end; }
   .user-avatar { width: 34px; height: 34px; font-size: 13px; }
+
+  /* Codes & Recommendations responsive */
+  .item-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  .item-row .col-code { flex: 1 !important; }
+  .item-row .col-sm { flex: 1 !important; text-align: left; display: flex; gap: 8px; }
+  .item-row .col-xs { flex: 0 0 auto !important; text-align: left; }
+  .item-row .col-actions { justify-content: flex-end; }
+  .rec-list { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+  .form-row { flex-direction: column; }
+  .form-row .form-group { max-width: 100% !important; }
 }
 </style>
 </head>
@@ -994,6 +1146,8 @@ body::after {
     <button class="tab-btn" data-tab="approved">✅ 已通过</button>
     <button class="tab-btn" data-tab="members">👥 成员</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
+    <button class="tab-btn" data-tab="codes">🔑 绑定码</button>
+    <button class="tab-btn" data-tab="recommendations">⭐ 神器榜</button>
     <button class="tab-btn" data-tab="manuscripts">📄 刊物稿件</button>
     <button class="tab-btn" data-tab="users" id="usersTabBtn" style="display:none;">👥 用户管理</button>
   </div>
@@ -1318,6 +1472,16 @@ function renderList(tab) {
 
   if (tab === 'manuscripts') {
     renderManuscripts();
+    return;
+  }
+
+  if (tab === 'codes') {
+    renderCodes();
+    return;
+  }
+
+  if (tab === 'recommendations') {
+    renderRecommendations();
     return;
   }
 
@@ -1995,6 +2159,329 @@ async function deleteClubManuscript(id) {
       renderManuscripts();
     } else {
       showToast(data.message || '删除失败', 'error');
+    }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+// ====== Binding Codes ======
+
+async function renderCodes() {
+  const container = document.getElementById('listContainer');
+  if (!selectedClubId || selectedClubId <= 0) {
+    container.innerHTML = '<div class="empty">👆 请先在上方选择一个同好会</div>';
+    return;
+  }
+
+  let codes = [];
+  try {
+    const r = await fetch(`../api/club_codes.php?action=list&club_id=${selectedClubId}&country=${selectedCountry}`, { credentials: 'same-origin' });
+    const data = await r.json();
+    if (data.success) codes = data.codes || [];
+  } catch {}
+
+  let html = '';
+
+  // Generate form
+  html += `<div class="section-card">
+    <div class="section-title">🔑 生成新绑定码</div>
+    <div class="section-sub">生成后可将此码分享给想要加入同好会的成员，他们输入码即可直接加入</div>
+    <div class="form-row">
+      <div class="form-group" style="max-width:160px;">
+        <label>使用次数上限</label>
+        <input type="number" id="codeMaxUses" class="form-input" value="50" min="1" max="999">
+        <span class="form-hint">1–999，达到上限后自动失效</span>
+      </div>
+      <div class="form-group" style="max-width:200px;">
+        <label>过期时间（可选）</label>
+        <input type="datetime-local" id="codeExpiresAt" class="form-input">
+        <span class="form-hint">留空为永不过期</span>
+      </div>
+      <button class="btn btn-primary" style="height:38px;" onclick="generateCode()">生成绑定码</button>
+    </div>
+  </div>`;
+
+  // Codes list
+  html += `<div class="section-card">
+    <div class="section-title">📋 已生成绑定码 (${codes.length})</div>`;
+
+  if (codes.length === 0) {
+    html += '<div style="text-align:center;padding:32px;color:var(--text-secondary);font-size:14px;">暂无绑定码</div>';
+  } else {
+    html += '<div class="item-list">';
+    codes.forEach(c => {
+      const status = !c.is_active ? 'disabled' : c.is_expired ? 'expired' : c.is_full ? 'full' : 'active';
+      const statusLabels = { active: '启用', disabled: '已禁用', expired: '已过期', full: '已满' };
+      const badgeClass = 'badge-' + status;
+      html += `<div class="item-row">
+        <div class="col col-code" style="flex:0 0 140px;">${escapeHtml(c.code)}</div>
+        <div class="col col-sm"><span class="item-meta">使用</span><strong>${c.use_count}</strong> / ${c.max_uses}</div>
+        <div class="col col-sm"><span class="item-meta">过期</span><span style="font-size:12px;">${c.expires_at ? formatDate(c.expires_at) : '—'}</span></div>
+        <div class="col col-xs"><span class="badge ${badgeClass}">● ${statusLabels[status]}</span></div>
+        <div class="col col-actions">
+          <button class="btn btn-sm btn-ghost" onclick="copyCode('${c.code}')" title="复制">📋</button>
+          ${status === 'active' ? `<button class="btn btn-sm btn-danger" onclick="revokeCode(${c.id})">禁用</button>` : ''}
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  html += `<div class="section-sub" style="margin-top:12px;margin-bottom:0;">💡 绑定码区分大小写，生成后请妥善保管</div>`;
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+async function generateCode() {
+  const maxUses = parseInt(document.getElementById('codeMaxUses')?.value) || 50;
+  const expiresAtInput = document.getElementById('codeExpiresAt');
+  const expiresAt = expiresAtInput ? expiresAtInput.value : '';
+
+  if (maxUses < 1 || maxUses > 999) {
+    showToast('使用次数需在 1-999 之间', 'error');
+    return;
+  }
+
+  try {
+    const r = await fetch('../api/club_codes.php?action=generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        club_id: selectedClubId,
+        country: selectedCountry,
+        max_uses: maxUses,
+        expires_at: expiresAt ? expiresAt.replace('T', ' ') + ':00' : null
+      })
+    });
+    const data = await r.json();
+    if (data.success) {
+      showToast('✅ 绑定码已生成: ' + data.code.code, 'success');
+      renderCodes();
+    } else {
+      showToast(data.message || '生成失败', 'error');
+    }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+async function revokeCode(codeId) {
+  if (!confirm('确定禁用此绑定码？已生成的码将无法使用。')) return;
+  try {
+    const r = await fetch('../api/club_codes.php?action=revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ code_id: codeId })
+    });
+    const data = await r.json();
+    if (data.success) {
+      showToast('✅ 已禁用', 'success');
+      renderCodes();
+    } else {
+      showToast(data.message || '操作失败', 'error');
+    }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+function copyCode(code) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => {
+      showToast('📋 已复制: ' + code, 'success');
+    }).catch(() => {
+      showToast('复制失败，请手动复制', 'error');
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 已复制: ' + code, 'success');
+  }
+}
+
+// ====== Recommendation Board ======
+
+let recSearchResults = [];
+let recHasSearched = false;
+let recData = [];
+
+async function renderRecommendations() {
+  const container = document.getElementById('listContainer');
+  if (!selectedClubId || selectedClubId <= 0) {
+    container.innerHTML = '<div class="empty">👆 请先在上方选择一个同好会</div>';
+    return;
+  }
+
+  const savedSearch = document.getElementById('recSearchInput')?.value || '';
+
+  // Load current recommendations from server
+  try {
+    const r = await fetch(`../api/club_recommendations.php?action=list&club_id=${selectedClubId}&country=${selectedCountry}`, { credentials: 'same-origin' });
+    const data = await r.json();
+    recData = data.success ? (data.data || []) : [];
+  } catch { recData = []; }
+
+  let html = '<div class="rec-layout">';
+
+  // Left: Search panel
+  html += `<div class="section-card">
+    <div class="section-title">🔍 搜索 Bangumi</div>
+    <div class="search-area">
+      <div class="search-input-wrap">
+        <input type="text" id="recSearchInput" class="form-input" placeholder="搜索游戏名称…" style="flex:1;" onkeydown="if(event.key==='Enter') searchBangumi()">
+        <button class="btn btn-primary" onclick="searchBangumi()">搜索</button>
+      </div>
+      <div class="search-results" id="recSearchResults">`;
+
+  if (recSearchResults.length === 0) {
+    html += '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">' +
+      (recHasSearched ? '未找到相关结果' : '输入关键词搜索 Bangumi 上的游戏作品') +
+      '</div>';
+  } else {
+    recSearchResults.forEach(item => {
+      const alreadyAdded = recData.some(r => r.bangumi_id === item.bangumi_id);
+      const title = item.title_cn || item.title;
+      const rating = item.rating ? '评分 ' + item.rating : '';
+      const date = item.air_date || item.date || '';
+      html += `<div class="search-item">
+        <div class="thumb">${item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="" onerror="this.style.display='none'">` : '🎮'}</div>
+        <div class="item-info">
+          <div class="item-title">${escapeHtml(title)}</div>
+          <div class="item-sub">${rating}${rating && date ? ' · ' : ''}${escapeHtml(date)}</div>
+        </div>`;
+      if (alreadyAdded) {
+        html += '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">已添加</span>';
+      } else {
+        html += `<button class="add-btn" onclick="addRecommendation(${item.bangumi_id})">+ 添加</button>`;
+      }
+      html += '</div>';
+    });
+  }
+
+  html += `</div></div></div>`; // close search-results, search-area, card
+
+  // Right: Current 12-slot recommendation list
+  const filledCount = recData.length;
+  html += `<div class="section-card">
+    <div class="section-title">⭐ 当前推荐榜 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(${filledCount} / 12)</span></div>
+    <div class="section-sub">点击右上角 × 移除条目</div>
+    <div class="rec-list">`;
+
+  recData.forEach((rec, idx) => {
+    html += `<div class="rec-card">
+      <div class="cover">
+        ${rec.image_url ? `<img src="${escapeHtml(rec.image_url)}" alt="" onerror="this.style.display='none'">` : `<span>#${idx + 1}</span>`}
+      </div>
+      <div class="info">
+        <div class="title">${escapeHtml(rec.title)}</div>
+        ${rec.rating ? `<div class="rating">⭐ ${rec.rating}</div>` : ''}
+      </div>
+      <button class="remove-btn" onclick="removeRecommendation(${rec.id})" title="移除">×</button>
+    </div>`;
+  });
+
+  // Empty placeholders for remaining slots
+  for (let i = filledCount; i < 12; i++) {
+    html += `<div class="rec-card rec-card-empty">
+      <div class="cover" style="display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;font-weight:500;">空缺</div>
+      <div class="info" style="text-align:center;padding:8px;">
+        <div class="title" style="color:var(--text-muted);font-size:10px;">第 ${i + 1} 位</div>
+      </div>
+    </div>`;
+  }
+
+  html += `</div></div></div>`; // close rec-list, card, rec-layout
+
+  container.innerHTML = html;
+
+  // Restore search input value after re-render
+  const restoredInput = document.getElementById('recSearchInput');
+  if (restoredInput) restoredInput.value = savedSearch;
+}
+
+async function searchBangumi() {
+  const input = document.getElementById('recSearchInput');
+  const keyword = input ? input.value.trim() : '';
+  if (!keyword) return;
+
+  recHasSearched = true;
+  const resultsDiv = document.getElementById('recSearchResults');
+  if (resultsDiv) {
+    resultsDiv.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">搜索中…</div>';
+  }
+
+  try {
+    const r = await fetch(`../api/bangumi_proxy.php?action=search&keyword=${encodeURIComponent(keyword)}`);
+    const data = await r.json();
+    recSearchResults = data.success ? (data.data || []) : [];
+  } catch { recSearchResults = []; }
+
+  await renderRecommendations();
+}
+
+async function addRecommendation(bangumiId) {
+  const item = recSearchResults.find(r => r.bangumi_id === bangumiId);
+  if (!item) {
+    showToast('找不到该条目信息，请重新搜索', 'error');
+    return;
+  }
+
+  // Bangumi 搜索 API 不再返回评分，从条目详情获取
+  let rating = item.rating || 0;
+  try {
+    const detailResp = await fetch(`../api/bangumi_proxy.php?action=get&id=${bangumiId}`);
+    const detailData = await detailResp.json();
+    if (detailData.success && detailData.data) {
+      const d = detailData.data;
+      const s = d.rating?.score || d.score || 0;
+      if (s > 0) rating = s;
+    }
+  } catch (e) { /* use search result rating */ }
+
+  try {
+    const r = await fetch('../api/club_recommendations.php?action=add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        club_id: selectedClubId,
+        country: selectedCountry,
+        bangumi_id: bangumiId,
+        title: item.title_cn || item.title,
+        image_url: item.image_url || '',
+        rating: rating,
+        summary: item.summary || ''
+      })
+    });
+    const data = await r.json();
+    if (data.success) {
+      showToast('✅ 已添加到推荐榜', 'success');
+      await renderRecommendations();
+    } else {
+      showToast(data.message || '添加失败', 'error');
+    }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+async function removeRecommendation(id) {
+  if (!confirm('确定从推荐榜移除？')) return;
+  try {
+    const r = await fetch('../api/club_recommendations.php?action=remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id })
+    });
+    const data = await r.json();
+    if (data.success) {
+      showToast('✅ 已移除', 'success');
+      await renderRecommendations();
+    } else {
+      showToast(data.message || '移除失败', 'error');
     }
   } catch { showToast('网络错误', 'error'); }
 }

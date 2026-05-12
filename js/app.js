@@ -146,6 +146,9 @@ function updateUserUI() {
         if (top.adminBtn) {
             top.adminBtn.style.display = hasRole('manager') ? '' : 'none';
         }
+        // 通知铃铛（登录时显示）
+        var bellWrap = document.getElementById('notifBellWrap');
+        if (bellWrap) bellWrap.style.display = '';
     } else {
         top.loginBtn.style.display = '';
         top.accountBtn.style.display = 'none';
@@ -158,6 +161,9 @@ function updateUserUI() {
         }
         if (top.name) top.name.textContent = '访客';
         if (top.badge) top.badge.style.display = 'none';
+        // 通知铃铛（未登录时隐藏）
+        var bellWrap = document.getElementById('notifBellWrap');
+        if (bellWrap) { bellWrap.style.display = 'none'; stopNotificationPolling(); }
     }
 }
 
@@ -382,6 +388,41 @@ async function refreshProfile() {
 
     // 加载同好会列表
     renderClubMemberships();
+
+    // 绑定码加入
+    const bindCodeBtn = document.getElementById('bindCodeJoinBtn');
+    const bindCodeInput = document.getElementById('bindCodeInput');
+    const bindCodeMsg = document.getElementById('bindCodeMessage');
+    if (bindCodeBtn && bindCodeInput) {
+      const doBindRedeem = async () => {
+        const code = bindCodeInput.value.trim().toUpperCase();
+        if (!code) { bindCodeMsg.textContent = '请输入绑定码'; return; }
+        bindCodeMsg.textContent = '⏳ 验证中...';
+        bindCodeBtn.disabled = true;
+        try {
+          const resp = await fetch('api/club_codes.php?action=redeem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+            credentials: 'same-origin',
+          });
+          const data = await resp.json();
+          if (data.success) {
+            bindCodeMsg.textContent = '✅ ' + data.message;
+            bindCodeInput.value = '';
+            renderClubMemberships(); // 刷新列表
+          } else {
+            bindCodeMsg.textContent = '❌ ' + (data.message || '加入失败');
+          }
+        } catch (e) {
+          bindCodeMsg.textContent = '❌ 网络错误';
+        } finally {
+          bindCodeBtn.disabled = false;
+        }
+      };
+      bindCodeBtn.addEventListener('click', doBindRedeem);
+      bindCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doBindRedeem(); });
+    }
     // 更新 VN 档案卡
     renderVNProfile();
 }
@@ -636,7 +677,7 @@ async function updateNickname() {
         } else {
             alert(data.message || '更新失败');
         }
-    } catch { alert('网络错误'); }
+    } catch { alert(__('alertNetworkError')); }
 }
 
 // ====== OAuth 绑定/解绑 ======
@@ -649,7 +690,7 @@ function initiateDiscordBind() {
 }
 
 async function unbindQQ() {
-    if (!confirm('确定解绑 QQ 吗？')) return;
+    if (!confirm(__('confirmUnbind'))) return;
     try {
         const resp = await fetch('./api/auth.php?action=unbind_qq', {
             method: 'POST', credentials: 'same-origin',
@@ -662,11 +703,11 @@ async function unbindQQ() {
         } else {
             alert(data.message || '解绑失败');
         }
-    } catch { alert('网络错误'); }
+    } catch { alert(__('alertNetworkError')); }
 }
 
 async function unbindDiscord() {
-    if (!confirm('确定解绑 Discord 吗？')) return;
+    if (!confirm(__('confirmUnbind'))) return;
     try {
         const resp = await fetch('./api/auth.php?action=unbind_discord', {
             method: 'POST', credentials: 'same-origin',
@@ -679,12 +720,12 @@ async function unbindDiscord() {
         } else {
             alert(data.message || '解绑失败');
         }
-    } catch { alert('网络错误'); }
+    } catch { alert(__('alertNetworkError')); }
 }
 
 // ====== 退出同好会 ======
 async function leaveClub(membershipId, clubName) {
-    if (!confirm(`确定退出同好会「${clubName}」吗？`)) return;
+    if (!confirm(__('confirmLeaveClub', clubName))) return;
     try {
         const resp = await fetch('./api/membership.php?action=leave', {
             method: 'POST', credentials: 'same-origin',
@@ -696,15 +737,15 @@ async function leaveClub(membershipId, clubName) {
             alert('已退出同好会');
             renderClubMemberships();
         } else {
-            alert(data.message || '操作失败');
+            alert(data.message || __('alertOperationFailed'));
         }
-    } catch { alert('网络错误'); }
+    } catch { alert(__('alertNetworkError')); }
 }
 
 // ====== 修改成员角色（负责人操作） ======
 async function changeMemberRole(membershipId, newRole) {
     const roleName = newRole === 'manager' ? '管理员' : '普通成员';
-    if (!confirm('确定将此成员的角色改为「' + roleName + '」吗？')) return;
+    if (!confirm(__('confirmChangeRole', roleName))) return;
     try {
         const resp = await fetch('./api/membership.php?action=change_role', {
             method: 'POST', credentials: 'same-origin',
@@ -719,14 +760,14 @@ async function changeMemberRole(membershipId, newRole) {
             const cid = parseInt(modal?.dataset?.clubId);
             if (cid) openMemberList(cid);
         } else {
-            alert(data.message || '操作失败');
+            alert(data.message || __('alertOperationFailed'));
         }
-    } catch { alert('网络错误'); }
+    } catch { alert(__('alertNetworkError')); }
 }
 
 // ====== 踢出成员 ======
 async function kickMember(membershipId, username) {
-    if (!confirm('确定将「' + username + '」踢出同好会吗？')) return;
+    if (!confirm(__('confirmKickMember', username))) return;
     try {
         const resp = await fetch('./api/membership.php?action=kick', {
             method: 'POST', credentials: 'same-origin',
@@ -740,14 +781,14 @@ async function kickMember(membershipId, username) {
             const cid = parseInt(modal?.dataset?.clubId);
             if (cid) openMemberList(cid);
         } else {
-            alert(data.message || '操作失败');
+            alert(data.message || __('alertOperationFailed'));
         }
-    } catch { alert('网络错误'); }
+    } catch { alert(__('alertNetworkError')); }
 }
 
 // ====== 转让负责人 ======
 async function transferRepresentative(targetMembershipId, clubId, targetName) {
-    if (!confirm('⚠️ 确定将负责人身份转让给「' + targetName + '」吗？\n\n转让后你将变为管理员。此操作不可撤销！')) return;
+    if (!confirm(__('confirmTransferRep', targetName))) return;
     try {
         const resp = await fetch('./api/membership.php?action=transfer', {
             method: 'POST', credentials: 'same-origin',
@@ -764,9 +805,9 @@ async function transferRepresentative(targetMembershipId, clubId, targetName) {
             // 刷新当前用户状态（角色变了）
             await fetchCurrentUser();
         } else {
-            alert(data.message || '操作失败');
+            alert(data.message || __('alertOperationFailed'));
         }
-    } catch { alert('网络错误'); }
+    } catch { alert(__('alertNetworkError')); }
 }
 
 // ====== 渲染同好会列表 ======
@@ -992,7 +1033,7 @@ function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;');
 }
 
 // ====== OAuth 回调检测 ======
@@ -1218,7 +1259,7 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('click', async (e) => {
     if (e.target.id === 'accSettingsUnbindEmailBtn') {
-        if (!confirm('确定解绑邮箱吗？')) return;
+        if (!confirm(__('confirmUnbind'))) return;
         try {
             const resp = await fetch('./api/auth.php?action=unbind_email', {
                 method: 'POST', credentials: 'same-origin',
@@ -1231,7 +1272,7 @@ document.addEventListener('click', async (e) => {
                 alert(data.message || '解绑失败');
             }
         } catch {
-            alert('网络错误');
+            alert(__('alertNetworkError'));
         }
     }
 });
@@ -1261,10 +1302,10 @@ document.addEventListener('click', function(e) {
                 if (statusEl) { statusEl.textContent = '✅ 保存成功'; statusEl.style.color = '#27ae60'; }
                 setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000);
             } else {
-                alert(d.message || '保存失败');
+                alert(d.message || __('alertSaveFailed'));
             }
         })
-        .catch(function() { alert('网络错误'); });
+        .catch(function() { alert(__('alertNetworkError')); });
     }
 });
 
@@ -1371,7 +1412,10 @@ const Utils = {
     if (!name) return '';
     return String(name).trim().replace(/(壮族自治区|回族自治区|维吾尔自治区|特别行政区|自治区|省|市)$/g, '');
   },
-  groupTypeText: (type) => ({ school: '高校同好会', region: '地区高校联合', 'vnfest': '视觉小说学园祭' }[type] || '其他'),
+  groupTypeText: (type) => {
+    const map = { school: 'typeSchool', region: 'typeRegion', vnfest: 'typeVnfest' };
+    return __(map[type] || 'typeSchool');
+  },
   typeFilterValue: (type) => ({ school: 'school', region: 'region', 'vnfest': 'vnfest' }[type] || 'other'),
   formatCreatedAt: (value) => {
     if (!value) return __('detailUnknownDate');
@@ -1660,6 +1704,43 @@ const translations = {
         // 数据源
         sourceLocalJSON: '本地JSON',
         sourceMock: '模拟数据',
+
+        // 地区/国家名称
+        countryJapan: '日本',
+        countryOverseas: '海外',
+        countryAll: '全国',
+        countryNotSelected: '未选择',
+        domesticClubs: '国内同好会',
+
+        // 通用 alert 提示
+        alertNetworkError: '网络错误',
+        alertPermissionDenied: '权限不足',
+        alertOperationFailed: '操作失败',
+        alertSaveFailed: '保存失败',
+        alertDeleteFailed: '删除失败',
+        alertSubmitFailed: '提交失败',
+        alertSaveSuccess: '✅ 保存成功',
+        alertDeleteSuccess: '✅ 删除成功',
+        alertAddSuccess: '✅ 添加成功',
+        alertUpdateSuccess: '✅ 更新成功',
+        alertPleaseLogin: '请先登录',
+        alertPleaseLoginFirst: '请先登录后再操作',
+        alertNameRequired: '请填写组织名称',
+        alertContactRequired: '请填写联系方式',
+        alertAdminModeRequired: '请先开启管理员模式',
+        alertSignupFail: '报名失败',
+        alertCancelFail: '取消失败',
+        alertNameRequiredCal: '请填写活动名称',
+        alertDateRequired: '请选择活动日期',
+
+        // 通用 confirm 提示
+        confirmDelete: '确定要删除吗？此操作不可撤销！',
+        confirmDeleteSimple: '确定要删除吗？',
+        confirmLeaveClub: '确定退出同好会「{0}」吗？',
+        confirmUnbind: '确定解绑吗？',
+        confirmChangeRole: '确定将此成员的角色改为「{0}」吗？',
+        confirmKickMember: '确定将「{0}」踢出同好会吗？',
+        confirmTransferRep: '⚠️ 确定将负责人身份转让给「{0}」吗？\n\n转让后你将变为管理员。此操作不可撤销！',
     },
     ja: {
         // タイトルと紹介
@@ -1891,6 +1972,42 @@ const translations = {
         sourceLocalJSON: 'ローカルJSON',
         sourceMock: 'モックデータ',
 
+        // 地域/国名
+        countryJapan: '日本',
+        countryOverseas: '海外',
+        countryAll: '全国',
+        countryNotSelected: '未選択',
+        domesticClubs: '国内サークル',
+
+        // 汎用アラート
+        alertNetworkError: 'ネットワークエラー',
+        alertPermissionDenied: '権限がありません',
+        alertOperationFailed: '操作に失敗しました',
+        alertSaveFailed: '保存に失敗しました',
+        alertDeleteFailed: '削除に失敗しました',
+        alertSubmitFailed: '送信に失敗しました',
+        alertSaveSuccess: '✅ 保存しました',
+        alertDeleteSuccess: '✅ 削除しました',
+        alertAddSuccess: '✅ 追加しました',
+        alertUpdateSuccess: '✅ 更新しました',
+        alertPleaseLogin: 'ログインしてください',
+        alertPleaseLoginFirst: 'ログインしてください',
+        alertNameRequired: '団体名を入力してください',
+        alertContactRequired: '連絡先を入力してください',
+        alertAdminModeRequired: '管理者モードを有効にしてください',
+        alertSignupFail: '登録に失敗しました',
+        alertCancelFail: 'キャンセルに失敗しました',
+        alertNameRequiredCal: 'イベント名を入力してください',
+        alertDateRequired: '日付を選択してください',
+
+        // 汎用確認ダイアログ
+        confirmDelete: '削除してもよろしいですか？この操作は取り消せません！',
+        confirmDeleteSimple: '削除してもよろしいですか？',
+        confirmLeaveClub: 'サークル「{0}」を退会してもよろしいですか？',
+        confirmUnbind: '連携を解除してもよろしいですか？',
+        confirmChangeRole: 'このメンバーの役割を「{0}」に変更してもよろしいですか？',
+        confirmKickMember: '「{0}」をサークルから追放してもよろしいですか？',
+        confirmTransferRep: '⚠️ 代表者を「{0}」に譲渡してもよろしいですか？\n\n譲渡後、あなたは管理者になります。この操作は取り消せません！',
     }
 };
 
@@ -2034,6 +2151,28 @@ function updateUILanguage() {
         }
     }
     
+    // 更新 HTML lang 属性
+    document.documentElement.lang = currentLang === 'ja' ? 'ja' : 'zh-CN';
+
+    // 更新导航按钮
+    const navKeyMap = { china: 'chinaBtn', japan: 'japanBtn', overseas: 'otherBtn', calendar: 'calendarBtn', publication: 'publicationBtn' };
+    document.querySelectorAll('.user-nav-btn').forEach(btn => {
+        const key = navKeyMap[btn.dataset.action];
+        if (key) btn.textContent = t[key];
+    });
+
+    // 更新抽屉面板文本
+    const drawerTitle = document.getElementById('drawerTitle');
+    if (drawerTitle) drawerTitle.textContent = t.title;
+    const drawerDesc1 = document.getElementById('drawerDesc1');
+    if (drawerDesc1) drawerDesc1.textContent = t.intro;
+    const drawerOpenSource = document.querySelector('#mobileDrawer .submit-btn[href*="github"]');
+    if (drawerOpenSource) drawerOpenSource.innerHTML = `📦 ${t.openSource}`;
+    ['submitClubBtnDrawer', 'submitEventBtnDrawer', 'submitPublicationBtnDrawer'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '📝 ' + t[id.replace('BtnDrawer', '').replace('submit', 'submit')];
+    });
+
     // 更新排序按钮文字和详情面板
     updateSortButtonView();
     renderCurrentDetail();
@@ -2112,10 +2251,19 @@ function applyThemePreference() {
 
 function setThemePreference(preference) {
   State.themePreference = preference;
+  try { localStorage.setItem('themePreference', preference); } catch {}
   applyThemePreference();
 }
 
 function initThemePreference() {
+  // 从 localStorage 恢复主题偏好
+  try {
+    const saved = localStorage.getItem('themePreference');
+    if (saved === 'light' || saved === 'dark' || saved === 'system') {
+      State.themePreference = saved;
+    }
+  } catch {}
+
   State.systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
   const handleSystemThemeChange = () => {
@@ -2694,9 +2842,9 @@ function showClubDetail(club) {
     </div>
   `;
 
-  // ——— 组装 ———
-  content.innerHTML = `
-    <div class="club-detail-body-wrapper">
+  // ========== 左栏：基本信息 ==========
+  const leftHtml = `
+    <div class="club-detail-left">
       ${headerHtml}
       ${descHtml}
       ${extHtml}
@@ -2706,7 +2854,32 @@ function showClubDetail(club) {
     </div>
   `;
 
-  // ——— 附加操作按钮事件（data-action → 闭包） ———
+  // ========== 右栏：神器推荐榜 + 留言板 ==========
+  const recContainerId = 'recContainer_' + clubId;
+  const commentContainerId = 'commentContainer_' + clubId;
+  const rightHtml = `
+    <div class="club-detail-right">
+      <!-- ⭐ 神器推荐榜 -->
+      <div class="club-recommendation-section">
+        <div class="club-detail-section-title">⭐ 神器推荐榜</div>
+        <div id="${recContainerId}">
+          <div class="rec-empty" style="border:none;background:transparent;">⏳ 加载中...</div>
+        </div>
+      </div>
+      <!-- 💬 留言板 -->
+      <div class="club-comment-section">
+        <div class="club-detail-section-title">💬 留言板</div>
+        <div id="${commentContainerId}">
+          <div class="comment-login-hint">⏳ 加载留言...</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ——— 组装注入 ———
+  content.innerHTML = leftHtml + rightHtml;
+
+  // ——— 操作按钮事件绑定 ———
   const actionsContainer = content.querySelector('.club-detail-actions');
   if (actionsContainer) {
     actionsContainer.querySelector('[data-action="apply-club"]')?.addEventListener('click', () => openMembershipApplyModal(club));
@@ -2716,6 +2889,216 @@ function showClubDetail(club) {
     actionsContainer.querySelector('[data-action="leave-club"]')?.addEventListener('click', () => confirmLeaveClub(clubId, club.name, club.country));
   }
 
+  // ——— 异步加载推荐榜 ———
+  (async (containerId) => {
+    try {
+      const resp = await fetch(`api/club_recommendations.php?action=list&club_id=${clubId}&country=${clubCountry}`);
+      const data = await resp.json();
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      if (!data.success || !data.data || data.data.length === 0) {
+        container.innerHTML = '<div class="rec-empty">暂无推荐</div>';
+        return;
+      }
+      container.innerHTML = '<div class="recommendation-grid">' +
+        data.data.map(item => `
+          <div class="rec-card" title="${esc(item.title)}">
+            ${item.image_url
+              ? `<img src="${esc(item.image_url)}" alt="${esc(item.title)}" class="rec-cover" loading="lazy">`
+              : `<div class="rec-cover-placeholder">🎮</div>`
+            }
+            <div class="rec-info">
+              <div class="rec-title">${esc(item.title)}</div>
+              ${item.rating ? `<div class="rec-rating">${parseFloat(item.rating).toFixed(1)}</div>` : ''}
+            </div>
+          </div>
+        `).join('') +
+      '</div>';
+    } catch (e) {
+      const container = document.getElementById(containerId);
+      if (container) container.innerHTML = '<div class="rec-empty">加载失败</div>';
+    }
+  })(recContainerId);
+
+  // ——— 异步加载留言板 ———
+  (async function loadComments(containerId) {
+    try {
+      const resp = await fetch(`api/club_comments.php?action=list&club_id=${clubId}&country=${clubCountry}&limit=20`);
+      const result = await resp.json();
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const userId = currentUser?.id ? parseInt(currentUser.id) : 0;
+      const isLoggedIn = !!currentUser?.logged_in;
+
+      // 输入区（仅成员可见）
+      let inputHtml = '';
+      if (isBound) {
+        inputHtml = `
+          <div class="comment-input-area">
+            <textarea id="commentInput_${clubId}" placeholder="写下你对这个同好会的评价…" maxlength="1000"></textarea>
+            <div class="comment-input-footer">
+              <span class="comment-char-count" id="commentCount_${clubId}">0 / 1000</span>
+              <button class="comment-submit-btn" id="commentSubmit_${clubId}">发表</button>
+            </div>
+          </div>
+        `;
+      } else if (isLoggedIn) {
+        inputHtml = `<div class="comment-login-hint">🔒 加入同好会后即可留言</div>`;
+      } else {
+        inputHtml = `<div class="comment-login-hint">🔒 登录并加入同好会后即可留言</div>`;
+      }
+
+      // 留言列表
+      const comments = result.data || [];
+      let listHtml = '';
+      if (comments.length === 0) {
+        listHtml = '<div class="comment-login-hint">暂无留言，来写第一条吧</div>';
+      } else {
+        listHtml = '<div class="comment-list">' +
+          comments.map(c => {
+            const isOwner = userId > 0 && parseInt(c.user_id) === userId;
+            const canDelete = isOwner || isClubManager || hasRole('super_admin');
+            const avatarText = (c.nickname || c.username || '?')[0];
+            return `
+              <div class="comment-card" data-comment-id="${esc(c.id)}">
+                <div class="comment-avatar">${esc(avatarText)}</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-username">${esc(c.nickname || c.username)}</span>
+                    <span class="comment-time">${esc(c.created_at || '')}</span>
+                    ${canDelete ? `<button class="comment-delete-btn" data-action="delete-comment" data-id="${esc(c.id)}">×</button>` : ''}
+                  </div>
+                  <div class="comment-content">${esc(c.content)}</div>
+                </div>
+              </div>
+            `;
+          }).join('') +
+        '</div>';
+        if (result.total > comments.length) {
+          listHtml += `<div class="comment-load-more" data-action="load-more-comments" data-page="1" data-club-id="${clubId}" data-country="${clubCountry}">加载更多留言…</div>`;
+        }
+      }
+
+      container.innerHTML = inputHtml + listHtml;
+
+      // 绑定留言提交事件
+      if (isBound) {
+        const textarea = document.getElementById('commentInput_' + clubId);
+        const submitBtn = document.getElementById('commentSubmit_' + clubId);
+        const countEl = document.getElementById('commentCount_' + clubId);
+
+        if (textarea && countEl) {
+          textarea.addEventListener('input', () => {
+            const len = textarea.value.length;
+            countEl.textContent = len + ' / 1000';
+            if (submitBtn) submitBtn.disabled = len === 0 || len > 1000;
+          });
+        }
+        if (submitBtn && textarea) {
+          submitBtn.addEventListener('click', async () => {
+            const content = textarea.value.trim();
+            if (!content) return;
+            submitBtn.disabled = true;
+            try {
+              const postResp = await fetch('api/club_comments.php?action=add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ club_id: clubId, country: clubCountry, content }),
+                credentials: 'same-origin',
+              });
+              const postData = await postResp.json();
+              if (postData.success) {
+                textarea.value = '';
+                countEl.textContent = '0 / 1000';
+                // 刷新留言列表
+                document.getElementById(containerId).innerHTML = '<div class="comment-login-hint">⏳ 刷新中...</div>';
+                // re-trigger this whole IIFE
+                loadComments(containerId);
+              } else {
+                alert(postData.message || '留言失败');
+              }
+            } catch (e) {
+              alert('网络错误');
+            } finally {
+              submitBtn.disabled = false;
+            }
+          });
+        }
+      }
+
+      // 绑定删除事件
+      container.querySelectorAll('[data-action="delete-comment"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('确定删除此留言？')) return;
+          try {
+            const delResp = await fetch('api/club_comments.php?action=delete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: parseInt(btn.dataset.id) }),
+              credentials: 'same-origin',
+            });
+            const delData = await delResp.json();
+            if (delData.success) {
+              const card = btn.closest('.comment-card');
+              if (card) card.style.display = 'none';
+            } else {
+              alert(delData.message || '删除失败');
+            }
+          } catch (e) {
+            alert('网络错误');
+          }
+        });
+      });
+
+      // 绑定加载更多
+      container.querySelector('[data-action="load-more-comments"]')?.addEventListener('click', async (e) => {
+        const el = e.currentTarget;
+        const page = parseInt(el.dataset.page) + 1;
+        el.textContent = '加载中…';
+        try {
+          const moreResp = await fetch(`api/club_comments.php?action=list&club_id=${clubId}&country=${clubCountry}&page=${page}&limit=20`);
+          const moreData = await moreResp.json();
+          const list = container.querySelector('.comment-list');
+          if (list && moreData.data) {
+            moreData.data.forEach(c => {
+              const isOwner = userId > 0 && parseInt(c.user_id) === userId;
+              const canDelete = isOwner || isClubManager || hasRole('super_admin');
+              const avatarText = (c.nickname || c.username || '?')[0];
+              const html = `
+                <div class="comment-card" data-comment-id="${esc(c.id)}">
+                  <div class="comment-avatar">${esc(avatarText)}</div>
+                  <div class="comment-body">
+                    <div class="comment-meta">
+                      <span class="comment-username">${esc(c.nickname || c.username)}</span>
+                      <span class="comment-time">${esc(c.created_at || '')}</span>
+                      ${canDelete ? `<button class="comment-delete-btn" data-action="delete-comment" data-id="${esc(c.id)}">×</button>` : ''}
+                    </div>
+                    <div class="comment-content">${esc(c.content)}</div>
+                  </div>
+                </div>
+              `;
+              list.insertAdjacentHTML('beforeend', html);
+            });
+          }
+          if (moreData.data && moreData.data.length < 20) {
+            el.remove();
+          } else {
+            el.dataset.page = page;
+            el.textContent = '加载更多留言…';
+          }
+        } catch (e) {
+          el.textContent = '加载失败，点击重试';
+        }
+      });
+
+    } catch (e) {
+      const container = document.getElementById(containerId);
+      if (container) container.innerHTML = '<div class="comment-login-hint">留言加载失败</div>';
+    }
+  })(commentContainerId);
+
+  // ——— 弹窗开关 ———
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
 
@@ -2807,7 +3190,7 @@ async function submitMembershipApply() {
 
 // ====== 退出同好会 ======
 function confirmLeaveClub(clubId, clubName, country) {
-  if (!confirm(`确定要退出「${clubName}」吗？`)) return;
+  if (!confirm(__('confirmLeaveClub', clubName))) return;
   fetch('./api/membership.php?action=leave', {
     method: 'POST', credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
@@ -2819,7 +3202,7 @@ function confirmLeaveClub(clubId, clubName, country) {
       alert('✅ 已退出同好会');
       location.reload();
     } else {
-      alert('❌ ' + (data.message || '操作失败'));
+      alert('❌ ' + (data.message || __('alertOperationFailed')));
     }
   })
   .catch(() => alert('❌ 网络错误，请重试'));
@@ -2843,11 +3226,14 @@ function renderCurrentDetail() {
     
     // 如果数据为空，显示提示
     if (!sourceRows.length && !State.globalSearchEnabled) {
-        const provinceName = State.currentDetailProvinceName || (State.currentCountry === 'japan' ? '日本' : State.currentCountry === 'overseas' ? '海外' : '未选择');
+        let provinceName = State.currentDetailProvinceName || (State.currentCountry === 'japan' ? __('countryJapan') : State.currentCountry === 'overseas' ? __('countryOverseas') : __('countryNotSelected'));
+        if (provinceName === '国内同好会') provinceName = __('domesticClubs');
+        if (provinceName === '日本') provinceName = __('countryJapan');
+        if (provinceName === '海外') provinceName = __('countryOverseas');
         document.getElementById('selectedTitle').textContent = __('renderTitleDetail', provinceName);
         document.getElementById('selectedProvince').textContent = '0 ' + __('clubCount');
         document.getElementById('selectedMeta').textContent = __('renderMetaRange', provinceName, '0', '0');
-        document.getElementById('groupList').innerHTML = '<div class="empty-text">暂无同好会信息，欢迎提交~</div>';
+        document.getElementById('groupList').innerHTML = '<div class="empty-text">' + __('noClub') + '</div>';
         return;
     }
     
@@ -2859,10 +3245,12 @@ function renderCurrentDetail() {
     const vnfestCount = filtered.filter(x => x.type === 'vnfest').length;
     
     let displayTitle = State.currentDetailProvinceName;
-    if (displayTitle === '非地区') displayTitle = '国内同好会';
+    if (displayTitle === '非地区' || displayTitle === '国内同好会') displayTitle = __('domesticClubs');
+    if (displayTitle === '日本') displayTitle = __('countryJapan');
+    if (displayTitle === '海外') displayTitle = __('countryOverseas');
     
     if (State.globalSearchEnabled) {
-        const countryName = State.currentCountry === 'japan' ? '日本' : State.currentCountry === 'overseas' ? '海外' : '全国';
+        const countryName = State.currentCountry === 'japan' ? __('countryJapan') : State.currentCountry === 'overseas' ? __('countryOverseas') : __('countryAll');
         document.getElementById('selectedTitle').textContent = __('renderTitleSearch', countryName);
         let metaText = __('renderMetaSummary', schoolCount, regionCount);
         if (vnfestCount > 0) metaText += __('renderMetaVnfest', vnfestCount);
@@ -3583,13 +3971,13 @@ function showJapanProvinceDetails(prefectureName) {
     // 已有动画，保持不变
     animateSelectedCardUpdate(() => {
         State.currentDetailRows = rows;
-        document.getElementById('selectedTitle').textContent = `${prefectureName} · 同好会详情`;
-        document.getElementById('selectedProvince').textContent = `${rows.length} 个组织`;
-        document.getElementById('selectedMeta').textContent = `日本 · ${prefectureName}`;
+        document.getElementById('selectedTitle').textContent = __('renderTitleDetail', prefectureName);
+        document.getElementById('selectedProvince').textContent = `${rows.length} ` + __('clubCount');
+        document.getElementById('selectedMeta').textContent = __('countryJapan') + ' · ' + prefectureName;
         if (rows.length) {
             renderGroupList(getFilteredSortedRows(rows));
         } else {
-            document.getElementById('groupList').innerHTML = '<div class="empty-text">暂无同好会信息，欢迎提交~</div>';
+            document.getElementById('groupList').innerHTML = '<div class="empty-text">' + __('noClub') + '</div>';
         }
     });
 }
@@ -4082,6 +4470,7 @@ function openEditPanel(club = null, isNew = false) {
   const editInfo = document.getElementById('editInfo');
   const editRemark = document.getElementById('editRemark');
   const editSchool = document.getElementById('editSchool');
+  const editCreatedAt = document.getElementById('editCreatedAt');
   const adminDeleteBtn = document.getElementById('adminDeleteBtn');
   const provinceGroup = document.getElementById('provinceGroup');
   const prefectureGroup = document.getElementById('prefectureGroup');
@@ -4117,7 +4506,7 @@ function openEditPanel(club = null, isNew = false) {
     }
   }
   
-  const editVisible = document.getElementById('editVisibleByDefault');
+  const privacyRadios = document.querySelectorAll('input[name="privacyLevel"]');
 
   if (isNew) {
     adminPanelTitle.textContent = '➕ 添加同好会';
@@ -4130,11 +4519,12 @@ function openEditPanel(club = null, isNew = false) {
     if (editInfo) editInfo.value = '';
     if (editRemark) editRemark.value = '';
     if (editSchool) editSchool.value = '';
+    if (editCreatedAt) editCreatedAt.value = '';
     document.querySelectorAll('.ext-link-url').forEach(el => el.value = '');
     document.querySelectorAll('.ext-link-platform').forEach(el => el.value = '');
-    if (editVisible) editVisible.checked = false;
-    const editProtectedReset = document.getElementById('editClubProtected');
-    if (editProtectedReset) editProtectedReset.checked = false;
+    // 新同好会默认"成员以上可见"
+    const privacyRadioMembers = document.querySelector('input[name="privacyLevel"][value="members"]');
+    if (privacyRadioMembers) privacyRadioMembers.checked = true;
     if (adminDeleteBtn) adminDeleteBtn.style.display = 'none';
     currentEditClubId = null;
     toggleRegionFields('china');
@@ -4150,9 +4540,12 @@ function openEditPanel(club = null, isNew = false) {
     if (editInfo) editInfo.value = club.originalInfo || club.info || '';
     if (editRemark) editRemark.value = club.remark || '';
     if (editSchool) editSchool.value = club.school || '';
-    if (editVisible) editVisible.checked = club.visible_by_default === true;
-    const editProtectedLoad = document.getElementById('editClubProtected');
-    if (editProtectedLoad) editProtectedLoad.checked = club.protected === true;
+    if (editCreatedAt) editCreatedAt.value = club.created_at || '';
+    // 隐私三选一回显
+    let privacyValue = 'members';
+    if (club.visible_by_default === true) privacyValue = 'public';
+    else if (club.protected === true) privacyValue = 'protected';
+    privacyRadios.forEach(r => { if (r.value === privacyValue) r.checked = true; });
     if (adminDeleteBtn) adminDeleteBtn.style.display = 'block';
     currentEditClubId = club.id;
     toggleRegionFields(country);
@@ -4206,7 +4599,8 @@ async function saveClub() {
   const editInfo = document.getElementById('editInfo');
   const editRemark = document.getElementById('editRemark');
   const editSchool = document.getElementById('editSchool');
-  
+  const editCreatedAt = document.getElementById('editCreatedAt');
+
   const country = editCountry?.value || 'china';
   
   const clubData = {
@@ -4215,10 +4609,11 @@ async function saveClub() {
     info: editInfo?.value.trim() || '',
     remark: editRemark?.value.trim() || '',
     school: editSchool?.value.trim() || '',
+    created_at: editCreatedAt?.value || '',
     verified: 1,
     country: country,
-    visible_by_default: document.getElementById('editVisibleByDefault')?.checked || false,
-    protected: document.getElementById('editClubProtected')?.checked || false,
+    visible_by_default: document.querySelector('input[name="privacyLevel"]:checked')?.value === 'public',
+    protected: document.querySelector('input[name="privacyLevel"]:checked')?.value === 'protected',
     logo_url: document.getElementById('editClubAvatarUrl')?.value || '',
     external_links: getExternalLinksStr(),
   };
@@ -4356,7 +4751,7 @@ async function renderPendingApprovals() {
           const result = await resp.json();
           alert(result.message || (result.success ? '已批准' : '操作失败'));
           if (result.success) renderPendingApprovals();
-        } catch { alert('网络错误'); btn.disabled = false; }
+        } catch { alert(__('alertNetworkError')); btn.disabled = false; }
       });
     });
 
@@ -4374,7 +4769,7 @@ async function renderPendingApprovals() {
           const result = await resp.json();
           alert(result.message || (result.success ? '已拒绝' : '操作失败'));
           if (result.success) renderPendingApprovals();
-        } catch { alert('网络错误'); btn.disabled = false; }
+        } catch { alert(__('alertNetworkError')); btn.disabled = false; }
       });
     });
   } catch {
@@ -4882,7 +5277,7 @@ function initPublicationEvents() {
   });
   modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
   addBtn?.addEventListener('click', () => {
-    if (!hasRole('manager')) { alert('权限不足'); return; }
+    if (!hasRole('manager')) { alert(__('alertPermissionDenied')); return; }
     openPublicationEditor(null);
   });
   editorCloseBtn?.addEventListener('click', closePublicationEditor);
@@ -5606,3 +6001,654 @@ function hideLoadingToast() {
 }
 
 init();
+
+// ==========================================
+// 通知系统
+// ==========================================
+(function () {
+    'use strict';
+
+    // ---- DOM refs ----
+    var bellWrap = document.getElementById('notifBellWrap');
+    var bell = document.getElementById('notifBell');
+    var badge = document.getElementById('notifBadge');
+    var panel = document.getElementById('notifPanel');
+    var panelList = document.getElementById('notifPanelList');
+    var markAllBtn = document.getElementById('notifMarkAllRead');
+
+    // ---- state ----
+    var pollTimer = null;
+    var POLL_INTERVAL = 5000;
+    var isPanelOpen = false;
+    var currentNotifPage = 1;
+
+    // ---- helpers ----
+    function getNotifIcon(type) {
+        var icons = {
+            galonly_approved: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+            galonly_rejected: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            join_approved: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>',
+            join_rejected: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>',
+            member_kicked: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>',
+            role_changed: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+            system: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+        };
+        return icons[type] || icons.system;
+    }
+    function getNotifIconClass(type) {
+        if (type.indexOf('approved') !== -1) return 'approved';
+        if (type.indexOf('rejected') !== -1) return 'rejected';
+        if (type.indexOf('join') !== -1 || type.indexOf('kicked') !== -1) return 'join';
+        if (type.indexOf('role') !== -1) return 'role';
+        return 'system';
+    }
+    function matchesFilter(notif, filter) {
+        if (filter === 'all') return true;
+        if (filter === 'audit') return notif.type.indexOf('galonly') !== -1;
+        if (filter === 'club') return notif.type.indexOf('join') !== -1 || notif.type.indexOf('kicked') !== -1 || notif.type.indexOf('role') !== -1;
+        if (filter === 'system') return notif.type === 'system';
+        return true;
+    }
+    function formatTime(dateStr) {
+        try {
+            var d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            var now = new Date();
+            var diff = Math.floor((now - d) / 1000);
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+            if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+            if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
+            return d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+        } catch (e) { return ''; }
+    }
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    // ---- API ----
+    function fetchUnreadCount() {
+        return fetch('api/notifications.php?action=count_unread', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) return data.count;
+                return 0;
+            })
+            .catch(function () { return 0; });
+    }
+    function fetchNotifications(page, limit) {
+        return fetch('api/notifications.php?action=list&page=' + page + '&limit=' + (limit || 20), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) return data;
+                return { notifications: [], unread_count: 0, total: 0, page: 1, total_pages: 1 };
+            })
+            .catch(function () { return { notifications: [], unread_count: 0, total: 0, page: 1, total_pages: 1 }; });
+    }
+    function markNotificationRead(id) {
+        return fetch('api/notifications.php?action=mark_read', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        }).then(function (r) { return r.json(); });
+    }
+    function markAllNotificationsRead() {
+        return fetch('api/notifications.php?action=mark_all_read', {
+            method: 'POST',
+            credentials: 'same-origin'
+        }).then(function (r) { return r.json(); });
+    }
+
+    // ---- badge ----
+    function updateBadge(count) {
+        if (!badge) return;
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = '';
+            badge.style.transform = 'scale(1)';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // ---- render dropdown ----
+    function renderDropdown(notifications) {
+        if (!panelList) return;
+        if (!notifications || notifications.length === 0) {
+            panelList.innerHTML = '<div class="notif-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>暂无通知</span></div>';
+            return;
+        }
+        panelList.innerHTML = notifications.map(function (n) {
+            return '<div class="notif-item' + (n.is_read ? ' read' : '') +
+                '" data-id="' + n.id + '" data-type="' + escapeHtml(n.type) +
+                '" data-title="' + escapeHtml(n.title) +
+                '" data-message="' + escapeHtml(n.message || '') +
+                '" data-time="' + (n.created_at || '') + '">' +
+                '<span class="notif-dot"></span>' +
+                '<div class="notif-icon ' + getNotifIconClass(n.type) + '">' + getNotifIcon(n.type) + '</div>' +
+                '<div class="notif-content">' +
+                '<div class="notif-title">' + escapeHtml(n.title) + '</div>' +
+                (n.message ? '<div class="notif-message">' + escapeHtml(n.message) + '</div>' : '') +
+                '</div>' +
+                '<span class="notif-time">' + formatTime(n.created_at) + '</span>' +
+                '</div>';
+        }).join('');
+    }
+
+    // ---- panel open/close ----
+    function toggleNotifPanel(e) {
+        if (e) e.stopPropagation();
+        if (isPanelOpen) {
+            closeNotifPanel();
+        } else {
+            openNotifPanel();
+        }
+    }
+    function openNotifPanel() {
+        if (!panel) return;
+        isPanelOpen = true;
+        panel.classList.add('open');
+        fetchNotifications(1, 5).then(function (data) {
+            renderDropdown(data.notifications);
+        });
+    }
+    function closeNotifPanel() {
+        if (!panel) return;
+        isPanelOpen = false;
+        panel.classList.remove('open');
+    }
+
+    // ---- detail dialog ----
+    var detailOverlay = null;
+    var detailDialog = null;
+
+    function openNotifDetail(title, message, type, time) {
+        if (!detailOverlay) {
+            detailOverlay = document.createElement('div');
+            detailOverlay.className = 'notif-detail-overlay';
+            detailOverlay.addEventListener('click', function (e) {
+                if (e.target === detailOverlay) closeNotifDetail();
+            });
+            document.body.appendChild(detailOverlay);
+        }
+        if (!detailDialog) {
+            detailDialog = document.createElement('div');
+            detailDialog.className = 'notif-detail-dialog';
+            detailOverlay.appendChild(detailDialog);
+        }
+        var typeLabels = {
+            galonly_approved: '审核通过', galonly_rejected: '审核拒绝',
+            join_approved: '加入通过', join_rejected: '加入拒绝',
+            member_kicked: '已移出', role_changed: '角色变更', system: '系统通知'
+        };
+        var typeLabel = typeLabels[type] || type;
+        var iconClass = getNotifIconClass(type);
+        detailDialog.innerHTML =
+            '<div class="notif-detail-header">' +
+            '<div class="notif-icon ' + iconClass + '">' + getNotifIcon(type) + '</div>' +
+            '<h3>' + escapeHtml(title) + '</h3>' +
+            '<button class="notif-detail-close" id="notifDetailClose">✕</button>' +
+            '</div>' +
+            '<div class="notif-detail-body">' +
+            (message ? '<div class="notif-detail-message">' + escapeHtml(message) + '</div>' : '') +
+            '<div class="notif-detail-meta">' +
+            '<span class="notif-detail-type">' + escapeHtml(typeLabel) + '</span>' +
+            '<span class="notif-detail-time">' + formatTime(time) + '</span>' +
+            '</div>' +
+            '</div>' +
+            '<div class="notif-detail-footer">' +
+            '<button class="notif-detail-btn ghost" id="notifDetailDismiss">关闭</button>' +
+            '<button class="notif-detail-btn primary" id="notifDetailAction">查看详情 →</button>' +
+            '</div>';
+        detailOverlay.style.display = '';
+        requestAnimationFrame(function () {
+            detailOverlay.classList.add('open');
+        });
+        // close buttons
+        var closeBtn = document.getElementById('notifDetailClose');
+        if (closeBtn) closeBtn.addEventListener('click', closeNotifDetail);
+        var dismissBtn = document.getElementById('notifDetailDismiss');
+        if (dismissBtn) dismissBtn.addEventListener('click', closeNotifDetail);
+    }
+    function closeNotifDetail() {
+        if (detailOverlay) {
+            detailOverlay.classList.remove('open');
+            setTimeout(function () { detailOverlay.style.display = 'none'; }, 200);
+        }
+    }
+
+    // ---- notification center ----
+    var centerOverlay = document.getElementById('notifCenterOverlay');
+    var centerList = document.getElementById('notifCenterList');
+    var centerPagination = document.getElementById('notifCenterPagination');
+    var centerCurrentFilter = 'all';
+    var centerSelected = {};
+    var centerData = [];
+
+    function openNotifCenter() {
+        if (!centerOverlay) return;
+        closeNotifPanel();
+        centerOverlay.style.display = '';
+        requestAnimationFrame(function () {
+            centerOverlay.classList.add('open');
+        });
+        loadCenterPage(1);
+        document.body.style.overflow = 'hidden';
+    }
+    function closeNotifCenter() {
+        if (!centerOverlay) return;
+        centerOverlay.classList.remove('open');
+        setTimeout(function () { centerOverlay.style.display = 'none'; document.body.style.overflow = ''; }, 200);
+    }
+    function switchCenterFilter(filter) {
+        centerCurrentFilter = filter;
+        centerSelected = {};
+        updateSelectAllBtn();
+        loadCenterPage(1);
+        // update tab
+        var tabs = centerOverlay.querySelectorAll('.notif-center-tab');
+        tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.filter === filter); });
+    }
+    function loadCenterPage(page) {
+        if (!centerList) return;
+        currentNotifPage = page;
+        centerList.innerHTML = '<div class="notif-center-loading" style="text-align:center;padding:40px;opacity:0.5;">加载中...</div>';
+        fetchNotifications(page, 20).then(function (data) {
+            centerData = data.notifications || [];
+            renderCenter(centerData, data.total_pages, page);
+        });
+    }
+    function renderCenter(notifications, totalPages, page) {
+        if (!centerList || !centerPagination) return;
+        // filter
+        var filtered = notifications.filter(function (n) { return matchesFilter(n, centerCurrentFilter); });
+        if (filtered.length === 0) {
+            centerList.innerHTML = '<div class="notif-empty" style="padding:60px 0;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>暂无通知</span></div>';
+            centerPagination.innerHTML = '';
+            updateTabCounts(notifications);
+            return;
+        }
+        var html = filtered.map(function (n) {
+            var checked = centerSelected[n.id] ? ' checked' : '';
+            return '<div class="notif-item' + (n.is_read ? ' read' : '') +
+                '" data-id="' + n.id + '" data-type="' + escapeHtml(n.type) +
+                '" data-title="' + escapeHtml(n.title) +
+                '" data-message="' + escapeHtml(n.message || '') +
+                '" data-time="' + (n.created_at || '') + '">' +
+                '<label class="notif-center-cb" onclick="event.stopPropagation()"><input type="checkbox" class="notif-cb" value="' + n.id + '"' + checked + '></label>' +
+                '<span class="notif-dot"></span>' +
+                '<div class="notif-icon ' + getNotifIconClass(n.type) + '">' + getNotifIcon(n.type) + '</div>' +
+                '<div class="notif-content">' +
+                '<div class="notif-title">' + escapeHtml(n.title) + '</div>' +
+                (n.message ? '<div class="notif-message">' + escapeHtml(n.message) + '</div>' : '') +
+                '</div>' +
+                '<span class="notif-time">' + formatTime(n.created_at) + '</span>' +
+                '</div>';
+        }).join('');
+        centerList.innerHTML = html;
+        // pagination
+        var pagHtml = '';
+        if (page > 1) pagHtml += '<button class="notif-page-btn" data-page="' + (page - 1) + '">上一页</button>';
+        pagHtml += '<span class="notif-page-info">' + page + ' / ' + (totalPages || 1) + '</span>';
+        if (page < totalPages) pagHtml += '<button class="notif-page-btn" data-page="' + (page + 1) + '">下一页</button>';
+        centerPagination.innerHTML = pagHtml;
+        updateTabCounts(notifications);
+        // rebind pagination
+        centerPagination.querySelectorAll('.notif-page-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { loadCenterPage(parseInt(this.dataset.page)); });
+        });
+        // rebind checkboxes
+        centerList.querySelectorAll('.notif-cb').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                if (this.checked) centerSelected[this.value] = true;
+                else delete centerSelected[this.value];
+                updateSelectAllBtn();
+            });
+        });
+    }
+    function updateTabCounts(notifications) {
+        var counts = { all: notifications.length, audit: 0, club: 0, system: 0 };
+        notifications.forEach(function (n) {
+            if (n.type.indexOf('galonly') !== -1) counts.audit++;
+            else if (n.type.indexOf('join') !== -1 || n.type.indexOf('kicked') !== -1 || n.type.indexOf('role') !== -1) counts.club++;
+            else if (n.type === 'system') counts.system++;
+        });
+        centerOverlay.querySelectorAll('.notif-center-tab').forEach(function (tab) {
+            var filter = tab.dataset.filter;
+            var countEl = tab.querySelector('.notif-center-tab-count');
+            if (countEl) countEl.textContent = counts[filter] || 0;
+        });
+    }
+    function updateSelectAllBtn() {
+        var btn = document.getElementById('notifCenterSelectAll');
+        if (!btn) return;
+        var allCbs = centerList.querySelectorAll('.notif-cb');
+        var checkedCbs = centerList.querySelectorAll('.notif-cb:checked');
+        btn.textContent = (allCbs.length > 0 && allCbs.length === checkedCbs.length) ? '取消全选' : '全选';
+    }
+    function toggleSelectAll() {
+        var allCbs = centerList.querySelectorAll('.notif-cb');
+        var checkedCbs = centerList.querySelectorAll('.notif-cb:checked');
+        var selectAll = allCbs.length !== checkedCbs.length;
+        allCbs.forEach(function (cb) {
+            cb.checked = selectAll;
+            if (selectAll) centerSelected[cb.value] = true;
+            else delete centerSelected[cb.value];
+        });
+        updateSelectAllBtn();
+    }
+    function batchMarkRead() {
+        var ids = Object.keys(centerSelected);
+        if (ids.length === 0) return;
+        Promise.all(ids.map(function (id) { return markNotificationRead(id); })).then(function () {
+            centerSelected = {};
+            loadCenterPage(currentNotifPage);
+            checkNotifications();
+        });
+    }
+
+    // ---- polling ----
+    function checkNotifications() {
+        fetchUnreadCount().then(function (count) {
+            updateBadge(count);
+        });
+    }
+    function startNotificationPolling() {
+        stopNotificationPolling();
+        checkNotifications();
+        pollTimer = setInterval(checkNotifications, POLL_INTERVAL);
+    }
+    function stopNotificationPolling() {
+        if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    // ---- visibility ----
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            stopNotificationPolling();
+        } else if (bellWrap && bellWrap.style.display !== 'none') {
+            startNotificationPolling();
+        }
+    });
+
+    // ---- event delegation ----
+    // bell click
+    if (bell) {
+        bell.addEventListener('click', toggleNotifPanel);
+    }
+    // outside click close panel
+    document.addEventListener('click', function (e) {
+        if (isPanelOpen && bellWrap && !bellWrap.contains(e.target)) {
+            closeNotifPanel();
+        }
+    });
+    // mark all read (dropdown)
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function () {
+            markAllNotificationsRead().then(function () {
+                checkNotifications();
+                renderDropdown([]);
+            });
+        });
+    }
+    // view all
+    var viewAllBtn = document.getElementById('notifViewAll');
+    if (viewAllBtn) {
+        viewAllBtn.addEventListener('click', openNotifCenter);
+    }
+    // panel item click → detail (event delegation)
+    if (panelList) {
+        panelList.addEventListener('click', function (e) {
+            var item = e.target.closest('.notif-item');
+            if (!item) return;
+            var id = parseInt(item.dataset.id);
+            var title = item.dataset.title || '';
+            var message = item.dataset.message || '';
+            var type = item.dataset.type || 'system';
+            var time = item.dataset.time || '';
+            // mark read
+            if (item.classList.contains('read')) {
+                // already read, just show detail
+                openNotifDetail(title, message, type, time);
+                return;
+            }
+            markNotificationRead(id).then(function () {
+                item.classList.add('read');
+                checkNotifications();
+            });
+            openNotifDetail(title, message, type, time);
+        });
+    }
+    // center close
+    var centerClose = document.getElementById('notifCenterClose');
+    if (centerClose) centerClose.addEventListener('click', closeNotifCenter);
+    if (centerOverlay) {
+        centerOverlay.addEventListener('click', function (e) {
+            if (e.target === centerOverlay) closeNotifCenter();
+        });
+    }
+    // center tabs (event delegation)
+    if (centerOverlay) {
+        centerOverlay.addEventListener('click', function (e) {
+            var tab = e.target.closest('.notif-center-tab');
+            if (tab) switchCenterFilter(tab.dataset.filter);
+        });
+    }
+    // center mark all read
+    var centerMarkAll = document.getElementById('notifCenterMarkAll');
+    if (centerMarkAll) {
+        centerMarkAll.addEventListener('click', function () {
+            markAllNotificationsRead().then(function () {
+                checkNotifications();
+                loadCenterPage(currentNotifPage);
+            });
+        });
+    }
+    // center select all
+    var centerSelectAll = document.getElementById('notifCenterSelectAll');
+    if (centerSelectAll) {
+        centerSelectAll.addEventListener('click', toggleSelectAll);
+    }
+    // center batch read
+    var centerBatchRead = document.getElementById('notifCenterBatchRead');
+    if (centerBatchRead) {
+        centerBatchRead.addEventListener('click', batchMarkRead);
+    }
+    // center item click (event delegation)
+    if (centerList) {
+        centerList.addEventListener('click', function (e) {
+            // ignore checkbox clicks
+            if (e.target.closest('.notif-center-cb')) return;
+            var item = e.target.closest('.notif-item');
+            if (!item) return;
+            var id = parseInt(item.dataset.id);
+            var title = item.dataset.title || '';
+            var message = item.dataset.message || '';
+            var type = item.dataset.type || 'system';
+            var time = item.dataset.time || '';
+            var cb = item.querySelector('.notif-cb');
+            if (cb) {
+                cb.checked = !cb.checked;
+                if (cb.checked) centerSelected[id] = true;
+                else delete centerSelected[id];
+                updateSelectAllBtn();
+            }
+            // mark read + detail
+            if (item.classList.contains('read')) {
+                openNotifDetail(title, message, type, time);
+                return;
+            }
+            markNotificationRead(id).then(function () {
+                item.classList.add('read');
+                checkNotifications();
+            });
+            openNotifDetail(title, message, type, time);
+        });
+    }
+
+    // ---- auth listener ----
+    document.addEventListener('auth:updated', function () {
+        // bell visibility handled in updateUserUI
+        if (bellWrap && bellWrap.style.display !== 'none') {
+            startNotificationPolling();
+        } else {
+            stopNotificationPolling();
+        }
+    });
+    // initial check if already visible (bell from updateUserUI)
+    if (bellWrap && bellWrap.style.display !== 'none') {
+        startNotificationPolling();
+    }
+
+})();
+
+// =============================================
+// 全站公告横幅
+// =============================================
+(function () {
+    var banner = document.getElementById('announcementBanner');
+    var body = document.getElementById('announcementBannerBody');
+    var toggle = document.getElementById('announcementBannerToggle');
+    var arrow = document.getElementById('announcementBannerArrow');
+
+    if (!banner || !body || !toggle || !arrow) return;
+
+    // 折叠状态
+    var LS_KEY = 'announcement_banner_collapsed';
+    var isCollapsed = localStorage.getItem(LS_KEY) === '1';
+
+    function applyCollapse() {
+        body.classList.toggle('collapsed', isCollapsed);
+        arrow.classList.toggle('collapsed', isCollapsed);
+    }
+    applyCollapse();
+
+    toggle.addEventListener('click', function () {
+        isCollapsed = !isCollapsed;
+        localStorage.setItem(LS_KEY, isCollapsed ? '1' : '0');
+        applyCollapse();
+    });
+
+    // 加载活跃公告
+    function loadActiveAnnouncements() {
+        fetch('api/announcements.php?action=active', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success && data.announcements && data.announcements.length > 0) {
+                    renderAnnouncements(data.announcements);
+                    banner.style.display = '';
+                } else {
+                    banner.style.display = 'none';
+                }
+            })
+            .catch(function () {
+                banner.style.display = 'none';
+            });
+    }
+
+    function fmtTime(dateStr) {
+        try {
+            var d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            var now = new Date();
+            var diff = Math.floor((now - d) / 1000);
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+            if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+            if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
+            return d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+        } catch (e) { return ''; }
+    }
+
+    function renderAnnouncements(list) {
+        var typeLabels = { info: '信息', warning: '警告', important: '重要', update: '更新' };
+        body.innerHTML = list.map(function (a) {
+            var typeClass = 'announcement-type-' + (a.type || 'info');
+            var typeLabel = typeLabels[a.type] || a.type || '信息';
+            var text = (a.content || '').replace(/<[^>]*>/g, '');
+            var dateStr = a.published_at || a.created_at || '';
+            var dateDisplay = dateStr ? dateStr.split(' ')[0] : '';
+            return '<div class="announcement-item ' + typeClass + '" data-id="' + a.id +
+                '" data-title="' + escapeHtml(a.title) +
+                '" data-content="' + escapeHtml(a.content) +
+                '" data-type="' + escapeHtml(a.type || 'info') +
+                '" data-time="' + dateStr + '">' +
+                '<div class="announcement-item-border"></div>' +
+                '<div class="announcement-item-content">' +
+                '<div class="announcement-item-title">' + escapeHtml(a.title) + '</div>' +
+                '<div class="announcement-item-date">' + dateDisplay + '</div>' +
+                '</div>' +
+                '<span class="announcement-item-type-badge type-badge-' + (a.type || 'info') + '">' + typeLabel + '</span>' +
+                '</div>';
+        }).join('');
+    }
+
+    // 点击公告弹出详情
+    var announceOverlay = null;
+    var announceDialog = null;
+
+    function openAnnounceDetail(title, content, time) {
+        if (!announceOverlay) {
+            announceOverlay = document.createElement('div');
+            announceOverlay.className = 'notif-detail-overlay';
+            announceOverlay.addEventListener('click', function (e) {
+                if (e.target === announceOverlay) closeAnnounceDetail();
+            });
+            document.body.appendChild(announceOverlay);
+        }
+        if (!announceDialog) {
+            announceDialog = document.createElement('div');
+            announceDialog.className = 'notif-detail-dialog';
+            announceOverlay.appendChild(announceDialog);
+        }
+        announceDialog.innerHTML =
+            '<button class="notif-detail-close" id="announceDetailClose">✕</button>' +
+            '<div class="notif-detail-icon system" style="margin:0 auto 12px;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,0.12);color:#3b82f6;font-size:22px;">📢</div>' +
+            '<div class="notif-detail-type">全站公告</div>' +
+            '<div class="notif-detail-title">' + escapeHtml(title) + '</div>' +
+            (content ? '<div class="notif-detail-msg">' + escapeHtml(content) + '</div>' : '') +
+            '<div class="notif-detail-time">' + fmtTime(time) + '</div>';
+        announceOverlay.style.display = '';
+        requestAnimationFrame(function () {
+            announceOverlay.classList.add('open');
+        });
+        var closeBtn = document.getElementById('announceDetailClose');
+        if (closeBtn) closeBtn.addEventListener('click', closeAnnounceDetail);
+    }
+    function closeAnnounceDetail() {
+        if (announceOverlay) {
+            announceOverlay.classList.remove('open');
+            setTimeout(function () { announceOverlay.style.display = 'none'; }, 200);
+        }
+    }
+
+    body.addEventListener('click', function (e) {
+        var item = e.target.closest('.announcement-item');
+        if (!item) return;
+        var title = item.dataset.title || '';
+        var content = item.dataset.content || '';
+        var time = item.dataset.time || '';
+        openAnnounceDetail(title, content, time);
+    });
+
+    // 监听登录状态
+    document.addEventListener('auth:updated', function () {
+        if (currentUser && currentUser.logged_in) {
+            loadActiveAnnouncements();
+        } else {
+            banner.style.display = 'none';
+        }
+    });
+
+    // 初始加载（如果已登录）
+    if (currentUser && currentUser.logged_in) {
+        loadActiveAnnouncements();
+    }
+})();

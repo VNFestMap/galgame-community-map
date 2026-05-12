@@ -17,6 +17,18 @@ require_once __DIR__ . '/../includes/audit.php';
 
 $action = $_GET['action'] ?? '';
 
+/**
+ * 解码 galonly_applications 表中的 image_path 字段为数组
+ * 兼容旧数据（单路径字符串）和新数据（JSON 数组字符串）
+ */
+function decodeImagePaths($row): array {
+    if (!$row || empty($row['image_path'])) {
+        return [];
+    }
+    $decoded = json_decode($row['image_path'], true);
+    return is_array($decoded) ? $decoded : [trim($row['image_path'])];
+}
+
 switch ($action) {
     case 'list_events':
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
@@ -104,7 +116,7 @@ switch ($action) {
         $contact = trim($input['contact'] ?? '');
         $notes = trim($input['notes'] ?? '');
         $boothName = trim($input['booth_name'] ?? '');
-        $imagePath = trim($input['image_path'] ?? '');
+        $imagePaths = isset($input['image_paths']) && is_array($input['image_paths']) ? $input['image_paths'] : [];
 
         // 验证必填字段
         if (!$eventId) {
@@ -146,7 +158,7 @@ switch ($action) {
                 "INSERT INTO galonly_applications (event_id, user_id, is_joint, joint_name, wants_upgrade, contact, notes, image_path, booth_name, status, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)"
             );
-            $stmt->execute([$eventId, $user['id'], $isJoint, $jointName, $wantsUpgrade, $contact, $notes, $imagePath, $boothName, $now, $now]);
+            $stmt->execute([$eventId, $user['id'], $isJoint, $jointName, $wantsUpgrade, $contact, $notes, json_encode($imagePaths, JSON_UNESCAPED_UNICODE), $boothName, $now, $now]);
             $appId = (int)$db->lastInsertId();
 
             foreach ($clubIds as $i => $clubId) {
@@ -196,6 +208,7 @@ switch ($action) {
             $stmt = $db->prepare("SELECT club_id, club_country FROM galonly_application_clubs WHERE application_id = ?");
             $stmt->execute([$application['id']]);
             $application['clubs'] = $stmt->fetchAll();
+            $application['image_paths'] = decodeImagePaths($application);
         }
 
         echo json_encode(['success' => true, 'application' => $application ?: null], JSON_UNESCAPED_UNICODE);
@@ -260,9 +273,9 @@ switch ($action) {
             $fields[] = 'notes = ?';
             $params[] = trim($input['notes']);
         }
-        if (isset($input['image_path'])) {
+        if (isset($input['image_paths']) && is_array($input['image_paths'])) {
             $fields[] = 'image_path = ?';
-            $params[] = trim($input['image_path']);
+            $params[] = json_encode($input['image_paths'], JSON_UNESCAPED_UNICODE);
         }
 
         // 如果提供了同好会列表，检查唯一性约束
@@ -339,6 +352,52 @@ switch ($action) {
         }
         exit();
 
+    case 'delete_application':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => '仅支持 POST 请求'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+
+        $user = requireLogin();
+        $input = json_decode(file_get_contents('php://input'), true);
+        $applicationId = (int)($input['application_id'] ?? 0);
+
+        if (!$applicationId) {
+            echo json_encode(['success' => false, 'message' => '缺少 application_id'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+
+        $db = getDB();
+
+        // 验证申请存在且属于当前用户
+        $stmt = $db->prepare("SELECT id, status, image_path FROM galonly_applications WHERE id = ? AND user_id = ?");
+        $stmt->execute([$applicationId, $user['id']]);
+        $app = $stmt->fetch();
+
+        if (!$app) {
+            echo json_encode(['success' => false, 'message' => '申请不存在'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        if ($app['status'] === 'approved') {
+            echo json_encode(['success' => false, 'message' => '已通过的申请无法删除'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+
+        $db->beginTransaction();
+        try {
+            $db->prepare("DELETE FROM galonly_votes WHERE application_id = ?")->execute([$applicationId]);
+            $db->prepare("DELETE FROM galonly_application_clubs WHERE application_id = ?")->execute([$applicationId]);
+            $db->prepare("DELETE FROM galonly_applications WHERE id = ?")->execute([$applicationId]);
+            $db->commit();
+
+            logAction('galonly.delete_application', 'galonly_application', $applicationId);
+            echo json_encode(['success' => true, 'message' => '申请已删除'], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            $db->rollBack();
+            echo json_encode(['success' => false, 'message' => '删除失败：' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+        exit();
+
     case 'upload_image':
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             echo json_encode(['success' => false, 'message' => '仅支持 POST 请求'], JSON_UNESCAPED_UNICODE);
@@ -379,7 +438,7 @@ switch ($action) {
         ];
         $ext = $extMap[$file['type']];
 
-        $filename = $user['id'] . '_' . time() . '.' . $ext;
+        $filename = $user['id'] . '_' . time() . '_' . uniqid() . '.' . $ext;
         $uploadDir = __DIR__ . '/../uploads/galonly/' . $eventId;
 
         if (!is_dir($uploadDir)) {
@@ -455,6 +514,9 @@ switch ($action) {
             $stmt->execute([$app['id'], $user['id']]);
             $myVote = $stmt->fetchColumn();
             $app['my_vote'] = $myVote ?: null;
+
+            // 解码图片路径为数组
+            $app['image_paths'] = decodeImagePaths($app);
         }
         unset($app);
 
@@ -488,6 +550,11 @@ switch ($action) {
         }
 
         $db = getDB();
+
+        // 获取申请信息（用于通知）
+        $appStmt = $db->prepare("SELECT ga.user_id, ga.booth_name, ge.name AS event_name FROM galonly_applications ga LEFT JOIN galonly_events ge ON ga.event_id = ge.id WHERE ga.id = ?");
+        $appStmt->execute([$applicationId]);
+        $appInfo = $appStmt->fetch();
 
         // 检查是否已投票
         $stmt = $db->prepare("SELECT id FROM galonly_votes WHERE application_id = ? AND auditer_id = ?");
@@ -523,6 +590,25 @@ switch ($action) {
                 $result = 'rejected';
                 $stmt = $db->prepare("UPDATE galonly_applications SET status = ?, updated_at = ? WHERE id = ?");
                 $stmt->execute([$result, $now, $applicationId]);
+            }
+
+            // 审核通过/拒绝时发送通知
+            if (in_array($result, ['approved', 'rejected']) && $appInfo) {
+                require_once __DIR__ . '/../includes/notifications.php';
+                $notifType = ($result === 'approved') ? 'galonly_approved' : 'galonly_rejected';
+                $notifTitle = ($result === 'approved') ? '摊位申请已通过' : '摊位申请未通过';
+                $notifMsg = ($result === 'approved')
+                    ? '你在「' . ($appInfo['event_name'] ?? '') . '」的摊位「' . ($appInfo['booth_name'] ?? '') . '」已通过审核'
+                    : '你在「' . ($appInfo['event_name'] ?? '') . '」的摊位申请未通过审核';
+                createNotification(
+                    $appInfo['user_id'],
+                    $notifType,
+                    $notifTitle,
+                    $notifMsg,
+                    'Galgame_events/galgameonly_list.html',
+                    'galonly_application',
+                    $applicationId
+                );
             }
 
             $db->commit();
@@ -633,7 +719,8 @@ switch ($action) {
     default:
         echo json_encode(['success' => false, 'message' => '未知动作', 'available_actions' => [
             'list_events', 'check_eligibility', 'submit', 'get_application',
-            'update_application', 'upload_image', 'list_applications', 'vote',
+            'update_application', 'delete_application', 'upload_image',
+            'list_applications', 'vote',
             'add_event', 'delete_event',
         ]], JSON_UNESCAPED_UNICODE);
         exit();

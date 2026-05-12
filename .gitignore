@@ -99,3 +99,6 @@ data/qq_members.json
 
 # --- Claude Code 缓存 ---
 .claude/
+
+# --- Superpowers AI 生成文件 ---
+.superpowers/

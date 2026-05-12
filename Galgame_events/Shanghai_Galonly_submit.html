@@ -199,6 +199,30 @@ body {
     background: rgba(231,76,60,0.2); border-color: #e74c3c;
 }
 
+/* Image previews */
+.image-preview-container {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+}
+.image-preview-item {
+    position: relative; width: 100px; height: 100px;
+    border-radius: 8px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.image-preview-item img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.image-preview-remove {
+    position: absolute; top: 3px; right: 3px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.6);
+    color: #fff; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+}
+.image-preview-remove:hover {
+    background: rgba(231,76,60,0.9);
+}
+
 /* Upload status */
 .upload-status {
     margin-top: 8px; font-size: 13px; display: none;
@@ -299,7 +323,7 @@ body {
         <div class="form-group">
             <label class="form-label">制品图片 <span class="required">*</span></label>
             <div class="file-upload-area" id="file-upload-area">
-                <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp">
+                <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" multiple required>
                 <div class="file-upload-text" id="file-upload-text">
                     点击上传制品图片<br>
                     支持 JPG / PNG / WebP，最大 10MB
@@ -309,6 +333,7 @@ body {
                 最好添加摊位菜单图片或效果图，没画好的草图也可以，可以后续更新重新审核。拒绝 AI 与 R18 内容。
             </div>
             <div class="upload-status" id="upload-status"></div>
+            <div id="image-preview-container" class="image-preview-container" style="display:none;margin-top:12px;gap:10px;flex-wrap:wrap;"></div>
         </div>
 
         <!-- 联系方式 -->
@@ -351,8 +376,7 @@ body {
     var eventId = 0;
     var applicationId = 0;
     var isEditMode = false;
-    var existingImagePath = '';
-    var uploadedImagePath = '';
+    var uploadedImagePaths = [];
     var isJoint = false;
 
     // ------------------------------------------------------------
@@ -533,45 +557,65 @@ body {
     // Image upload handler
     // ------------------------------------------------------------
     function handleImageUpload(e) {
-        var file = e.target.files[0];
-        if (!file) return;
+        var files = e.target.files;
+        if (!files || files.length === 0) return;
 
         var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (allowedTypes.indexOf(file.type) === -1) {
-            showUploadStatus('❌ 仅支持 JPG / PNG / WebP 格式', '#e74c3c');
-            $('image-input').value = '';
-            return;
-        }
-        if (file.size > 10 * 1024 * 1024) {
-            showUploadStatus('❌ 文件大小不能超过 10MB', '#e74c3c');
-            $('image-input').value = '';
-            return;
-        }
-
-        // Update UI to show selected file name
-        showUploadStatus('正在上传: ' + file.name + ' ...', 'rgba(255,255,255,0.5)');
-
-        var formData = new FormData();
-        formData.append('file', file);
-        formData.append('event_id', eventId);
-
-        fetch('../api/galonly.php?action=upload_image', {
-            method: 'POST',
-            credentials: 'include',
-            body: formData
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            if (data.success) {
-                uploadedImagePath = data.path;
-                showUploadStatus('✅ 上传成功: ' + file.name, '#4caf50');
-            } else {
-                showUploadStatus('❌ ' + (data.message || '上传失败'), '#e74c3c');
+        var pending = [];
+        for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            if (allowedTypes.indexOf(f.type) === -1) {
+                showUploadStatus('❌ ' + f.name + ' 格式不支持，仅支持 JPG / PNG / WebP', '#e74c3c');
+                $('image-input').value = '';
+                return;
             }
-        })
-        .catch(function() {
-            showUploadStatus('❌ 上传失败，请重试', '#e74c3c');
-        });
+            if (f.size > 10 * 1024 * 1024) {
+                showUploadStatus('❌ ' + f.name + ' 超过 10MB 限制', '#e74c3c');
+                $('image-input').value = '';
+                return;
+            }
+            pending.push(f);
+        }
+
+        var total = pending.length;
+        var completed = 0;
+        showUploadStatus('正在上传 0/' + total + ' ...', 'rgba(255,255,255,0.5)');
+
+        function uploadNext(index) {
+            if (index >= pending.length) {
+                $('image-input').value = '';
+                return;
+            }
+            var file = pending[index];
+            var formData = new FormData();
+            formData.append('file', file);
+            formData.append('event_id', eventId);
+
+            fetch('../api/galonly.php?action=upload_image', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    uploadedImagePaths.push(data.path);
+                    completed++;
+                    showUploadStatus('✅ 已上传 ' + completed + '/' + total, '#4caf50');
+                } else {
+                    showUploadStatus('❌ ' + file.name + ' 上传失败: ' + (data.message || ''), '#e74c3c');
+                }
+                renderImagePreviews();
+                uploadNext(index + 1);
+            })
+            .catch(function() {
+                showUploadStatus('❌ ' + file.name + ' 上传失败，请重试', '#e74c3c');
+                renderImagePreviews();
+                uploadNext(index + 1);
+            });
+        }
+
+        uploadNext(0);
     }
 
     function showUploadStatus(text, color) {
@@ -579,6 +623,40 @@ body {
         el.textContent = text;
         el.style.color = color || 'rgba(255,255,255,0.5)';
         el.style.display = 'block';
+    }
+
+    function renderImagePreviews() {
+        var container = $('image-preview-container');
+        if (!container) return;
+        container.innerHTML = '';
+        if (uploadedImagePaths.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        for (var i = 0; i < uploadedImagePaths.length; i++) {
+            (function(idx) {
+                var wrapper = document.createElement('div');
+                wrapper.className = 'image-preview-item';
+
+                var img = document.createElement('img');
+                img.src = '../' + uploadedImagePaths[idx];
+                img.alt = '制品图片 ' + (idx + 1);
+
+                var delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'image-preview-remove';
+                delBtn.textContent = '✕';
+                delBtn.addEventListener('click', function() {
+                    uploadedImagePaths.splice(idx, 1);
+                    renderImagePreviews();
+                });
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(delBtn);
+                container.appendChild(wrapper);
+            })(i);
+        }
     }
 
     // ------------------------------------------------------------
@@ -615,12 +693,6 @@ body {
             return;
         }
 
-        // Validate image
-        if (!uploadedImagePath) {
-            showError('请上传制品图片');
-            return;
-        }
-
         // Validate joint name
         var jointName = '';
         if (isJoint) {
@@ -630,6 +702,12 @@ body {
                 $('joint_name').focus();
                 return;
             }
+        }
+
+        // Validate images
+        if (uploadedImagePaths.length === 0) {
+            showError('请至少上传一张制品图片');
+            return;
         }
 
         // Disable button
@@ -646,7 +724,7 @@ body {
             wants_upgrade: $('wants_upgrade').checked ? 1 : 0,
             contact: contact,
             notes: $('notes').value.trim(),
-            image_path: uploadedImagePath
+            image_paths: uploadedImagePaths
         };
 
         if (isEditMode) {
@@ -796,10 +874,12 @@ body {
                     $('wants_upgrade').checked = parseInt(appData.wants_upgrade) === 1;
                     $('contact').value = appData.contact || '';
                     $('notes').value = appData.notes || '';
-                    if (appData.image_path && appData.image_path.trim()) {
-                        existingImagePath = appData.image_path;
-                        uploadedImagePath = appData.image_path;
-                        showUploadStatus('✅ 已上传图片', '#4caf50');
+                    if (appData.image_paths) {
+                        uploadedImagePaths = appData.image_paths;
+                        renderImagePreviews();
+                    } else if (appData.image_path && appData.image_path.trim()) {
+                        uploadedImagePaths = [appData.image_path.trim()];
+                        renderImagePreviews();
                     }
                     $('btn-submit').textContent = '保存修改';
                     $('header-title').textContent = '编辑摊位';

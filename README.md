@@ -45,6 +45,9 @@
 - 角色体系：成员 → 管理员 → 负责人
 - 联系方式可见性控制
 - 社团头像上传与管理
+- **绑定码加入**：负责人生成绑定码，成员输入码即可加入
+- **神器推荐榜**：连接 Bangumi 数据，每社展示 12 部作品推荐
+- **留言板**：成员可留言评价，管理员可管理删除
 
 **📋 账号面板（VN 风格）**
 - 个人档案卡片（角色风格布局）
@@ -73,6 +76,11 @@
 - 审核后台（管理员面板）
 - 申请数据重置工具
 
+**🔔 通知与公告**
+- 通知下拉面板，实时接收动态提醒
+- 公告系统，管理员可发布全局公告
+- 同好会内互动消息通知
+
 **📝 提交系统**
 - 同好会信息提交
 - 活动信息提交
@@ -82,6 +90,9 @@
 - 同好会增删改查（超级管理员）
 - 提交审核（同好会 / 活动 / 刊物）
 - 成员管理（审核、角色变更、踢出）
+- 绑定码管理（生成/撤销）
+- 神器推荐榜管理（Bangumi 搜索添加/排序）
+- 公告发布与管理
 - 数据统计面板
 
 **🎨 界面**
@@ -159,6 +170,12 @@ php -S localhost:8000
 │   ├── manuscripts.php        # 稿件管理 API
 │   ├── avatar.php             # 头像上传
 │   ├── club_avatar.php        # 社团头像上传
+│   ├── announcements.php      # 公告 CRUD
+│   ├── bangumi_proxy.php      # Bangumi API 代理（缓存 + 搜索）
+│   ├── club_codes.php         # 同好会绑定码
+│   ├── club_comments.php      # 同好会留言板
+│   ├── club_recommendations.php # 神器推荐榜
+│   ├── notifications.php      # 通知系统
 │   ├── submit.php             # 同好会提交
 │   ├── submit_event.php       # 活动提交
 │   └── submit_publication.php # 刊物投稿
@@ -188,6 +205,7 @@ php -S localhost:8000
 │   ├── oauth_qq.php           # QQ OAuth2
 │   ├── oauth_discord.php      # Discord OAuth2
 │   ├── audit.php              # 审计日志
+│   ├── notifications.php      # 通知与公告逻辑
 │   └── rate_limit.php         # 频率限制
 ├── js/                 # 前端脚本
 │   ├── app.js                 # 主应用逻辑（用户面板、图鉴、地图交互）
@@ -221,6 +239,12 @@ php -S localhost:8000
 | `api/membership.php` | GET/POST | 成员申请/审核 |
 | `api/galonly.php` | GET/POST | GalOnly 出展申请/审核/投票 |
 | `api/manuscripts.php` | GET/POST | 稿件管理 |
+| `api/bangumi_proxy.php` | GET | Bangumi API 代理搜索/获取 |
+| `api/club_codes.php` | GET/POST | 绑定码生成/使用/管理 |
+| `api/club_comments.php` | GET/POST | 同好会留言板 |
+| `api/club_recommendations.php` | GET/POST | 神器推荐榜 CRUD |
+| `api/announcements.php` | GET/POST | 公告发布与管理 |
+| `api/notifications.php` | GET/POST | 通知推送与读取 |
 | `api/club_avatar.php` | POST | 同好会头像上传 |
 | `api/submit.php` | POST | 提交同好会 |
 | `api/toggle_visibility.php` | POST | 切换可见性 |
@@ -269,6 +293,30 @@ php -S localhost:8000
 ---
 
 ## 近期更新
+
+### v1.6.0 — 同好会增强与通知公告系统
+
+**✨ 新功能**
+- **绑定码系统**：同好会负责人生成绑定码，成员输入码即可直接加入
+- **神器推荐榜**：连接 Bangumi API，每社最多展示 12 部作品推荐（含评分、封面）
+- **同好会留言板**：成员可留言评价，管理员可管理删除
+- **通知与公告系统**：全局通知下拉面板，管理员可发布公告
+- **评价管理后台**：统一审核管理入口
+
+**🎨 界面优化**
+- 同好会管理页（club_manager.html）全面改版：玻璃拟态设计、标签页布局、绑定码/推荐榜管理
+- 深色模式修复：刷新页面后顶部状态栏保持深色
+- 主题偏好持久化：关闭页面不丢失主题选择
+- 绑定码输入框与按钮同行显示
+
+**🛠 API 新增**
+- `api/bangumi_proxy.php` — Bangumi API 代理（搜索 + 缓存）
+- `api/club_codes.php` — 绑定码生成与使用
+- `api/club_comments.php` — 留言板 CRUD
+- `api/club_recommendations.php` — 推荐榜管理
+- `api/announcements.php` + `api/notifications.php` — 公告与通知
+
+---
 
 ### v1.5.0 — 用户面板与 GalOnly 高校通道
 

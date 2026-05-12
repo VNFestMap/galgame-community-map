@@ -146,7 +146,7 @@
   // 添加活动
   async function addEvent(eventData) {
     if (!isAdminMode()) {
-      alert('请先开启管理员模式');
+      alert(__('alertAdminModeRequired'));
       return false;
     }
 
@@ -217,7 +217,7 @@
   // 报名
   async function registerForEvent(eventId) {
     if (!isLoggedIn()) {
-      alert('请先登录后再报名');
+      alert(__('alertPleaseLoginFirst'));
       return false;
     }
     try {
@@ -231,7 +231,7 @@
         await loadRegistrations();
         return true;
       } else {
-        alert(data.message || '报名失败');
+        alert(data.message || __('alertSignupFail'));
         return false;
       }
     } catch (e) {
@@ -254,7 +254,7 @@
         await loadRegistrations();
         return true;
       } else {
-        alert(data.message || '取消失败');
+        alert(data.message || __('alertCancelFail'));
         return false;
       }
     } catch (e) {
@@ -266,7 +266,7 @@
   // 非管理员直接添加活动（通过 action=add 端点，无需审核）
   async function addEventDirect(eventData) {
     if (!isLoggedIn()) {
-      alert('请先登录后再添加活动');
+      alert(__('alertPleaseLoginFirst'));
       return false;
     }
 
@@ -329,7 +329,7 @@
   async function deleteEvent(eventId) {
     if (!isAdminMode()) return false;
     
-    if (!confirm('确定要删除这个活动吗？')) return false;
+    if (!confirm(__('confirmDeleteSimple'))) return false;
 
     const index = state.events.findIndex(e => e.id === eventId);
     if (index === -1) return false;
@@ -417,11 +417,11 @@
     };
 
     if (!eventData.event) {
-      alert('请填写活动名称');
+      alert(__('alertNameRequiredCal'));
       return;
     }
     if (!eventData.date) {
-      alert('请选择活动日期');
+      alert(__('alertDateRequired'));
       return;
     }
 
@@ -437,12 +437,12 @@
     if (success) {
       closeEventEditor();
       if (isAdminMode()) {
-        alert(eventId ? '✅ 活动已更新' : '✅ 活动已添加');
+        alert(eventId ? __('alertUpdateSuccess') : __('alertAddSuccess'));
       } else {
-        alert('✅ 活动已添加');
+        alert(__('alertAddSuccess'));
       }
     } else {
-      alert(isAdminMode() ? '保存失败，请检查管理员权限' : '保存失败，请稍后重试');
+      alert(isAdminMode() ? __('alertAdminModeRequired') : __('alertSaveFailed'));
     }
   }
 
@@ -937,7 +937,7 @@
     if (elements.calendarAddEventBtn) {
       elements.calendarAddEventBtn.addEventListener('click', () => {
         if (!isAdminMode()) {
-          alert('请先开启管理员模式');
+          alert(__('alertAdminModeRequired'));
           return;
         }
         openEventEditor(null);
@@ -1061,7 +1061,7 @@
             if (eventData) openEventDetail(eventData);
           }
         } else if (action === 'unregister') {
-          if (confirm('确定取消报名吗？')) {
+          if (confirm(__('confirmDeleteSimple'))) {
             if (await unregisterFromEvent(eventId)) {
               const eventData = getEventById(eventId);
               if (eventData) openEventDetail(eventData);

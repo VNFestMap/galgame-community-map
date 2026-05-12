@@ -259,14 +259,114 @@ body {
   .card { padding: 14px 16px; }
   .tabs { padding: 3px; }
   .tab-btn { padding: 8px 12px; font-size: 12px; }
+  .announce-form .form-row { flex-direction: column; }
 }
+
+/* ===== 全站公告模块 ===== */
+.announce-section { display: none; margin-bottom: 20px; }
+.announce-section.visible { display: block; }
+
+.announce-composer {
+  background: white; border-radius: 14px; padding: 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 20px;
+}
+.announce-composer-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
+}
+.announce-composer-header h2 {
+  font-size: 18px; font-weight: 700; color: #1a1a2e; display: flex; align-items: center; gap: 8px;
+}
+.announce-composer-header .close-btn {
+  width: 30px; height: 30px; border: none; background: transparent; color: #999;
+  font-size: 18px; cursor: pointer; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.announce-composer-header .close-btn:hover { background: #f5f5f5; color: #666; }
+
+.announce-form { display: flex; flex-direction: column; gap: 14px; }
+.announce-form .form-row { display: flex; gap: 14px; align-items: flex-start; }
+.announce-form .form-row .form-group { flex: 1; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }
+.announce-form input, .announce-form select, .announce-form textarea {
+  padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 8px;
+  font-size: 13px; font-family: inherit; transition: border-color 0.15s; background: #fafafa; outline: none;
+}
+.announce-form input:focus, .announce-form select:focus, .announce-form textarea:focus { border-color: #3b82f6; background: white; }
+.announce-form textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.announce-form .form-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 4px; }
+
+.toggle-row {
+  display: flex; align-items: center; gap: 12px; padding: 4px 0;
+}
+.toggle-row label { font-size: 12px; font-weight: 600; color: #666; cursor: pointer; text-transform: none; letter-spacing: 0; }
+.toggle-switch {
+  position: relative; width: 40px; height: 22px; background: #ddd;
+  border-radius: 11px; cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+}
+.toggle-switch.on { background: #10b981; }
+.toggle-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; background: white; border-radius: 50%;
+  transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-switch.on::after { transform: translateX(18px); }
+.toggle-hint { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+.toggle-hint strong { color: #64748b; }
+
+.announce-preview {
+  margin-top: 8px; padding: 16px 20px; background: #f8f9fb;
+  border-radius: 10px; border-left: 4px solid #3b82f6;
+}
+.announce-preview-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.announce-preview .preview-title { font-size: 16px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+.announce-preview .preview-content { font-size: 13px; color: #666; line-height: 1.7; }
+
+.announce-list-header { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+.announce-list-header .count { font-size: 12px; font-weight: 400; color: #999; }
+.announce-list { display: flex; flex-direction: column; gap: 10px; }
+
+.announce-card {
+  background: white; border-radius: 14px; padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid #3b82f6;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+}
+.announce-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.announce-card.type-info { border-left-color: #3b82f6; }
+.announce-card.type-warning { border-left-color: #f59e0b; }
+.announce-card.type-important { border-left-color: #ef4444; }
+.announce-card.type-update { border-left-color: #10b981; }
+.announce-card .card-left { flex: 1; min-width: 0; }
+.announce-card .card-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.announce-card .card-title { font-size: 15px; font-weight: 600; color: #1a1a2e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; display: inline-block; vertical-align: middle; }
+.announce-card .card-time { font-size: 11px; color: #bbb; }
+.announce-card .card-content-preview { font-size: 13px; color: #888; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.announce-card .card-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.type-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.type-badge-info { background: #dbeafe; color: #1d4ed8; }
+.type-badge-warning { background: #fef3c7; color: #b45309; }
+.type-badge-important { background: #fee2e2; color: #b91c1c; }
+.type-badge-update { background: #d1fae5; color: #047857; }
+
+.status-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.status-badge-draft { background: #f3f4f6; color: #6b7280; }
+.status-badge-published { background: #d1fae5; color: #047857; }
+
+.persistent-tag { font-size: 10px; color: #64748b; background: #f1f5f9; padding: 1px 8px; border-radius: 10px; font-weight: 600; }
+.btn-publish-sm { background: #10b981; color: white; padding: 4px 12px; font-size: 12px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; }
+.btn-publish-sm:hover { background: #059669; }
+.btn-delete-sm { background: transparent; color: #9ca3af; padding: 4px 10px; font-size: 12px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; }
+.btn-delete-sm:hover { background: #fef2f2; color: #ef4444; }
 </style>
 </head>
 <body>
 <div class="container">
+  <div id="reviewContent">
   <div class="top-bar">
     <h1>📋 审核中心</h1>
     <div class="header-links">
+      <button id="announceBtn" style="display:none;">📢 全站公告</button>
       <a href="submissions.html">同好会申请旧版</a>
       <a href="submissions_event.html">活动申请旧版</a>
       <a href="events.php">活动管理</a>
@@ -292,6 +392,59 @@ body {
   </div>
 
   <div id="listContainer" class="list"><div class="empty">加载中...</div></div>
+  </div>
+
+  <!-- ===== 全站公告管理 ===== -->
+  <div class="announce-section" id="announceSection">
+    <div class="announce-composer">
+      <div class="announce-composer-header">
+        <h2>📢 撰写全站公告</h2>
+        <button class="close-btn" id="announceCloseBtn">✕</button>
+      </div>
+      <div class="announce-form">
+        <div class="form-row">
+          <div class="form-group" style="flex:2;">
+            <label>公告标题</label>
+            <input type="text" id="announceTitle" placeholder="输入公告标题...">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>公告类型</label>
+            <select id="announceType">
+              <option value="info">📘 信息</option>
+              <option value="warning">⚠️ 警告</option>
+              <option value="important">🔴 重要</option>
+              <option value="update">🟢 更新</option>
+            </select>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-switch on" id="announcePersistent"></div>
+          <label>长期有效</label>
+          <span class="toggle-hint">— 开启后公告将<strong>永久保存在首页公告栏</strong>，新注册用户也可看到</span>
+        </div>
+        <div class="form-group">
+          <label>公告内容</label>
+          <textarea id="announceContent" placeholder="输入公告内容..."></textarea>
+        </div>
+        <div class="announce-preview" id="announcePreview" style="display:none;">
+          <div class="announce-preview-label">🔍 预览</div>
+          <div class="preview-title" id="previewTitle"></div>
+          <div class="preview-content" id="previewContent"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-draft" id="announceSaveDraft">💾 保存草稿</button>
+          <button class="btn btn-publish" id="announcePublish">📢 发布公告</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="announce-list-header">
+      <span>历史公告 <span class="count" id="announceCount">共 0 条</span></span>
+    </div>
+    <div class="announce-list" id="announceList">
+      <div class="empty-state">暂无公告</div>
+    </div>
+  </div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -300,7 +453,9 @@ body {
 // ====== 权限与数据 ======
 const ROLE_LEVEL = { visitor: 0, member: 1, manager: 2, representative: 3, super_admin: 4 };
 let currentUser = null;
+let isSuperAdmin = false;
 let currentTab = 'club';
+let editingAnnounceId = null;
 
 // 各 tab 数据
 let clubSubmissions = [];
@@ -337,6 +492,10 @@ async function checkAuth() {
     if (!data.logged_in) { window.location.href = '../index.html?need_login=1'; return false; }
     if ((ROLE_LEVEL[data.user.role] ?? -1) < 2) { alert('权限不足'); window.location.href = '../index.html'; return false; }
     currentUser = data.user;
+    isSuperAdmin = data.user.role === 'super_admin';
+    // 超级管理员显示全站公告按钮
+    const ab = document.getElementById('announceBtn');
+    if (ab) ab.style.display = isSuperAdmin ? '' : 'none';
     return true;
   } catch {
     window.location.href = '../index.html';
@@ -783,6 +942,151 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   loadCurrentTab();
+}
+
+// ====== 全站公告 ======
+function escapeAnnounceHtml(str) { if (!str) return ''; return String(str).replace(/[&<>"]/g, function(m) { return m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : '&quot;'; }); }
+
+var typeLabels = { info: '信息', warning: '警告', important: '重要', update: '更新' };
+var typeBadge = { info: 'type-badge-info', warning: 'type-badge-warning', important: 'type-badge-important', update: 'type-badge-update' };
+var statusBadge = { draft: 'status-badge-draft', published: 'status-badge-published' };
+var statusTextMap = { draft: '草稿', published: '已发布' };
+var borderClass = { info: 'type-info', warning: 'type-warning', important: 'type-important', update: 'type-update' };
+
+// 实时预览
+document.getElementById('announceTitle').addEventListener('input', updatePreview);
+document.getElementById('announceContent').addEventListener('input', updatePreview);
+document.getElementById('announceType').addEventListener('change', updatePreview);
+function updatePreview() {
+  var title = document.getElementById('announceTitle').value.trim();
+  var content = document.getElementById('announceContent').value.trim();
+  var type = document.getElementById('announceType').value;
+  var preview = document.getElementById('announcePreview');
+  if (!title && !content) { preview.style.display = 'none'; return; }
+  preview.style.display = '';
+  preview.style.borderLeftColor = ({info:'#3b82f6', warning:'#f59e0b', important:'#ef4444', update:'#10b981'})[type] || '#3b82f6';
+  document.getElementById('previewTitle').textContent = title || '（无标题）';
+  document.getElementById('previewContent').textContent = content || '（无内容）';
+}
+
+// Toggle 开关
+document.getElementById('announcePersistent').addEventListener('click', function() { this.classList.toggle('on'); });
+
+// 切换公告区
+document.getElementById('announceBtn').addEventListener('click', function() {
+  document.getElementById('reviewContent').style.display = 'none';
+  document.getElementById('announceSection').classList.add('visible');
+  this.classList.add('active');
+  loadAnnouncements();
+});
+document.getElementById('announceCloseBtn').addEventListener('click', function() {
+  document.getElementById('announceSection').classList.remove('visible');
+  document.getElementById('announceBtn').classList.remove('active');
+  document.getElementById('reviewContent').style.display = '';
+  resetAnnounceForm();
+});
+
+function resetAnnounceForm() {
+  editingAnnounceId = null;
+  document.getElementById('announceTitle').value = '';
+  document.getElementById('announceType').value = 'info';
+  document.getElementById('announceContent').value = '';
+  document.getElementById('announcePersistent').classList.add('on');
+  document.getElementById('announcePreview').style.display = 'none';
+  document.getElementById('announcePublish').textContent = '📢 发布公告';
+  document.getElementById('announceSaveDraft').textContent = '💾 保存草稿';
+}
+
+// 加载历史公告
+async function loadAnnouncements() {
+  try {
+    var r = await fetch('../api/announcements.php?action=list', { credentials: 'same-origin' });
+    var data = await r.json();
+    if (!data.success) { showToast(data.message || '加载失败', 'error'); return; }
+    renderAnnouncements(data.announcements || []);
+  } catch { showToast('网络错误', 'error'); }
+}
+
+function renderAnnouncements(list) {
+  document.getElementById('announceCount').textContent = '共 ' + list.length + ' 条';
+  var container = document.getElementById('announceList');
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无公告</div>'; return; }
+  container.innerHTML = list.map(function(a) {
+    var typeCls = borderClass[a.type] || 'type-info';
+    var tBadge = typeBadge[a.type] || 'type-badge-info';
+    var sBadge = statusBadge[a.status] || 'status-badge-draft';
+    var sText = statusTextMap[a.status] || a.status;
+    var persistentTag = a.is_persistent == 1 ? '<span class="persistent-tag" style="margin-left:4px;">📌 长期</span>' : '';
+    var dateStr = a.published_at || a.created_at || '';
+    var dateDisplay = dateStr ? dateStr.split(' ')[0] : '';
+    var actions = '';
+    if (a.status === 'draft') {
+      actions = '<button class="btn-publish-sm" onclick="publishAnnouncement(' + a.id + ')">发布</button> <button class="btn-delete-sm" onclick="deleteAnnouncement(' + a.id + ')">🗑️</button>';
+    } else {
+      actions = '<button class="btn-delete-sm" onclick="deleteAnnouncement(' + a.id + ')">🗑️</button>';
+    }
+    var contentPreview = escapeAnnounceHtml((a.content || '').replace(/<[^>]*>/g, '').slice(0, 120));
+    if ((a.content || '').length > 120) contentPreview += '…';
+    return '<div class="announce-card ' + typeCls + '">' +
+      '<div class="card-left">' +
+      '<div class="card-top">' +
+      '<span class="card-title">' + escapeAnnounceHtml(a.title) + '</span>' +
+      '<span class="type-badge ' + tBadge + '">' + (typeLabels[a.type] || a.type) + '</span>' +
+      '<span class="status-badge ' + sBadge + '">' + sText + '</span>' +
+      persistentTag +
+      '<span class="card-time">' + dateDisplay + '</span>' +
+      '</div>' +
+      '<div class="card-content-preview">' + contentPreview + '</div>' +
+      '</div>' +
+      '<div class="card-right">' + actions + '</div></div>';
+  }).join('');
+}
+
+// 保存草稿
+document.getElementById('announceSaveDraft').addEventListener('click', async function() {
+  var title = document.getElementById('announceTitle').value.trim();
+  var content = document.getElementById('announceContent').value.trim();
+  if (!title || !content) { showToast('标题和内容不能为空', 'error'); return; }
+  var type = document.getElementById('announceType').value;
+  var isPersistent = document.getElementById('announcePersistent').classList.contains('on') ? 1 : 0;
+  var url = '../api/announcements.php?action=' + (editingAnnounceId ? 'update' : 'create');
+  var body = { title: title, content: content, type: type, is_persistent: isPersistent };
+  if (editingAnnounceId) body.id = editingAnnounceId;
+  try {
+    var r = await fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    var data = await r.json();
+    if (data.success) { showToast('💾 草稿已保存', 'success'); loadAnnouncements(); }
+    else { showToast(data.message || '保存失败', 'error'); }
+  } catch { showToast('网络错误', 'error'); }
+});
+
+// 发布公告
+async function publishAnnouncement(id) {
+  if (!confirm('确定发布这条公告吗？发布后将推送给所有活跃用户。')) return;
+  try {
+    var r = await fetch('../api/announcements.php?action=publish', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id })
+    });
+    var data = await r.json();
+    if (data.success) {
+      showToast('✅ 公告已发布，已通知 ' + (data.notified || 0) + ' 位用户', 'success');
+      loadAnnouncements();
+      resetAnnounceForm();
+    } else { showToast(data.message || '发布失败', 'error'); }
+  } catch { showToast('网络错误', 'error'); }
+}
+
+// 删除公告
+async function deleteAnnouncement(id) {
+  if (!confirm('确定删除这条公告吗？')) return;
+  try {
+    var r = await fetch('../api/announcements.php?action=delete', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id })
+    });
+    var data = await r.json();
+    if (data.success) { showToast('🗑️ 公告已删除', 'success'); loadAnnouncements(); }
+    else { showToast(data.message || '删除失败', 'error'); }
+  } catch { showToast('网络错误', 'error'); }
 }
 
 // ====== 初始化 ======

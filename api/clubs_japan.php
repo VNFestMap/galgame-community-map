@@ -165,6 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             $rows[$i]['info'] = $input['info'] ?? $item['info'];
             $rows[$i]['type'] = $input['type'] ?? $item['type'];
             $rows[$i]['raw_text'] = ($input['name'] ?? $item['name']) . ' ' . ($input['info'] ?? $item['info']);
+            $rows[$i]['created_at'] = $input['created_at'] ?? $item['created_at'] ?? '';
             $rows[$i]['remark'] = $input['remark'] ?? $item['remark'];
             $rows[$i]['logo_url'] = $input['logo_url'] ?? $item['logo_url'] ?? '';
             $rows[$i]['external_links'] = $input['external_links'] ?? $item['external_links'] ?? '';
