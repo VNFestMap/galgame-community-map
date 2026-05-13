@@ -100,6 +100,18 @@
         <button id="topLoginBtn" class="top-login-btn">登录 / 注册</button>
         <button id="topAccountBtn" class="top-account-btn" style="display:none;">账号</button>
         <a id="topAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">同好会管理</a>
+        <div class="display-switch-container">
+          <div class="mode-switch" id="modeSwitch" role="tablist" aria-label="视图模式">
+            <button class="mode-tab active" data-mode="map" role="tab" aria-selected="true" title="地图模式">
+              <span class="mode-tab-icon">🗺️</span>
+              <span class="mode-tab-label">地图</span>
+            </button>
+            <button class="mode-tab" data-mode="list" role="tab" aria-selected="false" title="列表模式">
+              <span class="mode-tab-icon">📋</span>
+              <span class="mode-tab-label">列表</span>
+            </button>
+          </div>
+        </div>
         <button class="mobile-expand-arrow" id="mobileExpandArrow">▼</button>
       </div>
       <div class="user-nav-row" id="userNavRow">
@@ -108,14 +120,6 @@
         <button class="user-nav-btn" data-action="overseas">海外同好会</button>
         <button class="user-nav-btn" data-action="calendar">活动日历</button>
         <button class="user-nav-btn" data-action="publication">刊物投稿</button>
-      </div>
-      <!-- 公告横幅 -->
-      <div class="announcement-banner" id="announcementBanner" style="display:none;">
-        <div class="announcement-banner-header" id="announcementBannerToggle">
-          <span class="announcement-banner-title">📢 全站公告 <span class="announcement-banner-persistent">长期</span></span>
-          <span class="announcement-banner-arrow" id="announcementBannerArrow">▼</span>
-        </div>
-        <div class="announcement-banner-body" id="announcementBannerBody"></div>
       </div>
     </div>
 
@@ -270,6 +274,126 @@
             <div id="groupList" class="group-list"></div>
         </section>
 
+        <!-- 列表模式视图（完整三分区） -->
+        <div id="listModeView" class="list-mode-view" style="display:none;">
+          <div class="list-mode-inner">
+
+            <!-- ═══ 顶部：账号栏（嵌入，非悬浮） ═══ -->
+            <div class="list-top-bar">
+              <div class="list-top-row">
+                <div class="list-top-avatar" id="listUserAvatar">?</div>
+                <span class="list-top-name" id="listUserName">访客</span>
+                <span class="list-role-badge" id="listRoleBadge" style="display:none;"></span>
+                <button id="listLoginBtn" class="top-login-btn">登录 / 注册</button>
+                <button id="listAccountBtn" class="top-account-btn" style="display:none;">账号</button>
+                <a id="listAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">同好会管理</a>
+                <div class="display-switch-container">
+                  <div class="mode-switch">
+                    <button class="mode-tab active" data-mode="map" role="tab" aria-selected="true"><span class="mode-tab-icon">🗺️</span><span class="mode-tab-label">地图</span></button>
+                    <button class="mode-tab" data-mode="list" role="tab" aria-selected="false"><span class="mode-tab-icon">📋</span><span class="mode-tab-label">列表</span></button>
+                  </div>
+                </div>
+              </div>
+              <div class="list-nav-row" id="listNavRow">
+                <button class="user-nav-btn" data-action="china">中国同好会</button>
+                <button class="user-nav-btn" data-action="japan">日本同好会</button>
+                <button class="user-nav-btn" data-action="overseas">海外同好会</button>
+                <button class="user-nav-btn" data-action="calendar">活动日历</button>
+                <button class="user-nav-btn" data-action="publication">刊物投稿</button>
+              </div>
+              <div class="list-announcement-banner" id="listAnnBanner" style="display:none;">
+                <div class="announcement-banner-header" id="listAnnBannerToggle">
+                  <span class="announcement-banner-title">📢 全站公告 <span class="announcement-banner-persistent">长期</span></span>
+                  <span class="announcement-banner-arrow">▼</span>
+                </div>
+                <div class="announcement-banner-body" id="listAnnBannerBody"></div>
+              </div>
+            </div>
+
+            <!-- ═══ 主体：信息栏 + 地区索引 + 同好会列表 ═══ -->
+            <div class="list-body">
+
+              <!-- 左侧：简介 + 常用操作 + 公告 -->
+              <aside class="list-left" id="listLeftPanel">
+                <div class="list-panel-heading">站点信息</div>
+                <div class="list-intro">
+                  <h2 class="list-intro-title" id="listIntroTitle">全国Galgame同好会地图</h2>
+                  <p class="list-intro-desc">本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。</p>
+                  <p class="list-intro-desc">数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。</p>
+                  <img id="listIntroLogo" class="list-intro-logo" src="./images/VNF.png" alt="VNFest 视觉小说高校学园祭" loading="lazy" />
+                  <label class="md3-switch list-switch">
+                    <input id="listInvertCtrl" type="checkbox" />
+                    <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+                    <span class="md3-switch-label">反转操作（默认关）</span>
+                  </label>
+                  <label class="md3-switch list-switch">
+                    <input id="listThemeSwitch" type="checkbox" />
+                    <span class="md3-switch-track"><span class="md3-switch-thumb"></span></span>
+                    <span class="md3-switch-label">暗黑模式（跟随系统）</span>
+                  </label>
+                  <div class="list-intro-links">
+                    <div class="submit-buttons">
+                      <button id="listSubmitClubBtn" class="submit-btn primary" type="button">📝 提交同好会信息</button>
+                      <button id="listSubmitEventBtn" class="submit-btn" type="button">📅 添加活动信息</button>
+                      <button id="listSubmitPublicationBtn" class="submit-btn" type="button">📖 投稿刊物征集</button>
+                      <button id="listSubmitGalonlyBtn" class="submit-btn galonly-glow" style="background:linear-gradient(135deg,#e91e63,#ff9800,#9c27b0);color:#fff;border:none;" type="button">GalOnly 高校专属通道</button>
+                      <div class="lang-switch-group" id="listLangSwitchGroup">
+                        <button id="listLangZhBtn" class="lang-btn"><span class="lang-icon">🇨🇳</span><span class="lang-text">中文</span></button>
+                        <button id="listLangJaBtn" class="lang-btn"><span class="lang-icon">🇯🇵</span><span class="lang-text">日本語</span></button>
+                      </div>
+                      <a class="submit-btn" href="https://github.com/kokubunshu/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer">📦 开源仓库</a>
+                    </div>
+                    <p class="list-intro-gpl">基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a></p>
+                  </div>
+                </div>
+
+                <div class="list-announcements" id="listAnnouncements">
+                  <div class="list-announcements-header">公告</div>
+                  <div class="list-announcements-list" id="listAnnouncementsList"></div>
+                </div>
+              </aside>
+
+              <!-- 中间：省份索引 -->
+              <nav class="list-center" id="listCenterPanel">
+                <div class="list-province-header">
+                  <span>地区索引</span>
+                  <small>按收录数量排序</small>
+                </div>
+                <div class="list-province-list" id="provinceIndexList"></div>
+              </nav>
+
+              <!-- 右侧：同好会列表 -->
+              <main class="list-content">
+                <div class="list-toolbar" id="listToolbar">
+                  <div class="list-toolbar-left">
+                    <div class="list-toolbar-title-row">
+                      <span class="list-toolbar-title" id="listToolbarTitle">全部同好会</span>
+                      <span class="list-toolbar-count" id="listToolbarCount"></span>
+                    </div>
+                    <div class="list-toolbar-subtitle">选择地区后查看同好会，也可以按名称、群号或类型快速筛选。</div>
+                  </div>
+                  <div class="list-toolbar-right">
+                    <input id="listSearchInput" class="list-search-input" type="search" placeholder="搜索组织名 / 群号" />
+                    <select id="listTypeFilter" class="list-type-filter">
+                      <option value="all">全部类型</option>
+                      <option value="region">地区高校联合</option>
+                      <option value="school">高校同好会</option>
+                      <option value="vnfest">视觉小说学园祭</option>
+                    </select>
+                    <select id="listSortSelect" class="list-sort-select">
+                      <option value="default">默认排序</option>
+                      <option value="time_desc">登记时间 ↓</option>
+                      <option value="name_asc">名称 A→Z</option>
+                      <option value="type_asc">类型 A→Z</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="club-grid" id="clubGrid"></div>
+              </main>
+
+            </div><!-- /list-body -->
+          </div><!-- /list-mode-inner -->
+        </div><!-- /listModeView -->
 
         <!-- 地图气泡 -->
         <div id="badgeBubble" class="map-bubble" aria-live="polite"></div>
@@ -1185,5 +1309,14 @@
             <div class="notif-center-pagination" id="notifCenterPagination"></div>
         </div>
     </div>
+    <!-- 公告横幅（隐藏的数据容器，供 JS 同步到列表模式） -->
+    <div class="announcement-banner" id="announcementBanner" style="display:none;">
+      <div class="announcement-banner-header" id="announcementBannerToggle">
+        <span class="announcement-banner-title">📢 全站公告 <span class="announcement-banner-persistent">长期</span></span>
+        <span class="announcement-banner-arrow" id="announcementBannerArrow">▼</span>
+      </div>
+      <div class="announcement-banner-body" id="announcementBannerBody"></div>
+    </div>
+
 </body>
 </html>

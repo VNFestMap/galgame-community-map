@@ -102,3 +102,12 @@ data/qq_members.json
 
 # --- Superpowers AI 生成文件 ---
 .superpowers/
+
+# --- Capacitor / Android APK 构建 ---
+www/
+android/
+capacitor.config.json
+*.apk
+
+# --- AI 辅助设计文档（内部） ---
+docs/superpowers/

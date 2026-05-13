@@ -422,47 +422,6 @@ body::after {
 .badge-rejected { background: rgba(239,83,80,0.15); color: #ef5350; border: 1px solid rgba(239,83,80,0.2); }
 
 
-/* ── Feature Action Cards ── */
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.feature-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px 16px;
-  background: var(--card-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-radius: var(--radius-card);
-  border: 1px solid var(--card-border);
-  cursor: pointer;
-  transition: var(--transition);
-  text-decoration: none;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-}
-.feature-card:hover {
-  border-color: var(--accent-pink);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 40px rgba(233,30,99,0.12);
-}
-.feature-card .icon {
-  font-size: 32px;
-  line-height: 1;
-}
-.feature-card .label {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
 /* ── Member list inside cards ── */
 .member-item {
   display: flex;
@@ -1014,6 +973,7 @@ body::after {
 
 /* ── Recommendations ── */
 .rec-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.rec-layout > .section-card + .section-card { margin-top: 0; }
 .rec-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -1090,9 +1050,6 @@ body::after {
   .stat-card { min-width: 72px; padding: 12px; }
   .stat-card .num { font-size: 24px; }
   .card { padding: 16px; }
-  .feature-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .feature-card { padding: 18px 12px; }
-  .feature-card .icon { font-size: 26px; }
   .card-actions .btn { min-width: 0; padding: 8px; font-size: 12px; }
   .tabs { padding: 3px; }
   .tab-btn { padding: 8px 10px; font-size: 12px; }
@@ -1112,6 +1069,746 @@ body::after {
   .form-row { flex-direction: column; }
   .form-row .form-group { max-width: 100% !important; }
 }
+
+/* ===== VN / Galgame admin redesign ===== */
+:root {
+  --vn-bg-0: #080917;
+  --vn-bg-1: #11152b;
+  --vn-bg-2: #241435;
+  --vn-panel: rgba(16, 18, 38, 0.76);
+  --vn-panel-strong: rgba(22, 24, 50, 0.92);
+  --vn-panel-soft: rgba(255, 255, 255, 0.055);
+  --vn-line: rgba(255, 255, 255, 0.13);
+  --vn-line-strong: rgba(255, 255, 255, 0.22);
+  --vn-text: #f8f3ff;
+  --vn-muted: rgba(248, 243, 255, 0.68);
+  --vn-faint: rgba(248, 243, 255, 0.42);
+  --vn-pink: #ff6aa8;
+  --vn-red: #ff4f6f;
+  --vn-cyan: #72ddff;
+  --vn-gold: #ffd36f;
+  --vn-violet: #a98cff;
+  --vn-green: #67e0a3;
+  --vn-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  --vn-glow: 0 0 28px rgba(255, 106, 168, 0.22);
+  --bg-gradient:
+    linear-gradient(155deg, rgba(8, 9, 23, 0.96), rgba(17, 21, 43, 0.95) 46%, rgba(36, 20, 53, 0.96)),
+    linear-gradient(45deg, #080917, #11152b);
+  --card-bg: var(--vn-panel);
+  --card-border: var(--vn-line);
+  --card-hover-border: rgba(255, 106, 168, 0.48);
+  --glass-blur: blur(22px);
+  --text-primary: var(--vn-text);
+  --text-secondary: var(--vn-muted);
+  --text-muted: var(--vn-faint);
+  --accent-pink: var(--vn-pink);
+  --accent-purple: var(--vn-violet);
+  --accent-gold: var(--vn-gold);
+  --accent-green: var(--vn-green);
+  --accent-orange: #ffad66;
+  --accent-blue: var(--vn-cyan);
+  --shadow-card: var(--vn-shadow);
+  --radius-card: 18px;
+  --radius-sm: 12px;
+}
+
+:root[data-theme='light'] {
+  --vn-bg-0: #f8fbff;
+  --vn-bg-1: #edf4ff;
+  --vn-bg-2: #fff0f7;
+  --vn-panel: rgba(255, 255, 255, 0.82);
+  --vn-panel-strong: rgba(255, 255, 255, 0.94);
+  --vn-panel-soft: rgba(255, 255, 255, 0.62);
+  --vn-line: rgba(41, 50, 86, 0.12);
+  --vn-line-strong: rgba(41, 50, 86, 0.22);
+  --vn-text: #1d2238;
+  --vn-muted: rgba(29, 34, 56, 0.66);
+  --vn-faint: rgba(29, 34, 56, 0.42);
+  --vn-pink: #df2f78;
+  --vn-red: #d9365a;
+  --vn-cyan: #147ea0;
+  --vn-gold: #a86f00;
+  --vn-violet: #7354c8;
+  --vn-green: #167a50;
+  --vn-shadow: 0 18px 46px rgba(50, 62, 110, 0.12);
+  --vn-glow: 0 0 24px rgba(223, 47, 120, 0.14);
+  --bg-gradient:
+    linear-gradient(155deg, rgba(248, 251, 255, 0.97), rgba(237, 244, 255, 0.94) 45%, rgba(255, 240, 247, 0.95)),
+    linear-gradient(45deg, #f8fbff, #fff0f7);
+}
+
+html {
+  min-height: 100%;
+  background: var(--vn-bg-0);
+}
+
+body {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 28%),
+    var(--bg-gradient);
+  letter-spacing: 0;
+}
+
+body::before,
+body::after {
+  border-radius: 0;
+  z-index: 0;
+}
+
+body::before {
+  inset: 0;
+  width: auto;
+  height: auto;
+  background:
+    linear-gradient(115deg, transparent 0 14%, rgba(255, 255, 255, 0.055) 14.2% 14.6%, transparent 14.8% 38%, rgba(114, 221, 255, 0.05) 38.2% 38.6%, transparent 38.8%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 64px);
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.88), rgba(0,0,0,0.18));
+}
+
+body::after {
+  inset: auto 0 0 0;
+  width: auto;
+  height: 260px;
+  background:
+    linear-gradient(0deg, rgba(255, 106, 168, 0.12), transparent),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 18px);
+  opacity: 0.72;
+}
+
+.container {
+  width: min(1220px, calc(100vw - 40px));
+  max-width: none;
+  padding: 28px 0 48px;
+}
+
+@media (min-width: 900px) {
+  .container {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 16px 20px;
+    align-items: start;
+  }
+
+  .header {
+    grid-column: 1 / -1;
+  }
+
+  .admin-sidebar {
+    grid-column: 1;
+  }
+
+  .admin-content {
+    grid-column: 2;
+  }
+}
+
+.header {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2px;
+  min-height: 132px;
+  padding: 24px 28px;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 106, 168, 0.18), transparent 38%),
+    linear-gradient(115deg, var(--vn-panel-strong), rgba(10, 13, 31, 0.78));
+  border: 1px solid var(--vn-line-strong);
+  box-shadow: var(--vn-shadow), var(--vn-glow);
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--vn-pink), var(--vn-cyan), var(--vn-gold));
+}
+
+.header::after {
+  content: 'VN FEST ADMIN CONSOLE';
+  position: absolute;
+  right: 26px;
+  bottom: 16px;
+  color: rgba(255, 255, 255, 0.12);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+:root[data-theme='light'] .header::after {
+  color: rgba(29, 34, 56, 0.08);
+}
+
+.header h1 {
+  position: relative;
+  max-width: 520px;
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.08;
+  letter-spacing: 0;
+  text-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
+}
+
+.header h1::after {
+  content: '同好会资料、成员、绑定码与推荐榜管理';
+  display: block;
+  margin-top: 12px;
+  color: var(--vn-muted);
+  -webkit-text-fill-color: var(--vn-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.header-actions {
+  position: relative;
+  z-index: 1;
+  justify-content: flex-end;
+}
+
+.header-link,
+.btn,
+.tab-btn,
+.form-input,
+.club-selector select,
+.page-btn,
+.act-btn {
+  outline-offset: 3px;
+}
+
+.header-link {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.075);
+  border-color: rgba(255,255,255,0.16);
+  color: var(--vn-text);
+}
+
+.header-link:hover {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 106, 168, 0.28), rgba(114, 221, 255, 0.16));
+  box-shadow: 0 10px 30px rgba(255, 106, 168, 0.18);
+}
+
+.club-selector {
+  position: sticky;
+  top: 16px;
+  z-index: 2;
+  margin-bottom: 0;
+}
+
+.club-selector select,
+.tabs,
+.stat-card,
+.card,
+.empty,
+.section-card,
+.user-card,
+.modal,
+.toast {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.03)),
+    var(--vn-panel);
+  border: 1px solid var(--vn-line);
+  box-shadow: var(--vn-shadow);
+}
+
+.club-selector select {
+  min-height: 48px;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+.club-selector select:hover,
+.club-selector select:focus {
+  border-color: rgba(255, 106, 168, 0.55);
+  box-shadow: 0 0 0 4px rgba(255, 106, 168, 0.12), var(--vn-shadow);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+@media (min-width: 900px) {
+  .stats-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  padding: 16px 14px;
+  text-align: left;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 106, 168, 0.16), transparent 48%);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-card .num {
+  position: relative;
+  font-size: 34px;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--vn-pink), var(--vn-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.stat-card .label {
+  position: relative;
+  color: var(--vn-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tabs {
+  position: sticky;
+  top: 80px;
+  z-index: 2;
+  flex-wrap: nowrap;
+  margin-bottom: 0;
+  border-radius: 18px;
+  padding: 8px;
+}
+
+@media (min-width: 900px) {
+  .tabs {
+    flex-direction: column;
+    overflow: visible;
+  }
+}
+
+.tab-btn {
+  position: relative;
+  min-height: 42px;
+  border-radius: 13px;
+  text-align: left;
+  color: var(--vn-muted);
+}
+
+.tab-btn::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--vn-cyan);
+  transform: translateY(-50%);
+  transition: width 220ms ease;
+}
+
+.tab-btn:hover {
+  color: var(--vn-text);
+  background: rgba(255,255,255,0.07);
+}
+
+.tab-btn.active {
+  padding-left: 28px;
+  background:
+    linear-gradient(90deg, rgba(255, 106, 168, 0.28), rgba(114, 221, 255, 0.10)),
+    rgba(255,255,255,0.07);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 106, 168, 0.18), 0 12px 28px rgba(255, 106, 168, 0.12);
+}
+
+.tab-btn.active::before {
+  width: 10px;
+}
+
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.toolbar {
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 0;
+}
+
+.btn {
+  min-height: 38px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.14);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(255, 106, 168, 0.14);
+}
+
+.btn-primary,
+.btn-pink {
+  background: linear-gradient(135deg, var(--vn-red), var(--vn-pink));
+}
+
+.btn-approve {
+  background: linear-gradient(135deg, #3bcf86, #15985e);
+}
+
+.btn-reject {
+  background: linear-gradient(135deg, #ff5971, #c8284b);
+}
+
+.list {
+  gap: 14px;
+  margin-bottom: 0;
+}
+
+.card,
+.empty,
+.section-card,
+.user-card {
+  border-radius: 18px;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.section-card,
+.user-card {
+  position: relative;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--vn-pink), var(--vn-cyan));
+  opacity: 0.7;
+}
+
+.card:hover,
+.section-card:hover,
+.user-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 106, 168, 0.42);
+}
+
+.card-header {
+  position: relative;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.card-title,
+.section-title,
+.modal-title {
+  letter-spacing: 0;
+}
+
+.card-body .row {
+  min-height: 28px;
+  padding: 4px 0;
+}
+
+.card-body .row .label {
+  color: var(--vn-faint);
+}
+
+.badge,
+.badge-role,
+.badge-status,
+.club-tag {
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+}
+
+.form-input,
+.user-search-bar .search-input,
+.membership-card .mc-actions select {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.13);
+}
+
+.form-input:focus,
+.user-search-bar .search-input:focus {
+  border-color: rgba(255, 106, 168, 0.58);
+  box-shadow: 0 0 0 4px rgba(255, 106, 168, 0.12);
+}
+
+.modal-overlay {
+  background: rgba(3, 4, 13, 0.66);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.modal {
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 106, 168, 0.14), transparent 42%),
+    var(--vn-panel-strong);
+}
+
+.modal-header,
+.modal-body,
+.modal-footer {
+  position: relative;
+}
+
+.item-row,
+.search-item,
+.membership-card {
+  background: rgba(255,255,255,0.055);
+  border-color: rgba(255,255,255,0.11);
+}
+
+.item-row:hover,
+.search-item:hover {
+  background: rgba(255, 106, 168, 0.08);
+}
+
+.rec-layout {
+  grid-template-columns: minmax(280px, 1fr) minmax(300px, 1.2fr);
+}
+
+.rec-card {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.13);
+}
+
+.toast {
+  border-radius: 14px;
+}
+
+@keyframes vnPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header,
+.admin-sidebar,
+.admin-content {
+  animation: vnPanelIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.admin-sidebar { animation-delay: 70ms; }
+.admin-content { animation-delay: 200ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .header,
+  .admin-sidebar,
+  .admin-content {
+    animation: none !important;
+  }
+
+  .btn,
+  .card,
+  .stat-card,
+  .tab-btn,
+  .user-card,
+  .section-card {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 1040px) {
+  .rec-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 899px) {
+  .container {
+    width: min(100vw - 24px, 760px);
+    padding-top: 16px;
+  }
+
+  .header {
+    min-height: 0;
+  }
+
+  .header::after {
+    display: none;
+  }
+
+  .tabs {
+    overflow-x: auto;
+    gap: 6px;
+    margin-top: 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-sidebar,
+  .admin-content {
+    margin-top: 12px;
+  }
+
+  .toolbar {
+    justify-content: stretch;
+  }
+
+  .toolbar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: calc(100vw - 20px);
+    padding: 10px 0 28px;
+  }
+
+  .header {
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 0;
+  }
+
+  .header h1 {
+    font-size: 20px;
+    line-height: 1.15;
+  }
+
+  .header h1::after {
+    font-size: 12px;
+    margin-top: 8px;
+    line-height: 1.45;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .header-link {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .club-selector select {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px;
+    border-radius: 15px;
+  }
+
+  .stat-card .num {
+    font-size: 26px;
+  }
+
+  .stat-card .label {
+    font-size: 11px;
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 8px 12px;
+    text-align: center;
+    font-size: 12px;
+  }
+
+  .tab-btn.active {
+    padding-left: 22px;
+  }
+
+  .card,
+  .empty,
+  .section-card,
+  .user-card {
+    border-radius: 15px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .empty {
+    padding: 34px 14px;
+    font-size: 14px;
+  }
+
+  .card-header {
+    align-items: flex-start;
+  }
+
+  .card-actions {
+    gap: 6px;
+  }
+
+  .card-actions .btn,
+  .btn-sm {
+    min-height: 34px;
+  }
+
+  .user-search-bar {
+    gap: 7px;
+  }
+
+  .user-search-bar .search-input {
+    min-width: 100%;
+  }
+
+  .modal {
+    max-height: 86vh;
+    border-radius: 18px;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
 </style>
 </head>
 <body>
@@ -1125,64 +1822,40 @@ body::after {
     </div>
   </div>
 
-  <!-- Club Selector -->
-  <div class="club-selector" id="clubSelectorWrap" style="display:none;">
-    <select id="clubSelector" onchange="onClubChange()">
-      <option value="">— 选择同好会 —</option>
-    </select>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats-row" id="statsRow">
-    <div class="stat-card"><div class="num" id="statPending">0</div><div class="label">待审核</div></div>
-    <div class="stat-card"><div class="num" id="statApproved">0</div><div class="label">已通过</div></div>
-    <div class="stat-card"><div class="num" id="statMembers">0</div><div class="label">成员</div></div>
-    <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">总计</div></div>
-  </div>
-
-  <!-- Tabs -->
-  <div class="tabs" id="tabBar">
-    <button class="tab-btn active" data-tab="pending">⏳ 待审核</button>
-    <button class="tab-btn" data-tab="approved">✅ 已通过</button>
-    <button class="tab-btn" data-tab="members">👥 成员</button>
-    <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
-    <button class="tab-btn" data-tab="codes">🔑 绑定码</button>
-    <button class="tab-btn" data-tab="recommendations">⭐ 神器榜</button>
-    <button class="tab-btn" data-tab="manuscripts">📄 刊物稿件</button>
-    <button class="tab-btn" data-tab="users" id="usersTabBtn" style="display:none;">👥 用户管理</button>
-  </div>
-
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button class="btn btn-glass" onclick="loadData()">🔄 刷新</button>
-  </div>
-
-  <!-- Feature Action Cards -->
-  <div class="feature-grid" id="featureGrid">
-    <a class="feature-card" href="../index.html" target="_blank">
-      <span class="icon">🗺️</span>
-      <span>查看地图</span>
-      <span class="label">浏览所有同好会</span>
-    </a>
-    <div class="feature-card" onclick="openClubEdit()">
-      <span class="icon">📝</span>
-      <span>编辑信息</span>
-      <span class="label">修改同好会资料</span>
+  <!-- Left Sidebar -->
+  <div class="admin-sidebar">
+    <div class="club-selector" id="clubSelectorWrap" style="display:none;">
+      <select id="clubSelector" onchange="onClubChange()">
+        <option value="">— 选择同好会 —</option>
+      </select>
     </div>
-    <div class="feature-card" onclick="switchTab('members')">
-      <span class="icon">👥</span>
-      <span>成员管理</span>
-      <span class="label">查看和管理成员</span>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card"><div class="num" id="statPending">0</div><div class="label">待审核</div></div>
+      <div class="stat-card"><div class="num" id="statApproved">0</div><div class="label">已通过</div></div>
+      <div class="stat-card"><div class="num" id="statMembers">0</div><div class="label">成员</div></div>
+      <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">总计</div></div>
     </div>
-    <div class="feature-card" onclick="openEventManage()">
-      <span class="icon">📅</span>
-      <span>管理活动</span>
-      <span class="label">发布同好会活动</span>
+
+    <div class="tabs" id="tabBar">
+      <button class="tab-btn active" data-tab="pending">⏳ 待审核</button>
+      <button class="tab-btn" data-tab="approved">✅ 已通过</button>
+      <button class="tab-btn" data-tab="members">👥 成员</button>
+      <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
+      <button class="tab-btn" data-tab="codes">🔑 绑定码</button>
+      <button class="tab-btn" data-tab="recommendations">⭐ 神器榜</button>
+      <button class="tab-btn" data-tab="manuscripts">📄 刊物稿件</button>
+      <button class="tab-btn" data-tab="users" id="usersTabBtn" style="display:none;">👥 用户管理</button>
     </div>
   </div>
 
-  <!-- List -->
-  <div id="listContainer" class="list"><div class="empty">加载中...</div></div>
+  <!-- Right Content -->
+  <div class="admin-content">
+    <div class="toolbar">
+      <button class="btn btn-glass" onclick="loadData()">🔄 刷新</button>
+    </div>
+    <div id="listContainer" class="list"><div class="empty">加载中...</div></div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -2332,7 +3005,7 @@ async function renderRecommendations() {
     <div class="section-title">🔍 搜索 Bangumi</div>
     <div class="search-area">
       <div class="search-input-wrap">
-        <input type="text" id="recSearchInput" class="form-input" placeholder="搜索游戏名称…" style="flex:1;" onkeydown="if(event.key==='Enter') searchBangumi()">
+        <input type="text" id="recSearchInput" class="form-input" placeholder="搜索游戏名称…" style="min-width:0;flex:1;max-width:200px;" onkeydown="if(event.key==='Enter') searchBangumi()">
         <button class="btn btn-primary" onclick="searchBangumi()">搜索</button>
       </div>
       <div class="search-results" id="recSearchResults">`;

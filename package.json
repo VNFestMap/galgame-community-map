@@ -1,0 +1,19 @@
+{
+  "name": "galgame-map",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:apk": "node scripts/build-apk.mjs",
+    "cap:copy": "npx cap copy",
+    "cap:sync": "npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^4.8.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^4.8.0",
+    "@capacitor/cli": "^4.8.0",
+    "@types/node": "^25.7.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -18,6 +18,7 @@ const State = {
   provinceGroupsMap: new Map(),
   selectedProvinceKey: null,
   mapViewState: null,
+  mapSwitchToken: 0,
   selectedCardAnimToken: 0,
   activeBubbleState: null,
   bubbleAnimToken: 0,
@@ -30,8 +31,10 @@ const State = {
   listQuery: '',
   listType: 'all',
   listSort: 'default',
+  listRegionFilter: 'china',
   currentDataSource: 'none',
   mobileSheetHeightPx: null,
+  viewMode: 'map',
   currentCountry: 'china',
   japanRows: [],
   japanGroupsMap: new Map()
@@ -117,7 +120,13 @@ function updateUserUI() {
         if (top.name) top.name.textContent = currentUser.user.nickname || currentUser.user.username || '用户';
         // Role badge
         if (top.badge) {
-            const roleNames = { visitor: '访客', member: '成员', manager: '管理员', representative: '会长', super_admin: '超级管理员' };
+            const roleNames = {
+                visitor: __('settingsRoleVisitor'),
+                member: __('settingsRoleMember'),
+                manager: __('settingsRoleManager'),
+                representative: __('settingsRoleRep'),
+                super_admin: __('settingsRoleAdmin')
+            };
             const roleColors = {
                 visitor: { bg: 'rgba(128,128,128,0.12)', color: '#888' },
                 member: { bg: 'rgba(76,175,80,0.12)', color: '#4caf50' },
@@ -127,7 +136,7 @@ function updateUserUI() {
             };
             var text, s;
             if (currentUser.user.is_audit) {
-                text = '活动审核';
+                text = __('roleAudit');
                 s = { bg: 'rgba(233,30,99,0.12)', color: '#e91e63' };
             } else {
                 const role = getEffectiveRole();
@@ -159,7 +168,7 @@ function updateUserUI() {
             top.avatar.style.color = '#999';
             top.avatar.innerHTML = '';
         }
-        if (top.name) top.name.textContent = '访客';
+        if (top.name) top.name.textContent = __('settingsRoleVisitor');
         if (top.badge) top.badge.style.display = 'none';
         // 通知铃铛（未登录时隐藏）
         var bellWrap = document.getElementById('notifBellWrap');
@@ -456,9 +465,15 @@ function renderVNProfile() {
 
     // 称号
     var titleEl = document.getElementById('vnCharTitle');
-    var roleNames = { visitor: '见习同好', member: '同好会成员', manager: '同好会管理员', representative: '同好会会长', super_admin: '超级管理员' };
+    var roleNames = {
+        visitor: __('vnRoleVisitor'),
+        member: __('vnRoleMember'),
+        manager: __('vnRoleManager'),
+        representative: __('vnRoleRep'),
+        super_admin: __('vnRoleAdmin')
+    };
     var effectiveRole = getEffectiveRole();
-    if (titleEl) titleEl.textContent = '—— ' + (roleNames[effectiveRole] || '同好') + ' ——';
+    if (titleEl) titleEl.textContent = '—— ' + (roleNames[effectiveRole] || __('vnRoleDefault')) + ' ——';
 
     // 头像
     var avatarEl = document.getElementById('vnAvatar');
@@ -493,7 +508,7 @@ function renderVNProfile() {
     if (sigEl) {
         sigEl.textContent = user.profile_bio
             ? '“' + user.profile_bio + '”'
-            : '“这个人很懒，还没有填写签名”';
+            : __('vnSignatureEmpty');
     }
 
     // === 同好会 ===
@@ -502,7 +517,7 @@ function renderVNProfile() {
     var clubCount = 0;
     if (clubList) {
         if (activeMemberships.length === 0) {
-            clubList.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:var(--md-on-surface-variant);">还没有加入同好会</div>';
+            clubList.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:var(--md-on-surface-variant);">' + __('vnNoClub') + '</div>';
         } else {
             var allClubs = [];
             if (typeof State !== 'undefined') {
@@ -510,7 +525,13 @@ function renderVNProfile() {
             }
             clubCount = activeMemberships.length;
             var roleClassMap = { member: 'vn-role-member', manager: 'vn-role-manager', representative: 'vn-role-representative', visitor: 'vn-role-visitor', super_admin: 'vn-role-super_admin' };
-            var roleLabels = { member: '成员', manager: '管理员', representative: '会长', visitor: '访客', super_admin: '超级管理员' };
+            var roleLabels = {
+                member: __('memberRoleMember'),
+                manager: __('memberRoleManager'),
+                representative: __('memberRoleRep'),
+                visitor: __('settingsRoleVisitor'),
+                super_admin: __('settingsRoleAdmin')
+            };
             clubList.innerHTML = activeMemberships.map(function(m) {
                 var club = allClubs.find(function(c) { return parseInt(c.id) === parseInt(m.club_id) && (c.country || 'china') === (m.country || 'china'); });
                 var clubName = club ? (club.display_name || club.name) : ('同好会 #' + m.club_id);
@@ -523,7 +544,7 @@ function renderVNProfile() {
                 return '<div class="vn-club-item">' +
                     avatarHtml +
                     '<div class="vn-club-info"><div class="vn-club-name">' + escapeHtml(clubName) + '</div>' +
-                    (joinDate ? '<div class="vn-club-date">' + joinDate + ' 加入</div>' : '') +
+                    (joinDate ? '<div class="vn-club-date">' + joinDate + ' ' + __('vnJoined') + '</div>' : '') +
                     '</div>' +
                     '<span class="vn-club-role ' + roleClass + '">' + roleLabel + '</span>' +
                     '</div>';
@@ -550,11 +571,11 @@ function renderVNProfile() {
     var memberSince = document.getElementById('vnMemberSince');
     if (memberSince) {
         var since = user.created_at || '';
-        memberSince.textContent = since ? since.split(' ')[0] + ' 加入' : '';
+        memberSince.textContent = since ? since.split(' ')[0] + ' ' + __('vnJoined') : '';
     }
     var lastActive = document.getElementById('vnLastActive');
     if (lastActive) {
-        lastActive.textContent = user.last_login_at ? user.last_login_at.split(' ')[0] + ' 活跃' : '';
+        lastActive.textContent = user.last_login_at ? user.last_login_at.split(' ')[0] + ' ' + __('vnActive') : '';
     }
 }
 
@@ -572,7 +593,7 @@ function renderCollection(type) {
         var memberships = currentUser?.memberships || [];
         var activeMemberships = memberships.filter(function(m) { return m.status === 'active'; });
         if (activeMemberships.length === 0) {
-            grid.innerHTML = '<div class="vn-collection-empty">还没有加入同好会，去地图上找一个吧！</div>';
+            grid.innerHTML = '<div class="vn-collection-empty">' + __('vnCollectionEmptyClubs') + '</div>';
             return;
         }
         var allClubs = [];
@@ -582,7 +603,7 @@ function renderCollection(type) {
         grid.innerHTML = activeMemberships.map(function(m) {
             var club = allClubs.find(function(c) { return parseInt(c.id) === parseInt(m.club_id) && (c.country || 'china') === (m.country || 'china'); });
             var clubName = club ? club.name : ('同好会 #' + m.club_id);
-            var roleLabels = { member: '成员', manager: '管理员', representative: '会长' };
+            var roleLabels = { member: __('memberRoleMember'), manager: __('memberRoleManager'), representative: __('memberRoleRep') };
             var iconHtml = club && club.logo_url
                 ? '<img src="' + escapeHtml(club.logo_url) + '" alt="" loading="lazy">'
                 : '🏫';
@@ -593,11 +614,11 @@ function renderCollection(type) {
                 '</div>';
         }).join('');
     } else if (type === 'publications') {
-        grid.innerHTML = '<div class="vn-collection-empty">📖 刊物收集功能开发中</div>';
+        grid.innerHTML = '<div class="vn-collection-empty">' + __('vnCollectionPublicationsSoon') + '</div>';
     } else if (type === 'events') {
         var userId = currentUser?.user?.id;
         if (!userId) {
-            grid.innerHTML = '<div class="vn-collection-empty">请先登录</div>';
+            grid.innerHTML = '<div class="vn-collection-empty">' + __('vnCollectionLoginFirst') + '</div>';
             return;
         }
         // 同时获取报名数据和活动数据
@@ -734,7 +755,7 @@ async function leaveClub(membershipId, clubName) {
         });
         const data = await resp.json();
         if (data.success) {
-            alert('已退出同好会');
+            alert(__('alertLeaveSuccess'));
             renderClubMemberships();
         } else {
             alert(data.message || __('alertOperationFailed'));
@@ -744,7 +765,7 @@ async function leaveClub(membershipId, clubName) {
 
 // ====== 修改成员角色（负责人操作） ======
 async function changeMemberRole(membershipId, newRole) {
-    const roleName = newRole === 'manager' ? '管理员' : '普通成员';
+    const roleName = newRole === 'manager' ? __('memberRoleManager') : __('memberRoleMember');
     if (!confirm(__('confirmChangeRole', roleName))) return;
     try {
         const resp = await fetch('./api/membership.php?action=change_role', {
@@ -754,7 +775,7 @@ async function changeMemberRole(membershipId, newRole) {
         });
         const data = await resp.json();
         if (data.success) {
-            alert('角色已更新');
+            alert(__('alertRoleUpdated'));
             // 刷新成员列表
             const modal = document.getElementById('memberListModal');
             const cid = parseInt(modal?.dataset?.clubId);
@@ -776,7 +797,7 @@ async function kickMember(membershipId, username) {
         });
         const data = await resp.json();
         if (data.success) {
-            alert('已踢出成员');
+            alert(__('alertKickSuccess'));
             const modal = document.getElementById('memberListModal');
             const cid = parseInt(modal?.dataset?.clubId);
             if (cid) openMemberList(cid);
@@ -1388,10 +1409,10 @@ async function openMemberList(clubId, country) {
                         member: __('memberRoleMember'), manager: __('memberRoleManager'), representative: __('memberRoleRep')
                     }[m.role] || m.role) + '</span>' +
                     '<span style="font-size: 11px; opacity: 0.5;">' + (m.joined_at ? m.joined_at.split(' ')[0] : '') + '</span>' +
-                    (showRoleUp ? '<button class="btn-small" onclick="event.stopPropagation();changeMemberRole(' + m.id + ',\'manager\')" style="font-size:11px;padding:2px 8px;">升为管理</button>' : '') +
-                    (showRoleDown ? '<button class="btn-small" onclick="event.stopPropagation();changeMemberRole(' + m.id + ',\'member\')" style="font-size:11px;padding:2px 8px;">设为成员</button>' : '') +
-                    (showTransfer ? '<button class="btn-small btn-danger" onclick="event.stopPropagation();transferRepresentative(' + m.id + ',' + clubId + ',\'' + Utils.escapeHTML(m.username) + '\')" style="font-size:11px;padding:2px 8px;">转让</button>' : '') +
-                    (showKick ? '<button class="btn-small btn-danger" onclick="event.stopPropagation();kickMember(' + m.id + ',\'' + Utils.escapeHTML(m.username) + '\')" style="font-size:11px;padding:2px 8px;">踢出</button>' : '') +
+                    (showRoleUp ? '<button class="btn-small" onclick="event.stopPropagation();changeMemberRole(' + m.id + ',\'manager\')" style="font-size:11px;padding:2px 8px;">' + __('memberBtnPromote') + '</button>' : '') +
+                    (showRoleDown ? '<button class="btn-small" onclick="event.stopPropagation();changeMemberRole(' + m.id + ',\'member\')" style="font-size:11px;padding:2px 8px;">' + __('memberBtnDemote') + '</button>' : '') +
+                    (showTransfer ? '<button class="btn-small btn-danger" onclick="event.stopPropagation();transferRepresentative(' + m.id + ',' + clubId + ',\'' + Utils.escapeHTML(m.username) + '\')" style="font-size:11px;padding:2px 8px;">' + __('memberBtnTransfer') + '</button>' : '') +
+                    (showKick ? '<button class="btn-small btn-danger" onclick="event.stopPropagation();kickMember(' + m.id + ',\'' + Utils.escapeHTML(m.username) + '\')" style="font-size:11px;padding:2px 8px;">' + __('memberBtnKick') + '</button>' : '') +
                     '</div>';
             }).join('') + '</div>';
     } catch {
@@ -1698,6 +1719,7 @@ const translations = {
         approvalEmpty: '✅ 暂无待审批的绑定申请',
         approvalLoadError: '❌ 加载失败，请重试',
         approvalTime: '申请时间：',
+        approvalCenter: '绑定审批',
         approvalApprove: '批准',
         approvalReject: '拒绝',
 
@@ -1965,6 +1987,7 @@ const translations = {
         approvalEmpty: '✅ 承認待ちの申請はありません',
         approvalLoadError: '❌ 読み込み失敗。再試行してください',
         approvalTime: '申請日時：',
+        approvalCenter: '参加申請の承認',
         approvalApprove: '承認',
         approvalReject: '拒否',
 
@@ -2010,6 +2033,190 @@ const translations = {
         confirmTransferRep: '⚠️ 代表者を「{0}」に譲渡してもよろしいですか？\n\n譲渡後、あなたは管理者になります。この操作は取り消せません！',
     }
 };
+
+Object.assign(translations.zh, {
+    listPanelHeading: '站点信息',
+    themeMode: '主题：跟随系统',
+    themeLight: '主题：浅色',
+    themeDark: '主题：深色',
+    listIntroDesc1: '本网站用于聚合展示全国各省、高校及海外地区的 Galgame / 视觉小说同好组织信息，支持地图缩放、拖拽、分省查看、切换分类与一键复制联系方式，帮助同好快速找到组织。',
+    listIntroDesc2: '数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。',
+    listInvertCtrl: '反转操作（默认关）',
+    listThemeSwitch: '暗黑模式（跟随系统）',
+    listSubmitClub: '提交同好会信息',
+    listSubmitEvent: '添加活动信息',
+    listSubmitPublication: '投稿刊物征集',
+    listGalonly: 'GalOnly 高校专属通道',
+    listOpenSource: '开源仓库',
+    listAnnouncements: '公告',
+    listProvinceHeader: '地区索引',
+    listProvinceHint: '按收录数量排序',
+    listToolbarAll: '全部同好会',
+    listToolbarSubtitle: '选择地区后查看同好会，也可以按名称、群号或类型快速筛选。',
+    listSearchPlaceholder: '搜索组织名 / 群号',
+    listAllTypes: '全部类型',
+    listSortTimeDesc: '登记时间 ↓',
+    listSortNameAsc: '名称 A→Z',
+    listSortTypeAsc: '类型 A→Z',
+    listCountSuffix: '个同好会',
+    listContactLabel: '联系',
+    listRemarkLabel: '备注',
+    listContactPrivate: '联系方式未公开',
+    listUnknownProvince: '未分类',
+    modeMap: '地图',
+    modeList: '列表',
+    topLogin: '登录 / 注册',
+    topAccount: '账号',
+    topAdmin: '同好会管理',
+    roleAudit: '活动审核',
+    vnRoleVisitor: '见习同好',
+    vnRoleMember: '同好会成员',
+    vnRoleManager: '同好会管理员',
+    vnRoleRep: '同好会会长',
+    vnRoleAdmin: '超级管理员',
+    vnRoleDefault: '同好',
+    vnSignatureEmpty: '“这个人很懒，还没有填写签名”',
+    vnNoClub: '还没有加入同好会',
+    vnJoined: '加入',
+    vnActive: '活跃',
+    vnCollectionEmptyClubs: '还没有加入同好会，去地图上找一个吧！',
+    vnCollectionPublicationsSoon: '📖 刊物收集功能开发中',
+    vnCollectionLoginFirst: '请先登录',
+    alertLeaveSuccess: '已退出同好会',
+    alertRoleUpdated: '角色已更新',
+    alertKickSuccess: '已踢出成员',
+    commentPlaceholder: '写下你对这个同好会的评价…',
+    confirmDeleteClub: '⚠️ 确定要删除这个同好会吗？此操作不可撤销！',
+});
+
+Object.assign(translations.ja, {
+    title: '全国ギャルゲー・ビジュアルノベル同好会マップ',
+    introTitle: '全国ギャルゲー・ビジュアルノベル同好会マップ',
+    intro: '全国の大学・地域・海外にあるギャルゲー / ビジュアルノベル同好会の情報をまとめたマップです。地図表示、地域別表示、カテゴリ絞り込み、キーワード検索、連絡先コピーに対応しています。',
+    searchPlaceholder: '同好会名・グループID・学校名で検索',
+    typeRegion: '地域合同サークル',
+    typeSchool: '大学同好会',
+    typeVnfest: 'ビジュアルノベル学園祭',
+    sortDefault: '標準',
+    sortTime: '登録順',
+    sortName: '名称順',
+    sortType: '種別順',
+    chinaBtn: '中国の同好会',
+    japanBtn: '日本の同好会',
+    otherBtn: '海外の同好会',
+    calendarBtn: 'イベントカレンダー',
+    publicationBtn: '刊行物投稿',
+    clubCount: '件',
+    openSource: 'ソースコード',
+    submitClub: '同好会を登録',
+    submitEvent: 'イベントを登録',
+    submitPublication: '刊行物の募集を投稿',
+    invertCtrl: '操作を反転（Ctrl+クリックで詳細）',
+    invertCtrlOn: '操作反転：オン',
+    themeMode: 'テーマ：システムに合わせる',
+    themeLight: 'テーマ：ライト',
+    themeDark: 'テーマ：ダーク',
+    noClub: '同好会情報はまだありません。登録をお待ちしています。',
+    noPublication: '刊行物情報はまだありません。投稿をお待ちしています。',
+    detailTypeRegion: '地域合同サークル',
+    detailTypeSchool: '大学同好会',
+    detailTypeVnfest: 'ビジュアルノベル学園祭',
+    detailSectionIntro: '同好会紹介',
+    detailSectionExt: '外部リンク',
+    detailSectionContact: '連絡先',
+    detailSectionActions: 'アクション',
+    detailContactLockedLogin: '連絡先は参加メンバーのみに公開されています。\nログイン後、同好会への参加申請を送ってください。',
+    detailContactLocked: '連絡先は参加メンバーのみに公開されています。',
+    detailContactPending: '⏳ 参加申請を送信済みです。管理者の承認をお待ちください。',
+    detailContactRejected: '❌ 参加申請は却下されました。',
+    detailContactBound: '✅ この同好会に参加済みです。もう一度開くと連絡先を確認できます。',
+    detailContactApply: '参加申請後に連絡先を確認できます。',
+    detailBtnApplyClub: '📝 参加申請を送る',
+    detailBtnEdit: '✏️ 同好会情報を編集',
+    detailBtnMembers: '👥 メンバー一覧',
+    detailBtnTransfer: '🔄 代表者を引き継ぐ',
+    detailBtnLeave: '🚪 同好会を退会',
+    detailBtnApply: '📝 申請する',
+    detailNoRemark: '紹介文はまだありません。情報提供をお待ちしています。',
+    detailNoContact: '連絡先は未登録です',
+    detailRegistered: '✓ 登録済み',
+    listEmptyFilter: '条件に合う同好会が見つかりません',
+    listNoName: '名称未設定',
+    listNoContact: '連絡先なし',
+    listInfoHidden: '🔒 参加申請後に表示',
+    listVerified: '登録済み',
+    listUnverified: '未登録',
+    listBound: '✅ 参加済み',
+    listApply: '参加申請',
+    listNoRemark: '紹介文はまだありません',
+    listEstablished: '・設立：',
+    memberBtnPromote: '管理者にする',
+    memberBtnDemote: 'メンバーにする',
+    memberBtnTransfer: '引き継ぐ',
+    memberBtnKick: '退会させる',
+    renderTitleDetail: '{0}・同好会詳細',
+    renderTitleSearch: '🔍 全体検索・{0}件',
+    renderTitleSummary: '全国ギャルゲー・ビジュアルノベル同好会データ',
+    renderMetaRange: '範囲 {0}・大学同好会 {1}・地域合同 {2}',
+    renderMetaSummary: '範囲 全体・大学同好会 {0}・地域合同 {1}',
+    settingsRoleManager: '管理者',
+    settingsRoleRep: '代表者',
+    settingsRoleAdmin: 'スーパー管理者',
+    domesticClubs: '国内同好会',
+    countryOverseas: '海外',
+    countryAll: '全体',
+    confirmKickMember: '「{0}」を同好会から退会させますか？',
+    confirmTransferRep: '⚠️ 代表者を「{0}」に引き継ぎますか？\n\n引き継ぎ後、あなたは管理者になります。この操作は取り消せません。',
+    listPanelHeading: 'サイト情報',
+    listIntroDesc1: '全国の大学・地域・海外にある Galgame / ビジュアルノベル同好会の情報をまとめています。地図表示、地域別表示、カテゴリ切り替え、連絡先コピーに対応しています。',
+    listIntroDesc2: 'データは各同好会および公開情報をもとに掲載しています。新しい同好会情報の登録も歓迎しています。',
+    listInvertCtrl: '操作反転（通常はオフ）',
+    listThemeSwitch: 'ダークテーマ（システム連動）',
+    listSubmitClub: '同好会情報を登録',
+    listSubmitEvent: 'イベント情報を登録',
+    listSubmitPublication: '刊行物募集を投稿',
+    listGalonly: 'GalOnly 大学専用窓口',
+    listOpenSource: 'ソースコード',
+    listAnnouncements: 'お知らせ',
+    listProvinceHeader: '地域インデックス',
+    listProvinceHint: '掲載数の多い順',
+    listToolbarAll: 'すべての同好会',
+    listToolbarSubtitle: '地域を選ぶと同好会を表示します。名称、グループID、種別でも絞り込めます。',
+    listSearchPlaceholder: '同好会名 / グループID',
+    listAllTypes: 'すべての種別',
+    listSortTimeDesc: '登録順 ↓',
+    listSortNameAsc: '名称 A→Z',
+    listSortTypeAsc: '種別 A→Z',
+    listCountSuffix: '件',
+    listContactLabel: '連絡先',
+    listRemarkLabel: '備考',
+    listContactPrivate: '連絡先は未公開です',
+    listUnknownProvince: '未分類',
+    modeMap: '地図',
+    modeList: 'リスト',
+    topLogin: 'ログイン / 登録',
+    topAccount: 'アカウント',
+    topAdmin: '同好会管理',
+    roleAudit: 'イベント審査',
+    vnRoleVisitor: '見習い同好',
+    vnRoleMember: '同好会メンバー',
+    vnRoleManager: '同好会管理者',
+    vnRoleRep: '同好会代表',
+    vnRoleAdmin: 'スーパー管理者',
+    vnRoleDefault: '同好',
+    vnSignatureEmpty: '“まだ自己紹介はありません”',
+    vnNoClub: '参加中の同好会はありません',
+    vnJoined: '参加',
+    vnActive: '最終ログイン',
+    vnCollectionEmptyClubs: '参加中の同好会はありません。地図から探してみましょう。',
+    vnCollectionPublicationsSoon: '📖 刊行物コレクションは準備中です',
+    vnCollectionLoginFirst: 'ログインしてください',
+    alertLeaveSuccess: '同好会を退会しました',
+    alertRoleUpdated: '役割を更新しました',
+    alertKickSuccess: 'メンバーを退会させました',
+    commentPlaceholder: 'この同好会へのコメントを書いてください…',
+    confirmDeleteClub: '⚠️ この同好会を削除しますか？この操作は取り消せません。',
+});
 
 let currentLang = 'zh';
 
@@ -2076,7 +2283,7 @@ function updateUILanguage() {
         if (State.themePreference === 'system') {
             themeLabel.textContent = t.themeMode;
         } else {
-            themeLabel.textContent = effectiveTheme === 'dark' ? t.themeLight : t.themeDark;
+            themeLabel.textContent = effectiveTheme === 'dark' ? t.themeDark : t.themeLight;
         }
     }
     
@@ -2127,6 +2334,10 @@ function updateUILanguage() {
     if (submitEventBtn) submitEventBtn.innerHTML = `📅 ${t.submitEvent}`;
     const submitPublicationBtn = document.getElementById('submitPublicationBtn');
     if (submitPublicationBtn) submitPublicationBtn.innerHTML = `📖 ${t.submitPublication}`;
+    setTextById('topLoginBtn', __('topLogin'));
+    setTextById('topAccountBtn', __('topAccount'));
+    setTextById('topAdminBtn', __('topAdmin'));
+    if (!currentUser?.logged_in) setTextById('topUserName', __('settingsRoleVisitor'));
     
     const emptyTexts = document.querySelectorAll('.empty-text');
     emptyTexts.forEach(el => {
@@ -2148,6 +2359,19 @@ function updateUILanguage() {
         } else {
             zhBtn.classList.remove('active');
             jaBtn.classList.add('active');
+        }
+    }
+
+    // 同步列表模式语言按钮状态
+    const listZhBtn = document.getElementById('listLangZhBtn');
+    const listJaBtn = document.getElementById('listLangJaBtn');
+    if (listZhBtn && listJaBtn) {
+        if (currentLang === 'zh') {
+            listZhBtn.classList.add('active');
+            listJaBtn.classList.remove('active');
+        } else {
+            listZhBtn.classList.remove('active');
+            listJaBtn.classList.add('active');
         }
     }
     
@@ -2173,9 +2397,72 @@ function updateUILanguage() {
         if (el) el.textContent = '📝 ' + t[id.replace('BtnDrawer', '').replace('submit', 'submit')];
     });
 
+    updateListModeLanguage();
+
     // 更新排序按钮文字和详情面板
     updateSortButtonView();
     renderCurrentDetail();
+}
+
+function setTextById(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function updateSelectOptionText(selectId, labels) {
+    const select = document.getElementById(selectId);
+    if (!select || !select.options) return;
+    labels.forEach(function(label, index) {
+        if (select.options[index]) select.options[index].text = label;
+    });
+}
+
+function updateListModeLanguage() {
+    if (!currentUser?.logged_in) setTextById('listUserName', __('settingsRoleVisitor'));
+    setTextById('listLoginBtn', __('topLogin'));
+    setTextById('listAccountBtn', __('topAccount'));
+    setTextById('listAdminBtn', __('topAdmin'));
+    setTextById('listIntroTitle', __('introTitle'));
+    const listToolbarTitle = document.getElementById('listToolbarTitle');
+    if (listToolbarTitle && (!listToolbarTitle.textContent || /全部同好会|すべての同好会/.test(listToolbarTitle.textContent))) {
+        listToolbarTitle.textContent = __('listToolbarAll');
+    }
+
+    const listPanelHeading = document.querySelector('.list-panel-heading');
+    if (listPanelHeading) listPanelHeading.textContent = __('listPanelHeading');
+    const listIntroDescs = document.querySelectorAll('.list-intro-desc');
+    if (listIntroDescs[0]) listIntroDescs[0].textContent = __('listIntroDesc1');
+    if (listIntroDescs[1]) listIntroDescs[1].textContent = __('listIntroDesc2');
+    const listSwitchLabels = document.querySelectorAll('.list-switch .md3-switch-label');
+    if (listSwitchLabels[0]) listSwitchLabels[0].textContent = __('listInvertCtrl');
+    if (listSwitchLabels[1]) listSwitchLabels[1].textContent = __('listThemeSwitch');
+    setTextById('listSubmitClubBtn', '📝 ' + __('listSubmitClub'));
+    setTextById('listSubmitEventBtn', '📅 ' + __('listSubmitEvent'));
+    setTextById('listSubmitPublicationBtn', '📖 ' + __('listSubmitPublication'));
+    setTextById('listSubmitGalonlyBtn', __('listGalonly'));
+    const listOpenSource = document.querySelector('.list-intro-links .submit-btn[href*="github"]');
+    if (listOpenSource) listOpenSource.textContent = '📦 ' + __('listOpenSource');
+    const annHeader = document.querySelector('.list-announcements-header');
+    if (annHeader) annHeader.textContent = __('listAnnouncements');
+    const provinceHeader = document.querySelector('.list-province-header span');
+    if (provinceHeader) provinceHeader.textContent = __('listProvinceHeader');
+    const provinceHint = document.querySelector('.list-province-header small');
+    if (provinceHint) provinceHint.textContent = __('listProvinceHint');
+    const toolbarSubtitle = document.querySelector('.list-toolbar-subtitle');
+    if (toolbarSubtitle) toolbarSubtitle.textContent = __('listToolbarSubtitle');
+    const toolbarCount = document.getElementById('listToolbarCount');
+    if (toolbarCount) {
+        const count = toolbarCount.textContent.match(/\d+/);
+        if (count) toolbarCount.textContent = count[0] + ' ' + __('listCountSuffix');
+    }
+
+    const listSearchInput = document.getElementById('listSearchInput');
+    if (listSearchInput) listSearchInput.placeholder = __('listSearchPlaceholder');
+    updateSelectOptionText('listTypeFilter', [__('listAllTypes'), __('typeRegion'), __('typeSchool'), __('typeVnfest')]);
+    updateSelectOptionText('listSortSelect', [__('sortDefault'), __('listSortTimeDesc'), __('listSortNameAsc'), __('listSortTypeAsc')]);
+
+    document.querySelectorAll('.mode-tab[data-mode="map"] .mode-tab-label').forEach(function(el) { el.textContent = __('modeMap'); });
+    document.querySelectorAll('.mode-tab[data-mode="list"] .mode-tab-label').forEach(function(el) { el.textContent = __('modeList'); });
 }
 
 // ==========================================
@@ -2510,6 +2797,575 @@ function renderExternalLinks(externalLinksStr) {
   }).join('');
 }
 
+// ===== 地图/列表模式切换 =====
+function switchViewMode(mode) {
+  if (mode === State.viewMode) return;
+  State.viewMode = mode;
+
+  // 更新标签 UI
+  document.querySelectorAll('.mode-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === mode);
+    t.setAttribute('aria-selected', t.dataset.mode === mode);
+  });
+
+  if (mode === 'list') {
+    animateToListView();
+  } else {
+    animateToMapView();
+  }
+}
+
+function animateToListView() {
+  const mapSvg = document.getElementById('mapSvg');
+  const card = document.getElementById('selectedCard');
+  const listView = document.getElementById('listModeView');
+  if (!listView) return;
+
+  const leftPanel = document.querySelector('.list-left');
+  const centerPanel = document.querySelector('.list-center');
+  const clubGrid = document.getElementById('clubGrid');
+  const toolbar = document.getElementById('listToolbar');
+
+  // 重置动画状态到初始位置
+  const resetStyle = (el, prop, val) => { if (el) { el.style.transition = 'none'; el.style[prop] = val; } };
+  if (leftPanel) {
+    leftPanel.style.transition = 'none';
+    leftPanel.style.transform = 'translateX(-100%)';
+    leftPanel.style.opacity = '0';
+  }
+  if (centerPanel) {
+    centerPanel.style.transition = 'none';
+    centerPanel.style.transform = 'translateX(-100%)';
+    centerPanel.style.opacity = '0';
+  }
+  resetStyle(clubGrid, 'transform', 'translateX(30px)');
+  resetStyle(clubGrid, 'opacity', '0');
+  if (toolbar) { toolbar.style.transition = 'none'; toolbar.style.opacity = '0'; }
+
+  // Phase 1 (T+0ms): 地图 + 悬浮元素 淡出
+  if (mapSvg) { mapSvg.style.transition = 'opacity 0.3s ease'; mapSvg.style.opacity = '0'; }
+  if (card) {
+    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(20px)';
+  }
+  // 隐藏原始悬浮元素
+  var uc = document.getElementById('userInfoCard');
+  if (uc) { uc.style.setProperty('opacity', '0', 'important'); uc.classList.remove('view-list'); }
+  var ic = document.getElementById('introCard');
+  if (ic) { ic.style.setProperty('opacity', '0', 'important'); }
+
+  // Phase 2 (T+150ms): 三区同时激活
+  setTimeout(() => {
+    document.documentElement.classList.add('list-mode-active');
+    listView.style.display = 'block';
+    // 进入列表模式时默认显示中国同好会
+    State.listRegionFilter = 'china';
+    renderListView();
+    // 激活「中国同好会」导航按钮
+    document.querySelectorAll('.list-nav-row .user-nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.list-nav-row .user-nav-btn[data-action="china"]')?.classList.add('active');
+
+    // 强制回流确保动画触发
+    void listView.offsetHeight;
+
+    // ① 左面板滑入（简介+公告）
+    if (leftPanel) {
+      leftPanel.style.transition = 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease';
+      leftPanel.style.transform = 'translateX(0)';
+      leftPanel.style.opacity = '1';
+    }
+
+    // ①-② 中间列滑入（省份索引）
+    if (centerPanel) {
+      centerPanel.style.transition = 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.05s, opacity 0.3s ease 0.05s';
+      centerPanel.style.transform = 'translateX(0)';
+      centerPanel.style.opacity = '1';
+    }
+
+    // ② 右面板滑入（主视觉）
+    if (clubGrid) {
+      clubGrid.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease';
+      clubGrid.style.transform = 'translateX(0)';
+      clubGrid.style.opacity = '1';
+    }
+
+    // ③ 工具栏渐入
+    if (toolbar) {
+      toolbar.style.transition = 'opacity 0.3s ease 0.1s';
+      toolbar.style.opacity = '1';
+    }
+
+    // ④ 卡片交错入场 (350ms 后，30ms 间隔)
+    setTimeout(() => {
+      const ccards = document.querySelectorAll('.club-card');
+      ccards.forEach((c, i) => {
+        setTimeout(() => { c.classList.add('visible'); }, i * 30);
+      });
+    }, 350);
+  }, 150);
+}
+
+function animateToMapView() {
+  const mapSvg = document.getElementById('mapSvg');
+  const card = document.getElementById('selectedCard');
+  const listView = document.getElementById('listModeView');
+  const userInfo = document.getElementById('userInfoCard');
+  if (!listView) return;
+
+  const leftPanel = document.querySelector('.list-left');
+  const centerPanel = document.querySelector('.list-center');
+  const clubGrid = document.getElementById('clubGrid');
+  const toolbar = document.getElementById('listToolbar');
+
+  // Phase 1 (T+0ms): 卡片反向交错淡出
+  const cards = document.querySelectorAll('.club-card.visible');
+  cards.forEach((c, i) => {
+    setTimeout(() => { c.classList.remove('visible'); }, (cards.length - 1 - i) * 20);
+  });
+
+  // Phase 2 (T+150ms): 工具栏淡出
+  setTimeout(() => {
+    if (toolbar) { toolbar.style.transition = 'opacity 0.2s ease'; toolbar.style.opacity = '0'; }
+  }, 150);
+
+  // Phase 3 (T+200ms): 左面板 + 中间列滑出
+  setTimeout(() => {
+    if (leftPanel) {
+      leftPanel.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      leftPanel.style.transform = 'translateX(-100%)';
+      leftPanel.style.opacity = '0';
+    }
+    if (centerPanel) {
+      centerPanel.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      centerPanel.style.transform = 'translateX(-100%)';
+      centerPanel.style.opacity = '0';
+    }
+  }, 200);
+
+  // Phase 4 (T+250ms): 右面板滑出
+  setTimeout(() => {
+    if (clubGrid) {
+      clubGrid.style.transition = 'transform 0.25s ease, opacity 0.2s ease';
+      clubGrid.style.transform = 'translateX(30px)';
+      clubGrid.style.opacity = '0';
+    }
+  }, 250);
+
+  // Phase 5 (T+450ms): 隐藏列表容器，地图恢复
+  setTimeout(() => {
+    document.documentElement.classList.remove('list-mode-active');
+    listView.style.display = 'none';
+    if (mapSvg) { mapSvg.style.transition = 'opacity 0.3s ease'; mapSvg.style.opacity = '1'; }
+    if (card) {
+      card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateX(0)';
+    }
+
+    // 重置动画样式以备下次进入
+    [leftPanel, centerPanel, clubGrid].forEach(el => {
+      if (el) { el.style.transition = 'none'; el.style.transform = ''; el.style.opacity = ''; }
+    });
+
+    // 恢复悬浮元素（移除内联 opacity）
+    var uc = document.getElementById('userInfoCard');
+    if (uc) { uc.style.removeProperty('opacity'); uc.classList.remove('view-list'); }
+    var ic = document.getElementById('introCard');
+    if (ic) { ic.style.removeProperty('opacity'); }
+  }, 450);
+}
+
+function renderListAnnouncements() {
+  const listEl = document.getElementById('listAnnouncementsList');
+  if (!listEl) return;
+
+  // 复用顶部公告横幅的公告数据
+  const bannerItems = document.querySelectorAll('#announcementBannerBody .announcement-item');
+  if (bannerItems.length > 0) {
+    listEl.innerHTML = Array.from(bannerItems).map(item => {
+      const title = item.dataset.title || '';
+      const date = item.dataset.time || '';
+      const dateDisplay = date ? date.split(' ')[0] : '';
+      const content = item.dataset.content || '';
+      return '<div class="list-ann-item" data-title="' + Utils.escapeHTML(title) + '" data-content="' + Utils.escapeHTML(content) + '" data-time="' + date + '">' +
+        '<div class="ann-title">' + Utils.escapeHTML(title) + '</div>' +
+        '<div class="ann-date">' + dateDisplay + '</div></div>';
+    }).join('');
+
+    // 绑定点击事件（复用公告详情弹窗）
+    listEl.querySelectorAll('.list-ann-item').forEach(el => {
+      el.addEventListener('click', function () {
+        var title = this.dataset.title || '';
+        var content = this.dataset.content || '';
+        var time = this.dataset.time || '';
+        if (typeof openAnnounceDetail === 'function') {
+          openAnnounceDetail(title, content, time);
+        }
+      });
+    });
+  } else {
+    listEl.innerHTML = '<div class="list-ann-item" style="color:var(--md-on-surface-variant);font-size:11px;">暂无公告</div>';
+  }
+}
+
+function syncListModeUserState() {
+  const mapAvatar = document.getElementById('topUserAvatar');
+  const mapName = document.getElementById('topUserName');
+  const mapBadge = document.getElementById('topUserRoleBadge');
+  const mapLoginBtn = document.getElementById('topLoginBtn');
+  const mapAccountBtn = document.getElementById('topAccountBtn');
+  const mapAdminBtn = document.getElementById('topAdminBtn');
+
+  const listAvatar = document.getElementById('listUserAvatar');
+  const listName = document.getElementById('listUserName');
+  const listBadge = document.getElementById('listRoleBadge');
+  const listLoginBtn = document.getElementById('listLoginBtn');
+  const listAccountBtn = document.getElementById('listAccountBtn');
+  const listAdminBtn = document.getElementById('listAdminBtn');
+
+  if (listAvatar && mapAvatar) {
+    listAvatar.innerHTML = mapAvatar.innerHTML;
+    listAvatar.style.cssText = mapAvatar.style.cssText;
+  }
+  if (listName && mapName) listName.textContent = mapName.textContent;
+  if (listBadge && mapBadge) {
+    listBadge.style.display = mapBadge.style.display;
+    listBadge.textContent = mapBadge.textContent;
+    listBadge.style.background = mapBadge.style.background;
+    listBadge.style.color = mapBadge.style.color;
+  }
+  if (listLoginBtn && mapLoginBtn) listLoginBtn.style.display = mapLoginBtn.style.display;
+  if (listAccountBtn && mapAccountBtn) listAccountBtn.style.display = mapAccountBtn.style.display;
+  if (listAdminBtn && mapAdminBtn) listAdminBtn.style.display = mapAdminBtn.style.display;
+  if (listLoginBtn) listLoginBtn.textContent = __('topLogin');
+  if (listAccountBtn) listAccountBtn.textContent = __('topAccount');
+  if (listAdminBtn) listAdminBtn.textContent = __('topAdmin');
+
+  // 同步公告横幅
+  const mapBanner = document.getElementById('announcementBanner');
+  const listBanner = document.getElementById('listAnnBanner');
+  if (listBanner && mapBanner) {
+    listBanner.style.display = mapBanner.style.display;
+    const mapBody = document.getElementById('announcementBannerBody');
+    const listBody = document.getElementById('listAnnBannerBody');
+    if (listBody && mapBody) listBody.innerHTML = mapBody.innerHTML;
+  }
+
+  // 同步主题开关状态
+  const themeSwitch = document.getElementById('themeSwitch');
+  const listThemeSwitch = document.getElementById('listThemeSwitch');
+  if (listThemeSwitch && themeSwitch) listThemeSwitch.checked = themeSwitch.checked;
+
+  // 同步反转控制开关状态
+  const invertSwitch = document.getElementById('invertCtrlSwitch');
+  const listInvertCtrl = document.getElementById('listInvertCtrl');
+  if (listInvertCtrl && invertSwitch) listInvertCtrl.checked = invertSwitch.checked;
+
+  // 同步语言
+  const introTitle = document.getElementById('introTitle');
+  const listIntroTitle = document.getElementById('listIntroTitle');
+  if (listIntroTitle && introTitle) listIntroTitle.textContent = introTitle.textContent;
+}
+
+var _listControlsBound = false;
+
+function bindListModeControls() {
+  if (_listControlsBound) return;
+  _listControlsBound = true;
+
+  document.getElementById('listInvertCtrl')?.addEventListener('change', function() {
+    var main = document.getElementById('invertCtrlSwitch');
+    if (main) {
+      main.checked = this.checked;
+      main.dispatchEvent(new Event('change'));
+    }
+  });
+
+  document.getElementById('listThemeSwitch')?.addEventListener('change', function() {
+    var main = document.getElementById('themeSwitch');
+    if (main) {
+      main.checked = this.checked;
+      main.dispatchEvent(new Event('change'));
+    }
+  });
+
+  ['submitClubBtn', 'submitEventBtn', 'submitPublicationBtn', 'submitGalonlyBtn'].forEach(function(name) {
+    var listBtn = document.getElementById('list' + name.charAt(0).toUpperCase() + name.slice(1));
+    if (listBtn) {
+      listBtn.addEventListener('click', function() {
+        var main = document.getElementById(name);
+        if (main) main.click();
+      });
+    }
+  });
+
+  document.getElementById('listLoginBtn')?.addEventListener('click', function() {
+    openAccountModal('login');
+  });
+
+  document.getElementById('listAccountBtn')?.addEventListener('click', function() {
+    openAccountModal('settings');
+    if (typeof refreshProfile === 'function') refreshProfile();
+  });
+
+  // 列表模式导航按钮（区域筛选）
+  document.querySelectorAll('.list-nav-row .user-nav-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      var action = this.dataset.action;
+      switch (action) {
+        case 'china':
+          State.listRegionFilter = 'china';
+          break;
+        case 'japan':
+          State.listRegionFilter = 'japan';
+          break;
+        case 'overseas':
+          State.listRegionFilter = 'overseas';
+          break;
+        case 'calendar':
+          document.getElementById('calendarModal')?.classList.add('open');
+          document.getElementById('calendarModal')?.setAttribute('aria-hidden', 'false');
+          return; // 不重新渲染
+        case 'publication':
+          (function() {
+            var pubModal = document.getElementById('publicationModal');
+            if (pubModal) {
+              if (typeof renderPublicationList === 'function') renderPublicationList();
+              var addBtn = document.getElementById('addPublicationBtn');
+              if (addBtn) addBtn.style.display = hasRole('manager') ? 'flex' : 'none';
+              pubModal.classList.add('open');
+              pubModal.setAttribute('aria-hidden', 'false');
+            }
+          })();
+          return; // 不重新渲染
+      }
+      // 更新按钮激活样式
+      document.querySelectorAll('.list-nav-row .user-nav-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      this.classList.add('active');
+      // 重新渲染列表
+      renderListView();
+    });
+  });
+
+  // 列表模式语言切换
+  document.getElementById('listLangZhBtn')?.addEventListener('click', function() {
+    currentLang = 'zh';
+    localStorage.setItem('language', 'zh');
+    updateUILanguage();
+    renderCurrentDetail();
+  });
+  document.getElementById('listLangJaBtn')?.addEventListener('click', function() {
+    currentLang = 'ja';
+    localStorage.setItem('language', 'ja');
+    updateUILanguage();
+    renderCurrentDetail();
+  });
+
+  // 列表模式视图切换按钮
+  document.querySelectorAll('.list-top-bar .mode-tab').forEach(tab => {
+    tab.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var mode = this.dataset.mode;
+      if (mode === State.viewMode) return;
+      switchViewMode(mode);
+    });
+  });
+}
+
+function normalizeProvince(name) {
+  if (!name) return '';
+  // 去除末尾的"省"/"市"（保持"海外"/"四川+重庆"/"内蒙古"等不变）
+  return name.replace(/[省市]$/, '');
+}
+
+function renderListView() {
+  const provinceIndexList = document.getElementById('provinceIndexList');
+  const clubGrid = document.getElementById('clubGrid');
+  const toolbarTitle = document.getElementById('listToolbarTitle');
+  const toolbarCount = document.getElementById('listToolbarCount');
+  if (!provinceIndexList || !clubGrid) return;
+
+  // 渲染左面板公告
+  renderListAnnouncements();
+
+  // 同步用户状态到列表模式
+  syncListModeUserState();
+  bindListModeControls();
+
+  // 获取所有同好会数据（按区域过滤）
+  const allClubs = [];
+  const japanSet = new Set();
+  const filter = State.listRegionFilter || 'all';
+  if (filter === 'japan') {
+    (State.japanRows || []).forEach(function(c) { allClubs.push(c); japanSet.add(c); });
+  } else if (filter === 'overseas') {
+    (State.bandoriRows || []).forEach(function(c) { if (c.province === '海外') allClubs.push(c); });
+  } else if (filter === 'china') {
+    (State.bandoriRows || []).forEach(function(c) { if (c.province !== '海外') allClubs.push(c); });
+  } else {
+    (State.japanRows || []).forEach(function(c) { allClubs.push(c); japanSet.add(c); });
+    (State.bandoriRows || []).forEach(function(c) { allClubs.push(c); });
+  }
+  const totalCount = allClubs.length;
+
+  // 构建省份/都道府县索引（统一去掉"省""市"后缀防重复）
+  const provinces = new Map();
+  allClubs.forEach(club => {
+    const raw = japanSet.has(club) ? (club.prefecture || club.province || __('japanBtn')) : (club.province || __('listUnknownProvince'));
+    const p = normalizeProvince(raw);
+    if (!provinces.has(p)) provinces.set(p, []);
+    provinces.get(p).push(club);
+  });
+
+  const sortedProvinces = Array.from(provinces.entries()).sort((a, b) => b[1].length - a[1].length);
+
+  // 渲染省份索引
+  provinceIndexList.innerHTML = sortedProvinces.map(([province, rows]) =>
+    `<div class="province-index-item" data-province="${Utils.escapeHTML(province)}">
+      <span>${Utils.escapeHTML(province)}</span>
+      <span class="province-index-count">${rows.length}</span>
+    </div>`
+  ).join('');
+
+  // 省份索引点击事件
+  provinceIndexList.querySelectorAll('.province-index-item').forEach(item => {
+    item.addEventListener('click', function() {
+      provinceIndexList.querySelectorAll('.province-index-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      const province = this.dataset.province;
+      const rows = provinces.get(province) || [];
+      renderClubCards(rows);
+      // 让新卡片可见（直接可见，无入场动画）
+      document.querySelectorAll('.club-card').forEach(card => card.classList.add('visible'));
+      if (toolbarTitle) toolbarTitle.textContent = province;
+      if (toolbarCount) toolbarCount.textContent = rows.length + ' ' + __('listCountSuffix');
+    });
+  });
+
+  // 默认选中第一个省份
+  if (sortedProvinces.length > 0) {
+    const firstItem = provinceIndexList.querySelector('.province-index-item');
+    if (firstItem) {
+      firstItem.classList.add('active');
+      renderClubCards(sortedProvinces[0][1]);
+      // 新卡片直接可见（无入场动画）
+      document.querySelectorAll('.club-card').forEach(function(c) { c.classList.add('visible'); });
+      if (toolbarTitle) toolbarTitle.textContent = sortedProvinces[0][0];
+      if (toolbarCount) toolbarCount.textContent = sortedProvinces[0][1].length + ' ' + __('listCountSuffix');
+    }
+  }
+
+  // 绑定列表搜索/筛选/排序事件
+  const searchInput = document.getElementById('listSearchInput');
+  const typeFilter = document.getElementById('listTypeFilter');
+  const sortSelect = document.getElementById('listSortSelect');
+
+  if (searchInput) {
+    searchInput.addEventListener('input', Utils.debounce(() => {
+      State.listQuery = searchInput.value;
+      refilterCards(provinces);
+    }, 300));
+  }
+  if (typeFilter) {
+    typeFilter.addEventListener('change', () => {
+      State.listType = typeFilter.value;
+      refilterCards(provinces);
+    });
+  }
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      State.listSort = sortSelect.value;
+      refilterCards(provinces);
+    });
+  }
+}
+
+function renderClubCards(rows) {
+  const grid = document.getElementById('clubGrid');
+  if (!grid) return;
+
+  const filtered = getFilteredSortedRows(rows);
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="list-empty-state">' + __('listEmptyFilter') + '</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map((item, index) => {
+    const name = Utils.escapeHTML(item.name || __('listNoName'));
+    const type = Utils.escapeHTML(Utils.groupTypeText(item.type));
+    const province = Utils.escapeHTML(normalizeProvince(item.province || item.prefecture || ''));
+    const contactInfo = Utils.escapeHTML(item.info || '');
+    const schoolInfo = Utils.escapeHTML(item.school || item.remark || __('listNoRemark'));
+    const verified = item.verified;
+    const logoUrl = item.logo_url || '';
+    const initial = name.charAt(0);
+
+    // 基于名称生成稳定头像色，避免列表刷新时视觉跳动
+    const hue = (name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360;
+
+    const avatarHtml = logoUrl
+      ? `<img src="${Utils.escapeHTML(logoUrl)}" alt="" loading="lazy">`
+      : initial;
+
+    return `
+      <article class="club-card" style="transition-delay:${index * 30}ms" data-index="${index}">
+        <div class="club-card-top">
+          <div class="club-card-avatar" style="background: hsl(${hue}, 48%, 46%);">
+            ${avatarHtml}
+          </div>
+          <div class="club-card-info">
+            <div class="club-card-name" title="${name}">${name}</div>
+            <div class="club-card-tags">
+              <span class="club-card-tag type-tag">${type}</span>
+              ${verified ? '<span class="club-card-tag verified-tag">' + __('listVerified') + '</span>' : ''}
+            </div>
+            <div class="club-card-location">${province}</div>
+          </div>
+        </div>
+        <div class="club-card-divider"></div>
+        <div class="club-card-meta">
+          <div class="club-card-meta-row">
+            <span class="club-card-meta-label">${__('listContactLabel')}</span>
+            <span class="club-card-contact">${contactInfo || __('listContactPrivate')}</span>
+          </div>
+          <div class="club-card-meta-row">
+            <span class="club-card-meta-label">${__('listRemarkLabel')}</span>
+            <span class="club-card-desc">${schoolInfo}</span>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  // 点击卡片 - 在列表模式下直接打开详情弹窗
+  grid.querySelectorAll('.club-card').forEach((el, i) => {
+    el.addEventListener('click', () => {
+      const clubData = filtered[i];
+      if (!clubData) return;
+      if (typeof showClubDetail === 'function') {
+        showClubDetail(clubData);
+      }
+    });
+  });
+}
+
+function refilterCards(provinces) {
+  const activeProvince = document.querySelector('.province-index-item.active');
+  if (activeProvince) {
+    const provinceName = activeProvince.dataset.province;
+    const rows = (provinces.get(provinceName) || []);
+    renderClubCards(rows);
+    // 使过滤后的卡片可见
+    document.querySelectorAll('.club-card').forEach(card => card.classList.add('visible'));
+  }
+}
+
 function renderGroupList(rows) {
   const listEl = document.getElementById('groupList');
   if (!listEl) return;
@@ -2573,7 +3429,7 @@ function renderGroupList(rows) {
         ? `<button class="apply-mini-btn" data-club='${clubData}' type="button" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--md-primary);color:#fff;cursor:pointer;white-space:nowrap">${__('listApply')}</button>`
         : '';
 
-    const province = Utils.escapeHTML(item.province || '');
+    const province = Utils.escapeHTML(normalizeProvince(item.province || item.prefecture || ''));
 
     const avatarHtml = item.logo_url
         ? `<img src="${Utils.escapeHTML(item.logo_url)}" alt="" class="club-avatar" loading="lazy">`
@@ -2936,7 +3792,7 @@ function showClubDetail(club) {
       if (isBound) {
         inputHtml = `
           <div class="comment-input-area">
-            <textarea id="commentInput_${clubId}" placeholder="写下你对这个同好会的评价…" maxlength="1000"></textarea>
+            <textarea id="commentInput_${clubId}" placeholder="${__('commentPlaceholder')}" maxlength="1000"></textarea>
             <div class="comment-input-footer">
               <span class="comment-char-count" id="commentCount_${clubId}">0 / 1000</span>
               <button class="comment-submit-btn" id="commentSubmit_${clubId}">发表</button>
@@ -3120,7 +3976,7 @@ function showClubDetail(club) {
 function openMembershipApplyModal(club) {
   const modal = document.getElementById('membershipApplyModal');
   if (!modal) return;
-  document.getElementById('membershipApplyClubName').textContent = club.name || '未命名';
+  document.getElementById('membershipApplyClubName').textContent = club.name || __('listNoName');
   document.getElementById('applyQQ').value = '';
   document.getElementById('applyRole').value = 'member';
   document.getElementById('applyIsStudent').checked = true;
@@ -3548,7 +4404,7 @@ function showMapBubbleByProvince(provinceName, anchorX, anchorY) {
               const bubbleInfo = item.info_hidden ? __('listInfoHidden') : (item.info || __('listNoContact'));
               return `
                 <article class="map-bubble-item" data-copy="${encodeURIComponent(String(item.info || ''))}" title="点击复制联系方式">
-                    <div class="bubble-name-wrap"><span class="bubble-name">${Utils.escapeHTML(item.name || '未命名')}</span></div>
+                    <div class="bubble-name-wrap"><span class="bubble-name">${Utils.escapeHTML(item.name || __('listNoName'))}</span></div>
                     <div class="bubble-id">${Utils.escapeHTML(bubbleInfo)}</div>
                 </article>
               `;
@@ -4022,7 +4878,7 @@ function showJapanMapBubble(provinceName, anchorX, anchorY) {
           verifyMeta: (item.verified ? '已登记' : '未登记') + ' · 成立时间：' + Utils.formatCreatedAt(item.created_at),
           country: 'japan', logo_url: item.logo_url || '', external_links: item.external_links || ''
         }))}'>
-          <div class="bubble-name-wrap"><span class="bubble-name">${Utils.escapeHTML(item.name || '未命名')}</span></div>
+          <div class="bubble-name-wrap"><span class="bubble-name">${Utils.escapeHTML(item.name || __('listNoName'))}</span></div>
           <div class="bubble-id">${Utils.escapeHTML(item.info_hidden ? __('listInfoHidden') : String(item.info || __('listNoContact')))}</div>
         </article>
       `).join('')}
@@ -4082,37 +4938,7 @@ function showJapanMapBubble(provinceName, anchorX, anchorY) {
   }, 50);
 }
 
-function switchToChinaMap() {
-    if (State.currentCountry === 'china') return;
-    State.currentCountry = 'china';
-    const svgEl = document.getElementById('mapSvg');
-    if (svgEl) svgEl.innerHTML = '';
-    setTimeout(() => {
-        renderChinaMap();
-        bindMapTooltip();
-        // 直接显示国内同好会列表
-        State.currentDetailProvinceName = '国内同好会';
-        State.currentDetailRows = State.bandoriRows.filter(item => item.province !== '海外');
-        State.globalSearchEnabled = false;
-        State.listQuery = '';
-        State.listType = 'all';
-        State.listSort = 'default';
-        if (document.getElementById('searchInput')) document.getElementById('searchInput').value = '';
-        if (document.getElementById('typeFilter')) document.getElementById('typeFilter').value = 'all';
-        updateSortButtonView();
-        const globalBtn = document.getElementById('globalSearchBtn');
-        if (globalBtn) globalBtn.classList.remove('active');
-        renderCurrentDetail();
-    }, 100);
-}
-
-// 切换到日本地图（数据已预加载）
-function switchToJapanMap() {
-    if (State.currentCountry === 'japan') return;
-
-    console.log('切换到日本地图');
-    State.currentCountry = 'japan';
-
+function resetMapListFilters() {
     State.globalSearchEnabled = false;
     State.listQuery = '';
     State.listType = 'all';
@@ -4124,19 +4950,75 @@ function switchToJapanMap() {
 
     const globalBtn = document.getElementById('globalSearchBtn');
     if (globalBtn) globalBtn.classList.remove('active');
+}
 
+function animateMapCountrySwitch(renderMap, afterRender) {
     const svgEl = document.getElementById('mapSvg');
-    if (svgEl) svgEl.innerHTML = '';
+    State.mapSwitchToken += 1;
+    const switchToken = State.mapSwitchToken;
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // 直接渲染，不需要再加载数据（数据已在 init 时加载）
-    setTimeout(() => {
-        renderJapanMap();
+    hideMapBubble();
+
+    const completeSwitch = () => {
+        if (switchToken !== State.mapSwitchToken) return;
+
+        if (svgEl) {
+            svgEl.classList.remove('map-switch-out', 'map-switch-in');
+            svgEl.innerHTML = '';
+        }
+
+        renderMap();
         bindMapTooltip();
+        afterRender();
+
+        if (svgEl && !prefersReducedMotion) {
+            void svgEl.offsetHeight;
+            svgEl.classList.add('map-switch-in');
+            window.setTimeout(() => {
+                if (switchToken === State.mapSwitchToken) {
+                    svgEl.classList.remove('map-switch-in');
+                }
+            }, 440);
+        }
+    };
+
+    if (!svgEl || prefersReducedMotion) {
+        completeSwitch();
+        return;
+    }
+
+    svgEl.classList.remove('map-switch-in');
+    void svgEl.offsetHeight;
+    svgEl.classList.add('map-switch-out');
+    window.setTimeout(completeSwitch, 180);
+}
+
+function switchToChinaMap() {
+    if (State.currentCountry === 'china') return;
+    State.currentCountry = 'china';
+    resetMapListFilters();
+    animateMapCountrySwitch(renderChinaMap, () => {
+        // 直接显示国内同好会列表
+        State.currentDetailProvinceName = '国内同好会';
+        State.currentDetailRows = State.bandoriRows.filter(item => item.province !== '海外');
+        renderCurrentDetail();
+    });
+}
+
+// 切换到日本地图（数据已预加载）
+function switchToJapanMap() {
+    if (State.currentCountry === 'japan') return;
+
+    console.log('切换到日本地图');
+    State.currentCountry = 'japan';
+    resetMapListFilters();
+    animateMapCountrySwitch(renderJapanMap, () => {
         // 直接显示日本同好会列表
         State.currentDetailProvinceName = '日本';
         State.currentDetailRows = State.japanRows || [];
         renderCurrentDetail();
-    }, 100);
+    });
 }
 
 function switchToOverseas() {
@@ -4144,10 +5026,14 @@ function switchToOverseas() {
 
     setGlobalSearchEnabled(false);
     State.currentCountry = 'overseas';
+    State.mapSwitchToken += 1;
 
     // 清除地图
     const svgEl = document.getElementById('mapSvg');
-    if (svgEl) svgEl.innerHTML = '';
+    if (svgEl) {
+        svgEl.classList.remove('map-switch-out', 'map-switch-in');
+        svgEl.innerHTML = '';
+    }
 
     // 重置筛选条件
     State.listType = 'all';
@@ -4690,7 +5576,7 @@ async function saveClub() {
 }
 
 async function deleteClub() {
-    if (!confirm('⚠️ 确定要删除这个同好会吗？此操作不可撤销！')) return;
+    if (!confirm(__('confirmDeleteClub'))) return;
     try {
         const response = await fetch('./api/clubs.php', {
             method: 'DELETE',
@@ -4787,7 +5673,7 @@ function initAdminEvents() {
 
 	  if (addClubBtn) {
 	    addClubBtn.addEventListener("click", () => {
-	      if (!hasRole("manager")) { alert("权限不足"); return; }
+	      if (!hasRole("manager")) { alert(__('alertPermissionDenied')); return; }
 	      openEditPanel(null, true);
 	    });
 	  }
@@ -4815,14 +5701,14 @@ function initAdminEvents() {
 	  const membershipBtn = document.getElementById("membershipBtn");
 	  if (membershipBtn) {
 	    membershipBtn.addEventListener("click", () => {
-	      if (!hasRole("manager")) { alert("权限不足"); return; }
+	      if (!hasRole("manager")) { alert(__('alertPermissionDenied')); return; }
 	      const modal = document.getElementById("membershipModal");
 	      if (!modal) return;
 	      modal.classList.add("open");
 	      modal.setAttribute("aria-hidden", "false");
 	      renderPendingApprovals();
 	    });
-	    membershipBtn.title = "绑定审批";
+	    membershipBtn.title = __('approvalCenter');
 	  }
 
 	  // 审核中心按钮
@@ -4831,7 +5717,7 @@ function initAdminEvents() {
 	    reviewsBtn.addEventListener("click", () => {
 	      window.open("./admin/reviews.html", "_blank");
 	    });
-	    reviewsBtn.title = "审核中心";
+	    reviewsBtn.title = currentLang === 'ja' ? '審査センター' : '审核中心';
 	  }
 
 	  // 同好会管理按钮
@@ -4840,7 +5726,7 @@ function initAdminEvents() {
 	    clubManageBtn.addEventListener("click", () => {
 	      window.open("./admin/club_manager.html", "_blank");
 	    });
-	    clubManageBtn.title = "同好会管理";
+	    clubManageBtn.title = __('topAdmin');
 	  }
 
 	  // 绑定审批弹窗关闭
@@ -5511,6 +6397,8 @@ function initTopUserBar() {
   document.querySelectorAll('.user-nav-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
+      // 列表模式下由 bindListModeControls 处理
+      if (State.viewMode === 'list') return;
       const action = this.dataset.action;
       switch (action) {
         case 'china': switchToChinaMap(); break;
@@ -5536,6 +6424,15 @@ function initTopUserBar() {
     });
   });
 
+  // 模式切换
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      const mode = this.dataset.mode;
+      if (mode === State.viewMode) return;
+      switchViewMode(mode);
+    });
+  });
+
   // 登录按钮
   document.getElementById('topLoginBtn')?.addEventListener('click', function(e) {
     e.stopPropagation();
@@ -5552,12 +6449,22 @@ function initTopUserBar() {
   // 移动端：点击卡片切换折叠/展开
   const card = document.getElementById('userInfoCard');
   if (card) {
+    const toggleMobileTopBar = function() {
+      card.classList.toggle('mobile-expanded');
+      const arrow = document.getElementById('mobileExpandArrow');
+      if (arrow) arrow.classList.toggle('expanded');
+    };
+
     card.addEventListener('click', function(e) {
       if (window.innerWidth > 720) return;
       if (e.target.closest('button') || e.target.closest('a')) return;
-      this.classList.toggle('mobile-expanded');
-      const arrow = document.getElementById('mobileExpandArrow');
-      if (arrow) arrow.classList.toggle('expanded');
+      toggleMobileTopBar();
+    });
+
+    document.getElementById('mobileExpandArrow')?.addEventListener('click', function(e) {
+      if (window.innerWidth > 720) return;
+      e.stopPropagation();
+      toggleMobileTopBar();
     });
   }
 
@@ -6549,6 +7456,13 @@ init();
                 if (data.success && data.announcements && data.announcements.length > 0) {
                     renderAnnouncements(data.announcements);
                     banner.style.display = '';
+                    // 同步列表模式的顶部公告横幅
+                    var listBanner = document.getElementById('listAnnBanner');
+                    if (listBanner) listBanner.style.display = '';
+                    // 如果列表模式已激活，同步渲染列表公告
+                    if (typeof renderListAnnouncements === 'function') {
+                        renderListAnnouncements();
+                    }
                 } else {
                     banner.style.display = 'none';
                 }
@@ -6652,8 +7566,6 @@ init();
         }
     });
 
-    // 初始加载（如果已登录）
-    if (currentUser && currentUser.logged_in) {
-        loadActiveAnnouncements();
-    }
+    // 初始加载（不分登录状态，公开公告可见）
+    loadActiveAnnouncements();
 })();

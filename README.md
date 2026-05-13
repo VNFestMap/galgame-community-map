@@ -1,366 +1,325 @@
 <div align="center">
 
-# 🗺️ 全国 Galgame 同好会地图
+```
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   ██╗   ██╗ ███╗  ██║ ███████╗ ███████╗ ███████╗ ████████╗     ║
+║   ██║   ██║ ████╗ ██║ ██╔════╝ ██╔════╝ ██╔════╝ ╚══██╔══╝     ║
+║   ██║   ██║ ██╔██╗██║ █████╗   █████╗   ███████╗    ██║        ║
+║   ╚██╗ ██╔╝ ██║╚████║ ██╔══╝   ██╔══╝   ██╔════╝    ██║        ║
+║    ╚████╔╝  ██║ ╚███║ ██║      ███████╗ ███████╗    ██║        ║
+║     ╚═══╝   ╚═╝  ╚══╝ ╚═╝      ╚══════╝ ╚══════╝    ╚═╝        ║
+║                                                                  ║
+║        ┌───────────────────────────────────────┐                 ║
+║        │  🗺️ 全国 Galgame 同好会マップ           │                 ║
+║        │  China × Japan × Visual Novel Clubs    │                 ║
+║        └───────────────────────────────────────┘                 ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+```
 
-### 中日高校视觉小说同好会 · 可视化地图导航
+# 🗺️ VNFest — Galgame 同好会地图
 
-[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![PHP](https://img.shields.io/badge/PHP-8.x-777bb4.svg)](https://php.net)
-[![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-f7df1e.svg)](https://developer.mozilla.org/)
-[![D3.js](https://img.shields.io/badge/D3.js-7.9.0-f9a03c.svg)](https://d3js.org/)
+### 中日高校视觉小说社团 · 可视化导航与社群平台
 
-**🌐 [map.vnfest.top](https://www.map.vnfest.top)**
+<br/>
+
+[![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge&logo=gnu)](LICENSE)
+[![PHP](https://img.shields.io/badge/PHP-8.x-777bb4?style=for-the-badge&logo=php)](https://php.net)
+[![JavaScript](https://img.shields.io/badge/JS-ES6+-f7df1e?style=for-the-badge&logo=javascript)](https://developer.mozilla.org/)
+[![D3](https://img.shields.io/badge/D3.js-7.9-f9a03c?style=for-the-badge&logo=d3.js)](https://d3js.org/)
+
+<br/>
+
+🌐 **[map.vnfest.top](https://www.map.vnfest.top)**
+
+<br/>
+
+```
+      ┌───────────────────────────────────────────────────┐
+      │  🇨🇳 232 同好会  ·  🇯🇵 27 サークル  ·  計 259 団体    │
+      │    ZH ⇄ JA 双语  ·  Dark/Light 双主题  ·  OSS       │
+      └───────────────────────────────────────────────────┘
+```
 
 </div>
 
 ---
 
-## 简介
+## ✦ 这是什么？
 
-全国 Galgame 同好会地图是一个面向中日高校视觉小说同好会的交互式导航平台。通过中国省份地图和日本都道府县地图，直观展示各地同好会的分布情况，提供搜索、筛选、活动日历、刊物管理、GalOnly 出展申请等综合功能。
+一个面向 **中国 × 日本 高校 Galgame / 视觉小说同好会** 的交互式社群地图平台。以 SVG 矢量地图为入口，串联**社团发现、成员管理、活动日历、刊物投稿、GalOnly 出展申请**整套场景——既是地图导航，也是社团运营面板。
 
----
-
-## 功能
-
-**🗺️ 地图导航**
-- 中国/日本地图一键切换，省份/都道府县点击查看
-- D3.js 矢量渲染，支持缩放拖拽
-- 数字徽章显示各地同好会数量
-
-**🔍 搜索筛选**
-- 组织名/群号搜索
-- 高校同好会 / 地区联合 / VNFest 类型筛选
-- 按名称、注册时间等多种排序
-
-**👤 用户系统**
-- 用户名/密码注册登录（bcrypt 加密）
-- QQ 互联 / Discord OAuth2 登录
-- 邮箱绑定与验证
-- 个人头像上传（Cropper.js）与裁剪
-
-**🎪 同好会管理**
-- 同好会详情与成员列表
-- 成员申请与审核流程
-- 角色体系：成员 → 管理员 → 负责人
-- 联系方式可见性控制
-- 社团头像上传与管理
-- **绑定码加入**：负责人生成绑定码，成员输入码即可加入
-- **神器推荐榜**：连接 Bangumi 数据，每社展示 12 部作品推荐
-- **留言板**：成员可留言评价，管理员可管理删除
-
-**📋 账号面板（VN 风格）**
-- 个人档案卡片（角色风格布局）
-- 图鉴收集系统：已加入的同好会、已报名的活动、投稿刊物一览
-- 昵称与个性签名设置
-- 头像上传与裁剪
-
-**📅 活动日历**
-- 月历视图 / 列表视图切换
-- 活动详情弹窗（海报、简介、链接）
-- 活动报名与取消报名
-- 多日跨月活动支持
-- 筛选：全部 / 即将开始 / 进行中 / 已结束
-- 管理员增删改
-
-**📖 刊物管理**
-- 社团刊物投稿与管理
-- 状态追踪：写作中 / 规划中 / 编辑中 / 发布中 / 已完成
-- 封面图上传
-
-**🎟️ GalOnly 高校专属通道**
-- 同好会出展申请表单（社团选择、海报上传、自我介绍）
-- 申请状态追踪（待审核 / 已通过 / 已驳回 / 待付款）
-- 7 人投票审核机制（先达 4 票决定结果）
-- 驳回后重审机制（清空旧投票 + 重审标记）
-- 审核后台（管理员面板）
-- 申请数据重置工具
-
-**🔔 通知与公告**
-- 通知下拉面板，实时接收动态提醒
-- 公告系统，管理员可发布全局公告
-- 同好会内互动消息通知
-
-**📝 提交系统**
-- 同好会信息提交
-- 活动信息提交
-- 刊物投稿提交
-
-**👑 管理后台**
-- 同好会增删改查（超级管理员）
-- 提交审核（同好会 / 活动 / 刊物）
-- 成员管理（审核、角色变更、踢出）
-- 绑定码管理（生成/撤销）
-- 神器推荐榜管理（Bangumi 搜索添加/排序）
-- 公告发布与管理
-- 数据统计面板
-
-**🎨 界面**
-- 深色/浅色主题（跟随系统）
-- 多主题配色（红/蓝/绿/紫/橙）
-- 中日双语切换
-- 移动端适配（汉堡菜单、用户卡片折叠展开）
-- 玻璃态模糊效果（backdrop-filter）
-- 动态渐变与流光动效
+```
+发现社团  →  申请加入  →  参与活动  →  投稿刊物  →  出展 GalOnly
+   │              │            │             │              │
+   ▼              ▼            ▼             ▼              ▼
+ 地图搜索    绑定码 / 审核   日历报名    状态追踪    7人投票审核
+```
 
 ---
 
-## 快速开始
+## ✦ 一句话概览
 
-### 环境要求
+| 模块 | 你用它做什么 |
+|------|-------------|
+| 🗺️ **地图** | D3.js 中国34省 + 日本47都道府县，点击钻取社团列表 |
+| 🔍 **搜索** | 名称 / 群号 / 学校多维度检索，类型筛选 + 四个维度排序 |
+| 👤 **账号** | 注册登录（bcrypt）、QQ / Discord OAuth2、头像裁剪上传 |
+| 🏛️ **社团** | 加入/退出/角色体系、绑定码邀请、联系方式权限控制 |
+| 📅 **日历** | 月历+列表双视图、活动详情弹窗、报名/取消、多日跨月 |
+| 📖 **刊物** | 社团出版物投稿、6段进度追踪（企划→发布）、封面图 |
+| 🎟️ **GalOnly** | 高校出展申请 → 7人投票审批 → 状态追踪 → 重审机制 |
+| 🔔 **通知** | 全局通知下拉、公告系统、社团内互动消息 |
+| ⭐ **推荐榜** | Bangumi 数据对接，每社最多12部作品推荐（评分+封面） |
+| 💬 **留言板** | 社团页面留言/评价，管理员可管理删除 |
+| 👑 **后台** | 审核审批、社团管理、绑定码生成、推荐榜编辑、公告发布 |
+| 🌏 **双语** | 中文 / 日本語 一键切换，~200 翻译键全覆盖 |
+| 🎨 **主题** | 深色/浅色 跟随系统，玻璃拟态 + 渐变动效 |
 
-- PHP 8.0+
-- SQLite（默认）或 MySQL
-- Apache（mod_rewrite）或 Nginx
-- QQ 互联 / Discord 开发者账号（OAuth 可选）
+---
 
-### 安装
+## ✦ 快速开始
 
 ```bash
-# 1. 克隆项目
 git clone https://github.com/kokubunshu/china-galgame-maps.git
 cd china-galgame-maps
 
-# 2. 配置环境
-cp config.example.php config.php
-# 编辑 config.php 填写数据库、OAuth 等配置
+# 1) 配置
+cp config.example.php config.php     # 编辑数据库、OAuth 等信息
 
-# 3. 初始化数据库
+# 2) 初始化数据库
 php scripts/migrate.php
 
-# 4. 启动开发服务器
+# 3) 启动
 php -S localhost:8000
 ```
 
-### 访问地址
-
-| 页面 | 地址 |
-|------|------|
-| 主页 | `http://localhost:8000` |
-| 同好会提交 | `submit.html` |
-| 活动提交 | `submit_event.html` |
-| 刊物投稿 | `submit_publication.html` |
-| GalOnly 出展申请 | `Galgame_events/Shanghai_Galonly_submit.html` |
-| GalOnly 活动主页 | `Galgame_events/galgameonly_list.html` |
-| 审核后台 | `admin/reviews.html` |
-| 同好会管理 | `admin/club_manager.html` |
-| GalOnly 审核 | `admin/Galonly_audit.html` |
-| 活动审核 | `admin/events.php` |
+> **环境**: PHP 8.0+ · SQLite (默认) / MySQL · Apache mod_rewrite
 
 ---
 
-## 目录结构
+## ✦ 架构一览
 
 ```
-├── admin/              # 管理后台页面
-│   ├── club_manager.html      # 同好会管理面板
-│   ├── reviews.html           # 审核中心
-│   ├── Galonly_audit.html     # GalOnly 出展审核
-│   ├── events.php             # 活动审核
-│   ├── submissions.html       # 同好会提交审核
-│   └── submissions_event.html # 活动提交审核
-├── api/                # API 接口
-│   ├── auth.php               # 用户认证（登录/注册/OAuth）
-│   ├── clubs.php              # 中国同好会 CRUD
-│   ├── clubs_japan.php        # 日本同好会 CRUD
-│   ├── membership.php         # 成员管理
-│   ├── events.php             # 活动管理 + 报名系统
-│   ├── publications.php       # 刊物管理
-│   ├── galonly.php            # GalOnly 出展申请 API
-│   ├── manuscripts.php        # 稿件管理 API
-│   ├── avatar.php             # 头像上传
-│   ├── club_avatar.php        # 社团头像上传
-│   ├── announcements.php      # 公告 CRUD
-│   ├── bangumi_proxy.php      # Bangumi API 代理（缓存 + 搜索）
-│   ├── club_codes.php         # 同好会绑定码
-│   ├── club_comments.php      # 同好会留言板
-│   ├── club_recommendations.php # 神器推荐榜
-│   ├── notifications.php      # 通知系统
-│   ├── submit.php             # 同好会提交
-│   ├── submit_event.php       # 活动提交
-│   └── submit_publication.php # 刊物投稿
-├── css/
-│   └── styles.css             # 全局样式
-├── data/               # 数据文件
-│   ├── clubs.json             # 中国同好会数据
-│   ├── clubs_japan.json       # 日本同好会数据
-│   ├── events.json            # 活动数据
-│   ├── publications.json      # 刊物数据
-│   ├── submissions.json       # 待审核提交
-│   ├── event_registrations.json  # 活动报名数据
-│   ├── submissions_event.json # 活动提交审核数据
-│   ├── manuscripts.json       # 稿件数据
-│   ├── galgame.db             # SQLite 数据库
-│   ├── club_avatars/          # 同好会头像上传目录
-│   ├── avatars/               # 用户头像上传目录
-│   ├── publication_images/    # 刊物封面上传目录
-│   └── manuscripts/           # 稿件文件上传目录
-├── Galgame_events/     # GalOnly 专属活动页面
-│   ├── galgameonly_list.html  # 活动列表与申请管理
-│   └── Shanghai_Galonly_submit.html  # 出展申请表
-├── images/             # 图片资源
-├── includes/           # PHP 核心库
-│   ├── auth.php               # 认证与角色管理
-│   ├── db.php                 # 数据库连接（SQLite + MySQL）
-│   ├── oauth_qq.php           # QQ OAuth2
-│   ├── oauth_discord.php      # Discord OAuth2
-│   ├── audit.php              # 审计日志
-│   ├── notifications.php      # 通知与公告逻辑
-│   └── rate_limit.php         # 频率限制
-├── js/                 # 前端脚本
-│   ├── app.js                 # 主应用逻辑（用户面板、图鉴、地图交互）
-│   ├── calendar.js            # 活动日历（月历/列表、报名）
-│   ├── china.js               # 中国地图 GeoJSON
-│   └── japan.js               # 日本地图 GeoJSON
-├── scripts/            # 命令行工具
-│   ├── migrate.php            # 数据库迁移
-│   ├── reset_galonly.php      # 清空 GalOnly 申请数据
-│   ├── add_column_resubmitted.php  # 添加重审列（Web 迁移）
-│   └── seed_superadmin.php    # 创建超级管理员
-├── uploads/            # 文件上传目录
-│   └── galonly/               # GalOnly 海报上传
-├── index.html          # 主页面
-├── submit.html         # 同好会提交页
-├── submit_event.html   # 活动提交页
-└── submit_publication.html # 刊物投稿页
+                  ┌──────────────┐
+                  │  index.html  │  ← SPA 主入口
+                  └──────┬───────┘
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+    ┌──────────┐  ┌──────────┐  ┌───────────┐
+    │ 中国地图  │  │ 日本地图  │  │ 列表视图   │   ← D3.js SVG 渲染
+    │ china.js │  │ japan.js │  │ (Grid)    │
+    └────┬─────┘  └────┬─────┘  └─────┬─────┘
+         │             │              │
+         └──────┬──────┘              │
+                ▼                     ▼
+         ┌─────────────┐    ┌────────────────┐
+         │  社团详情    │    │ 搜索/筛选/排序   │
+         │  成员/推荐   │    │ (全量内存索引)   │
+         └──────┬──────┘    └────────────────┘
+                │
+    ┌───────────┼───────────┐
+    ▼           ▼           ▼
+  API          Auth        Data
+ (PHP)    (Session+OAuth)  (JSON+SQLite)
+```
+
+```
+admin/club_manager.html ─── 社团管理后台（独立, VN 主题）
+submit*.html ─── 提交页（独立, 表单）
+Galgame_events/* ─── GalOnly 专属区（独立）
 ```
 
 ---
 
-## API 概览
+## ✦ 角色体系
 
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `api/clubs.php` | GET | 获取中国同好会列表 |
-| `api/clubs_japan.php` | GET | 获取日本同好会列表 |
-| `api/events.php` | GET/POST | 活动读取/管理/报名 |
-| `api/publications.php` | GET/POST/PUT/DELETE | 刊物 CRUD |
-| `api/auth.php` | GET/POST | 认证（含 OAuth） |
-| `api/membership.php` | GET/POST | 成员申请/审核 |
-| `api/galonly.php` | GET/POST | GalOnly 出展申请/审核/投票 |
-| `api/manuscripts.php` | GET/POST | 稿件管理 |
-| `api/bangumi_proxy.php` | GET | Bangumi API 代理搜索/获取 |
-| `api/club_codes.php` | GET/POST | 绑定码生成/使用/管理 |
-| `api/club_comments.php` | GET/POST | 同好会留言板 |
-| `api/club_recommendations.php` | GET/POST | 神器推荐榜 CRUD |
-| `api/announcements.php` | GET/POST | 公告发布与管理 |
-| `api/notifications.php` | GET/POST | 通知推送与读取 |
-| `api/club_avatar.php` | POST | 同好会头像上传 |
-| `api/submit.php` | POST | 提交同好会 |
-| `api/toggle_visibility.php` | POST | 切换可见性 |
+```
+visitor (0) ──→ member (1) ──→ manager (2) ──→ representative (3)
+                                                     │
+                                              super_admin (4)
+                                              (全局管理, is_audit 审核)
+```
 
-> 管理操作需要对应角色权限（super_admin / representative / manager）。
+| 你可以… | visitor | member | manager | rep | super |
+|---------|:------:|:------:|:-------:|:---:|:-----:|
+| 浏览地图/搜索 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 申请加入社团 | ✅ | ✅ | - | - | - |
+| 查看内部联系方式 | - | ✅ | ✅ | ✅ | ✅ |
+| 审核成员申请 | - | - | ✅ | ✅ | ✅ |
+| 编辑社团信息 | - | - | ✅ | ✅ | ✅ |
+| 生成绑定码 | - | - | ✅ | ✅ | ✅ |
+| 管理推荐榜/留言 | - | - | ✅ | ✅ | ✅ |
+| 转让负责人 | - | - | - | ✅ | ✅ |
+| 全局管理 | - | - | - | - | ✅ |
 
 ---
 
-## 角色体系
+## ✦ 目录
 
-| 角色 | 级别 | 说明 |
-|------|------|------|
-| visitor | 0 | 注册用户 |
-| member | 1 | 同好会成员 |
-| manager | 2 | 管理员（审核成员、编辑信息） |
-| representative | 3 | 负责人（同好会最高权限） |
-| super_admin | 4 | 超级管理员（全局管理） |
-
-此外，`is_audit` 标志位可单独赋予用户审核权限，用于 GalOnly 等审核流程。
+```
+├── index.html               # 主地图页 (SPA)
+├── admin/
+│   ├── club_manager.html    # 社团管理面板 (VN 暗色主题)
+│   ├── reviews.html         # 提交审核中心
+│   ├── Galonly_audit.html   # GalOnly 出展审批
+│   └── events.php           # 活动审批
+├── api/                     # 18 个 PHP 接口
+│   ├── auth.php             # 认证 (bcrypt + QQ + Discord OAuth2)
+│   ├── clubs.php / clubs_japan.php
+│   ├── membership.php       # 社团成员 CRUD
+│   ├── events.php           # 活动 + 报名
+│   ├── publications.php / manuscripts.php
+│   ├── galonly.php          # GalOnly 申请 + 投票审核
+│   ├── bangumi_proxy.php    # Bangumi API 缓存代理
+│   ├── club_codes.php       # 绑定码
+│   ├── club_comments.php    # 留言板
+│   ├── club_recommendations.php  # 推荐榜
+│   ├── announcements.php / notifications.php
+│   ├── avatar.php / club_avatar.php
+│   └── submit.php / submit_event.php / submit_publication.php
+├── includes/                # PHP 核心库
+│   ├── auth.php             # 角色与权限
+│   ├── db.php               # PDO (SQLite / MySQL 双驱动)
+│   ├── oauth_qq.php / oauth_discord.php
+│   └── notifications.php / audit.php / rate_limit.php
+├── js/
+│   ├── app.js               # 主逻辑 + i18n (~200 翻译键)
+│   ├── calendar.js          # 活动日历 (月历/列表/报名)
+│   ├── china.js             # 中国 34 省 SVG Path
+│   └── japan.js             # 日本 47 都道府県 SVG Path
+├── css/styles.css           # 全局样式 (玻璃态 + 多主题)
+├── data/                    # JSON 数据库 + SQLite + 上传目录
+├── Galgame_events/          # GalOnly 专属页面
+├── scripts/                 # 迁移 / 种子 / 重置工具
+└── docs/                    # 设计文档 & 原型
+```
 
 ---
 
-## 技术栈
+## ✦ API
 
-| 层 | 技术 |
-|----|------|
-| 前端 | HTML5 / CSS3（Custom Properties）/ Vanilla JS |
-| 后端 | PHP 8.x（无框架） |
-| 数据库 | SQLite / MySQL（PDO 双驱动） |
-| 地图 | D3.js v7（SVG GeoJSON） |
-| 认证 | Session + QQ OAuth2 + Discord OAuth2 |
-| 密码 | bcrypt（cost 12） |
-| 图片裁剪 | Cropper.js |
-| 许可证 | GPLv3 |
+| Endpoint | Method | 说明 |
+|----------|:------:|------|
+| `api/clubs.php` | GET | 中国同好会列表 |
+| `api/clubs_japan.php` | GET | 日本同好会リスト |
+| `api/events.php` | GET/POST | 活动 + 报名/取消 |
+| `api/auth.php` | GET/POST | 登录/注册/OAuth |
+| `api/membership.php` | GET/POST | 申请/审核/角色变更 |
+| `api/galonly.php` | GET/POST | 出展申请/审核/投票 |
+| `api/publications.php` | CRUD | 刊物管理 |
+| `api/manuscripts.php` | CRUD | 稿件管理 |
+| `api/bangumi_proxy.php` | GET | Bangumi 搜索/详情(缓存) |
+| `api/club_codes.php` | CRUD | 绑定码生成/使用/撤销 |
+| `api/club_comments.php` | CRUD | 留言板 |
+| `api/club_recommendations.php` | CRUD | 推荐榜管理 |
+| `api/announcements.php` | CRUD | 公告发布 |
+| `api/notifications.php` | GET/POST | 通知推送/已读 |
+| `api/avatar.php` | POST | 头像上传 + Cropper |
+| `api/club_avatar.php` | POST | 社团头像上传 |
+| `api/submit.php` | POST | 同好会提交 |
+| `api/toggle_visibility.php` | POST | 可见性切换 |
 
 ---
 
-## 数据统计
+## ✦ 技术栈
 
-| 地区 | 同好会 |
-|------|--------|
-| 🇨🇳 中国 | 232 |
-| 🇯🇵 日本 | 27 |
-| **合计** | **259** |
+| 层 | 选型 |
+|---:|------|
+| 前端 | Vanilla JS (ES6+) · CSS Custom Properties · D3.js v7 |
+| 后端 | PHP 8.x (零框架) · PDO 双驱动 |
+| 数据库 | SQLite (默认) / MySQL |
+| 认证 | PHP Session · QQ OAuth2 · Discord OAuth2 · bcrypt (cost=12) |
+| 图片 | Cropper.js (前端裁剪) · GD (后端处理) |
+| 地图 | SVG GeoJSON · D3 geoMercator 投影 |
+| 移动端 | Capacitor (Android APK) |
+| 许可 | GPLv3 |
 
 ---
 
-## 近期更新
+## ✦ 更新日志
 
-### v1.6.0 — 同好会增强与通知公告系统
+### v1.6.2 — 管理后台 UI 修繕
+
+**🔧 修复**
+- **神器榜面板对齐**：修复推荐榜左右两栏 `.section-card` 在 Grid 中的 `margin-top` 错位问题
+- **搜索框溢出**：修复 Bangumi 搜索输入框在窄容器中超出边界 (`min-width:0` + `max-width`)
+
+**🎨 优化**
+- 神器榜推荐图表视觉调整
+
+---
+
+### v1.6.1 — 地图/列表双模式与日文国际化补全
 
 **✨ 新功能**
-- **绑定码系统**：同好会负责人生成绑定码，成员输入码即可直接加入
-- **神器推荐榜**：连接 Bangumi API，每社最多展示 12 部作品推荐（含评分、封面）
-- **同好会留言板**：成员可留言评价，管理员可管理删除
-- **通知与公告系统**：全局通知下拉面板，管理员可发布公告
-- **评价管理后台**：统一审核管理入口
+- **地图 ↔ 列表双模式**：完整列表视图，三分区布局（信息栏 + 地区索引 + 同好会网格）
+- **模式切换**：顶部栏 + 列表视图双向同步
+- **APK 打包**：Capacitor 配置 + Android 构建脚本
 
-**🎨 界面优化**
-- 同好会管理页（club_manager.html）全面改版：玻璃拟态设计、标签页布局、绑定码/推荐榜管理
-- 深色模式修复：刷新页面后顶部状态栏保持深色
-- 主题偏好持久化：关闭页面不丢失主题选择
-- 绑定码输入框与按钮同行显示
+**🌐 日文国际化补全**
+- ~60 个新增日文翻译键，列表模式全键日中双配
+- 角色名/用户面板/成员管理/收藏页全量覆盖
 
-**🛠 API 新增**
-- `api/bangumi_proxy.php` — Bangumi API 代理（搜索 + 缓存）
-- `api/club_codes.php` — 绑定码生成与使用
-- `api/club_comments.php` — 留言板 CRUD
-- `api/club_recommendations.php` — 推荐榜管理
-- `api/announcements.php` + `api/notifications.php` — 公告与通知
+**🎨 管理后台视觉重设计**
+- club_manager.html 全面换装 VN/Galgame 暗色主题
+- 暗色/亮色双套设计系统 · 玻璃拟态面板 · 粉/青/金/紫四色强调
+
+---
+
+### v1.6.0 — 同好会系统增强与通知公告
+
+**✨ 绑定码 · 推荐榜 · 留言板 · 通知公告**
+- 绑定码加入系统（生成/使用/限量/过期）
+- Bangumi API 对接神器推荐榜（搜索+评分+12格展示）
+- 社团留言板 CRUD
+- 全局通知 + 公告发布系统
 
 ---
 
 ### v1.5.0 — 用户面板与 GalOnly 高校通道
 
-**✨ 新功能**
-- **GalOnly 高校专属通道**：同好会出展申请、7 人投票审核、驳回重审机制
-- **账号面板（VN 风格）**：个人档案卡片、图鉴收集、设置页
-- **活动报名系统**：用户可报名/取消活动，实时显示报名人数
-- **动态流光动效**：GalOnly 按钮与移动端汉堡按钮的流动渐变 + 呼吸辉光
-
-**🎨 界面重设计**
-- 顶层用户信息卡片：头像、昵称、角色徽章、导航按钮
-- 移动端汉堡菜单 + 左侧抽屉导航
-- 移动端用户卡片点击展开/折叠导航行
-- 模态框 z-index 修复（关闭按钮不被标签栏遮挡）
-- 图鉴中同好会卡片显示社团头像（取代固定 emoji）
-
-**📅 日历增强**
-- 新增列表视图筛选：全部 / 即将开始 / 进行中 / 已结束
-- 多日活动跨月渲染支持
-- 活动报名/取消功能
-
-**🐛 修复**
-- `includes/auth.php` fallback 路径覆盖 is_audit 标志位
-- `admin/events.php` 审核通过时覆盖整个 events.json 导致数据丢失
-- 桌面端用户信息卡片遮挡介绍卡片「收起」按钮
-- GalOnly 重审未清空旧投票导致审核卡死
-- `login_local` 响应缺少 `is_audit` 字段
-- 移动端汉堡按钮与展开的用户卡片重叠
-
-**🛠 其他**
-- 数据库迁移脚本增强（resubmitted 列）
-- GalOnly 申请数据重置工具
-- 移除废弃脚本（gen_sql.php, list_assignments.php, match_members.php）
+**✨ GalOnly · 用户面板 · 活动报名**
+- GalOnly 高校出展申请 + 7人投票审核 + 驳回重审
+- VN 风格账号面板（头像/昵称/签名/图鉴收集）
+- 活动报名/取消 + 多日跨月活动
 
 ---
 
-## 相关项目
+## ✦ 相关项目
 
 - [china-bandori-maps](https://github.com/HELPMEEADICE/china-bandori-maps) — 原始地图数据参考
 
+<br/>
+
 ---
+
+<br/>
 
 <div align="center">
 
-**Made with ❤️ for Galgame Community**
+```
+   ✦                                                              ✦
+       このプロジェクトは、世界中のギャルゲーファンをつなぐ
+              架け橋となることを目指しています。
+       
+       This project aims to be a bridge connecting
+          galgame fans across China, Japan, and beyond.
+
+   ✦                                                              ✦
+```
+
+<br/>
+
+### Made with ❤️ for the Visual Novel Community
+
+<br/>
+
+```
+   ╔═══════════════════════════════════════════════════╗
+   ║  VNFest  ·  v1.6.2  ·  259 Clubs  ·  GPLv3      ║
+   ╚═══════════════════════════════════════════════════╝
+```
 
 </div>
