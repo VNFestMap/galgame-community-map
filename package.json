@@ -1,9 +1,14 @@
 {
   "name": "galgame-map",
-  "version": "1.0.0",
+  "version": "1.6.2",
+  "description": "Galgame 同好会地图 — 中日高校视觉小说社团导航平台",
+  "author": "VNFest",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
+    "dev": "electron .",
     "build:apk": "node scripts/build-apk.mjs",
+    "build:exe": "node scripts/build-exe.mjs",
     "cap:copy": "npx cap copy",
     "cap:sync": "npx cap sync"
   },
@@ -14,6 +19,45 @@
     "@capacitor/android": "^4.8.0",
     "@capacitor/cli": "^4.8.0",
     "@types/node": "^25.7.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^24.13.3",
+    "electron-packager": "^17.1.2",
     "typescript": "^6.0.3"
+  },
+  "build": {
+    "appId": "top.vnfest.map.desktop",
+    "productName": "Galgame同好会地图",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "www/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Galgame同好会地图"
+    },
+    "portable": {
+      "artifactName": "GalgameMap-${version}-portable.exe"
+    }
   }
 }

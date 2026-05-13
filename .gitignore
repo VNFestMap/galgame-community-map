@@ -111,3 +111,6 @@ capacitor.config.json
 
 # --- AI 辅助设计文档（内部） ---
 docs/superpowers/
+
+# --- Electron 打包输出 ---
+dist/
