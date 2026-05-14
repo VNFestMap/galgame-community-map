@@ -137,7 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     // 权限检查：允许系统管理员或俱乐部级管理员编辑
     $authUser = requireLogin();
     $clubId = (int)$input['id'];
-    if ($authUser['role'] !== 'super_admin' && !canManageClub($authUser, $clubId)) {
+    $clubCountry = $input['country'] ?? 'china';
+    if ($authUser['role'] !== 'super_admin' && !canManageClubInCountry($authUser, $clubId, $clubCountry)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => '无权修改此同好会']);
         exit();

@@ -11,13 +11,17 @@
  */
 
 import { execSync } from 'child_process';
-import { copyFileSync, readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { copyFileSync, readdirSync, mkdirSync, existsSync, rmSync } from 'fs';
 import { join, extname, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { rewriteFrontendPaths } from './frontend-paths.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = join(__dirname, '..');
 const WWW = join(ROOT, 'www');
+
+console.log('Generating wiki pages...');
+execSync('node scripts/generate-wiki-pages.mjs', { cwd: ROOT, stdio: 'inherit' });
 
 // ============================================================
 // Step 1: Clean and create www/ directory
@@ -39,20 +43,16 @@ const ALLOWED_EXTENSIONS = new Set([
   '.eot', '.map'
 ]);
 
-const ALLOWED_TOP_LEVEL_DIRS = new Set([
-  'css', 'js', 'images', 'Galgame_events'
-]);
-
 const ALLOWED_ROOT_FILES = new Set([
   'index.html', 'submit.html', 'submit_event.html', 'submit_publication.html',
-  'favicon.ico'
+  'feedback.html', 'favicon.ico'
 ]);
 
 function isExcluded(relPath) {
   const topDir = relPath.split(/[/\\]/)[0];
   // Exclude these top-level directories
-  const excluded = ['www', 'node_modules', 'android', '.git', 'api', 'admin',
-                    'includes', 'data', 'uploads', 'scripts', 'docs'];
+  const excluded = ['www', 'node_modules', 'android', 'electron', '.git', 'api', 'admin',
+                    'includes', 'data', 'uploads', 'scripts', 'docs', 'dist'];
   if (excluded.includes(topDir)) return true;
   return false;
 }
@@ -84,49 +84,9 @@ console.log('Frontend files copied.');
 // ============================================================
 // Step 3: Replace API paths in JS/HTML files
 // ============================================================
-console.log('Replacing API paths with remote URL...');
-
-const API_BASE = 'https://www.map.vnfest.top';
-
-function replacePaths(filePath) {
-  const ext = extname(filePath);
-  if (!['.html', '.js'].includes(ext)) return;
-
-  let content = readFileSync(filePath, 'utf-8');
-  const original = content;
-
-  // Replace fetch/XHR paths: './api/xxx' -> 'https://www.map.vnfest.top/api/xxx'
-  content = content.replace(
-    /(['"`])\.\/(api\/|data\/)/g,
-    `$1${API_BASE}/$2`
-  );
-
-  // Replace window.location.href redirects: './api/xxx' -> 'https://www.map.vnfest.top/api/xxx'
-  content = content.replace(
-    /(location\.href\s*=\s*['"`])\.\/(api\/)/g,
-    `$1${API_BASE}/$2`
-  );
-
-  if (content !== original) {
-    writeFileSync(filePath, content, 'utf-8');
-    console.log(`  replaced: ${relative(ROOT, filePath)}`);
-  }
-}
-
-function walkDir(dir) {
-  if (!existsSync(dir)) return;
-  const entries = readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isFile()) {
-      replacePaths(fullPath);
-    } else if (entry.isDirectory()) {
-      walkDir(fullPath);
-    }
-  }
-}
-
-walkDir(WWW);
+console.log('Replacing API/data paths with remote URL...');
+const replacedCount = rewriteFrontendPaths(WWW, ROOT);
+console.log(`Replaced ${replacedCount} file(s).`);
 console.log('API path replacement done.');
 
 // ============================================================

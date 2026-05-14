@@ -1965,6 +1965,7 @@ function showToast(msg, type) {
 // 国家分隔的同好会名称映射表（避免中日 ID 重叠导致名称错乱）
 let clubNameMapCn = {};
 let clubNameMapJp = {};
+let allClubOptions = [];
 const clubNameMap = {}; // 保留兼容
 
 async function loadClubNames() {
@@ -1975,11 +1976,14 @@ async function loadClubNames() {
     ]);
     clubNameMapCn = {};
     clubNameMapJp = {};
+    allClubOptions = [];
     (cn.data || []).forEach(c => { clubNameMapCn[c.id] = c.name || c.school || '未知'; });
     (jp.data || []).forEach(c => { clubNameMapJp[c.id] = c.name || c.school || '未知'; });
+    (cn.data || []).forEach(c => allClubOptions.push({ club_id: c.id, country: 'china', role: 'super_admin' }));
+    (jp.data || []).forEach(c => allClubOptions.push({ club_id: c.id, country: 'japan', role: 'super_admin' }));
     // 兼容：非国家感知场景备用，中国优先（避免日本覆盖中文同名 ID）
     Object.assign(clubNameMap, clubNameMapJp, clubNameMapCn);
-  } catch { clubNameMapCn = {}; clubNameMapJp = {}; }
+  } catch { clubNameMapCn = {}; clubNameMapJp = {}; allClubOptions = []; }
 }
 
 function getClubName(clubId, country) {
@@ -2049,10 +2053,9 @@ async function loadManagedClubs() {
       }
     }
   }
-  // Super admin manages all: load from membership data
+  // Super admin manages all clubs directly.
   if (currentUser?.user?.role === 'super_admin') {
-    // For super admin, we show all clubs via the data
-    managedClubs = [{ club_id: 0, role: 'super_admin' }];
+    managedClubs = [{ club_id: 0, country: 'china', role: 'super_admin' }].concat(allClubOptions);
   }
 
   if (managedClubs.length === 0) {
@@ -2071,8 +2074,9 @@ async function loadManagedClubs() {
     sel.appendChild(opt);
   });
   if (managedClubs.length === 1) {
-    sel.selectedIndex = 1; // first real option
+    sel.selectedIndex = 0;
     selectedClubId = managedClubs[0].club_id;
+    selectedCountry = managedClubs[0].country || 'china';
   } else {
     // Add "all" option for multi-managers
     const allOpt = document.createElement('option');
@@ -2292,8 +2296,8 @@ function openClubEdit() {
     showToast('请先选择一个同好会', 'error');
     return;
   }
-  // Open main page with edit panel for this club
-  window.open('../index.html?edit_club=' + selectedClubId + '&country=' + selectedCountry, '_blank');
+  // Same-window navigation avoids popup blockers in app/webview browsers.
+  window.location.href = '../index.html?edit_club=' + selectedClubId + '&country=' + selectedCountry;
 }
 
 function openEventManage() {

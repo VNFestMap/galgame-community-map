@@ -385,6 +385,7 @@ body {
     <button class="tab-btn" data-tab="event">📅 活动申请</button>
     <button class="tab-btn" data-tab="publication">📖 刊物征集</button>
     <button class="tab-btn" data-tab="membership">👥 成员绑定</button>
+    <button class="tab-btn" data-tab="feedback">💬 反馈建议</button>
   </div>
 
   <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
@@ -462,6 +463,7 @@ let clubSubmissions = [];
 let eventSubmissions = [];
 let membershipPending = [];
 let membershipAll = []; // 已审批的记录缓存
+let feedbackItems = [];
 
 // 同好会名称映射 {club_id: name}
 let clubNameMap = {};
@@ -753,6 +755,79 @@ async function deletePublicationSubmission(id) {
   loadCurrentTab();
 }
 
+async function loadFeedbackItems() {
+  try {
+    const r = await fetch('../data/feedback.json?t=' + Date.now());
+    feedbackItems = r.ok ? (await r.json()) : [];
+    if (!Array.isArray(feedbackItems)) feedbackItems = [];
+  } catch { feedbackItems = []; }
+}
+
+async function saveFeedbackItems() {
+  try {
+    await fetch('../api/feedback.php?action=save', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(feedbackItems)
+    });
+  } catch { showToast('保存失败', 'error'); }
+}
+
+async function markFeedbackStatus(id, status) {
+  const idx = feedbackItems.findIndex(item => item.id === id);
+  if (idx === -1) return;
+  feedbackItems[idx].status = status;
+  feedbackItems[idx].updated_at = new Date().toISOString();
+  await saveFeedbackItems();
+  loadCurrentTab();
+}
+
+async function deleteFeedbackItem(id) {
+  if (!confirm('确定删除这条反馈吗？')) return;
+  feedbackItems = feedbackItems.filter(item => item.id !== id);
+  await saveFeedbackItems();
+  loadCurrentTab();
+}
+
+function feedbackTypeText(type) {
+  return type === 'bug' ? 'Bug 反馈' : type === 'feature' ? '功能建议' : '其他';
+}
+
+function renderFeedbackTab(filter) {
+  const filtered = feedbackItems.filter(item => (filter === 'all' ? true : (item.status || 'pending') === filter));
+  const container = document.getElementById('listContainer');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty">📭 暂无反馈</div>';
+    updateStats(feedbackItems);
+    return;
+  }
+
+  container.innerHTML = filtered.map(item => `
+    <div class="card ${item.status || 'pending'}">
+      <div class="card-header">
+        <span class="card-title">${escapeHtml(item.title)}</span>
+        <span class="badge badge-${item.status || 'pending'}">${statusText(item.status)}</span>
+      </div>
+      <div class="card-body">
+        <div class="row"><span class="label">类型：</span>${feedbackTypeText(item.type)}</div>
+        <div class="row"><span class="label">提交时间：</span>${formatDate(item.submitted_at)}</div>
+        ${item.contact ? `<div class="row"><span class="label">联系方式：</span>${escapeHtml(item.contact)}</div>` : ''}
+        ${item.device ? `<div class="row"><span class="label">设备环境：</span>${escapeHtml(item.device)}</div>` : ''}
+        ${item.page_url ? `<div class="row"><span class="label">相关页面：</span><a href="${escapeHtml(item.page_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.page_url)}</a></div>` : ''}
+        <div class="row" style="margin-top:8px;white-space:pre-wrap;"><span class="label">说明：</span>${escapeHtml(item.content)}</div>
+      </div>
+      <div class="card-actions">
+        ${(item.status || 'pending') === 'pending' ? `
+          <button class="btn btn-approve" onclick="markFeedbackStatus(${item.id}, 'approved')">标记已处理</button>
+          <button class="btn btn-reject" onclick="markFeedbackStatus(${item.id}, 'rejected')">暂不处理</button>
+        ` : ''}
+        <button class="btn btn-delete" onclick="deleteFeedbackItem(${item.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('');
+  updateStats(feedbackItems);
+}
+
 function renderPublicationTab(filter) {
   const filtered = publicationSubmissions.filter(s => (filter === 'all' ? true : s.status === filter));
   const container = document.getElementById('listContainer');
@@ -916,7 +991,7 @@ function updateStats(data) {
 }
 
 // ====== Tab 切换与加载 ======
-const FILTERS = { club: 'all', event: 'all', publication: 'all', membership: 'pending' };
+const FILTERS = { club: 'all', event: 'all', publication: 'all', membership: 'pending', feedback: 'all' };
 
 async function loadCurrentTab() {
   await loadClubNames();
@@ -935,6 +1010,9 @@ async function loadCurrentTab() {
   } else if (currentTab === 'membership') {
     await loadMembershipData();
     renderMembershipTab(FILTERS.membership);
+  } else if (currentTab === 'feedback') {
+    await loadFeedbackItems();
+    renderFeedbackTab(FILTERS.feedback);
   }
 }
 

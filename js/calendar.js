@@ -9,6 +9,7 @@
     modalAnimToken: 0,
     activeView: 'calendar',
     activeFilter: 'all',
+    lastSaveError: '',
   };
 
   const EVENTS_FILE = './data/events.json';
@@ -126,7 +127,7 @@
 
     try {
       const eventsToSave = state.events.map(({ parsedDate, parsedDateEnd, ...rest }) => rest);
-      const response = await fetch('./api/events.php', {
+      const response = await fetch('./api/events.php?action=replace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ events: eventsToSave })
@@ -145,38 +146,36 @@
 
   // 添加活动
   async function addEvent(eventData) {
+    state.lastSaveError = '';
     if (!isAdminMode()) {
       alert(__('alertAdminModeRequired'));
       return false;
     }
 
-    const maxId = state.events.length > 0 
-      ? Math.max(...state.events.map(e => e.id || 0)) 
-      : 0;
-    
-    const newEvent = {
-      id: maxId + 1,
-      event: eventData.event,
-      date: eventData.date,
-      date_end: eventData.date_end || undefined,
-      image: eventData.image || '',
-      raw_text: eventData.raw_text || '',
-      offical: eventData.offical ? 1 : 0,
-      description: eventData.description || '',
-      link: eventData.link || '',
-      created_at: new Date().toISOString()
-    };
-
-    newEvent.parsedDate = parseEventDate(newEvent.date);
-    newEvent.parsedDateEnd = parseEventDate(newEvent.date_end);
-    state.events.push(newEvent);
-    
-    const success = await saveEvents();
-    if (success) {
+    try {
+      const response = await fetch('./api/events.php?action=add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+      });
+      const result = await response.json();
+      if (!result.success || !result.event) {
+        state.lastSaveError = result.message || __('alertSaveFailed');
+        return false;
+      }
+      const newEvent = {
+        ...result.event,
+        parsedDate: parseEventDate(result.event.date),
+        parsedDateEnd: parseEventDate(result.event.date_end)
+      };
+      state.events.push(newEvent);
       renderCalendar();
       return true;
+    } catch (e) {
+      console.error('添加活动失败:', e);
+      state.lastSaveError = __('alertSaveFailed');
+      return false;
     }
-    return false;
   }
 
   // ====== 活动报名功能 ======
@@ -426,6 +425,7 @@
     }
 
     let success;
+    state.lastSaveError = '';
     if (eventId) {
       success = await updateEvent(parseInt(eventId), eventData);
     } else if (isAdminMode()) {
@@ -442,7 +442,7 @@
         alert(__('alertAddSuccess'));
       }
     } else {
-      alert(isAdminMode() ? __('alertAdminModeRequired') : __('alertSaveFailed'));
+      alert(state.lastSaveError || __('alertSaveFailed'));
     }
   }
 

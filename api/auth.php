@@ -20,6 +20,28 @@ require_once __DIR__ . '/../includes/notifications.php';
 
 $action = $_GET['action'] ?? '';
 
+function registerCodeFile(): string {
+    return __DIR__ . '/../data/register_email_codes.json';
+}
+
+function readRegisterCodes(): array {
+    $file = registerCodeFile();
+    if (!file_exists($file)) return [];
+    $rows = json_decode(file_get_contents($file), true);
+    return is_array($rows) ? $rows : [];
+}
+
+function writeRegisterCodes(array $rows): bool {
+    $file = registerCodeFile();
+    $dir = dirname($file);
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    return file_put_contents($file, json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX) !== false;
+}
+
+function normalizeEmail(string $email): string {
+    return strtolower(trim($email));
+}
+
 switch ($action) {
     case 'register_local':
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -31,6 +53,8 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true);
         $username = trim($input['username'] ?? '');
         $password = $input['password'] ?? '';
+        $email = normalizeEmail($input['email'] ?? '');
+        $code = trim($input['code'] ?? '');
 
         // 验证用户名
         if (!preg_match('/^[a-zA-Z0-9_\x{4e00}-\x{9fff}]{2,20}$/u', $username)) {
@@ -40,6 +64,15 @@ switch ($action) {
         // 验证密码
         if (strlen($password) < 6 || strlen($password) > 128) {
             echo json_encode(['success' => false, 'message' => '密码需为 6-128 位']);
+            exit();
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => '邮箱格式不正确']);
+            exit();
+        }
+        if (!preg_match('/^\d{6}$/', $code)) {
+            echo json_encode(['success' => false, 'message' => '请输入 6 位邮箱验证码']);
             exit();
         }
 
@@ -53,16 +86,41 @@ switch ($action) {
             exit();
         }
 
+        $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) {
+            echo json_encode(['success' => false, 'message' => '该邮箱已被注册']);
+            exit();
+        }
+
+        $codes = readRegisterCodes();
+        $matchedIndex = null;
+        $now = time();
+        foreach ($codes as $i => $row) {
+            if (($row['email'] ?? '') === $email && ($row['code'] ?? '') === $code && empty($row['used']) && (int)($row['expires_at'] ?? 0) > $now) {
+                $matchedIndex = $i;
+                break;
+            }
+        }
+        if ($matchedIndex === null) {
+            echo json_encode(['success' => false, 'message' => '验证码无效或已过期']);
+            exit();
+        }
+
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         $stmt = $db->prepare(
-            "INSERT INTO users (username, nickname, password_hash, role, status, avatar_url, created_at, updated_at, last_login_at)
-             VALUES (?, ?, ?, 'visitor', 'active', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO users (username, nickname, password_hash, role, status, avatar_url, email, email_verified_at, created_at, updated_at, last_login_at)
+             VALUES (?, ?, ?, 'visitor', 'active', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         );
-        $stmt->execute([$username, $username, $hash]);
+        $stmt->execute([$username, $username, $hash, $email]);
         $userId = $db->lastInsertId();
 
+        $codes[$matchedIndex]['used'] = true;
+        $codes[$matchedIndex]['used_at'] = time();
+        writeRegisterCodes($codes);
+
         createSession($userId);
-        logAction('user.register', 'user', $userId, ['provider' => 'local']);
+        logAction('user.register', 'user', $userId, ['provider' => 'local', 'email' => $email]);
         backfillAnnouncements((int)$userId);
 
         echo json_encode([
@@ -74,11 +132,60 @@ switch ($action) {
                 'nickname' => $username,
                 'avatar_url' => '',
                 'role' => 'visitor',
-                'email' => '',
+                'email' => $email,
                 'qq_openid' => '',
                 'discord_id' => '',
                 'profile_bio' => '',
             ]
+        ]);
+        exit();
+
+    case 'send_register_code':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
+            exit();
+        }
+        checkRateLimit('send_register_code', 3, 1);
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $email = normalizeEmail($input['email'] ?? '');
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => '邮箱格式不正确']);
+            exit();
+        }
+
+        $db = getDB();
+        $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) {
+            echo json_encode(['success' => false, 'message' => '该邮箱已被注册']);
+            exit();
+        }
+
+        $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $codes = array_values(array_filter(readRegisterCodes(), function ($row) use ($email) {
+            return ($row['email'] ?? '') !== $email || !empty($row['used']) || (int)($row['expires_at'] ?? 0) <= time();
+        }));
+        $codes[] = [
+            'email' => $email,
+            'code' => $code,
+            'used' => false,
+            'expires_at' => time() + 300,
+            'created_at' => time(),
+        ];
+        writeRegisterCodes($codes);
+
+        $subject = ($subjectPrefix ?? '') . '邮箱验证码';
+        $message = "您的注册验证码是：{$code}\n\n";
+        $message .= "验证码 5 分钟内有效。如果不是您本人操作，请忽略此邮件。\n";
+        $mailSent = sendMail($email, $subject, $message);
+
+        logAction('user.send_register_code', 'user', null, ['email' => $email, 'mail_sent' => $mailSent]);
+        echo json_encode([
+            'success' => true,
+            'message' => '验证码已发送至 ' . $email,
+            'debug_code' => $mailSent ? null : $code,
         ]);
         exit();
 
@@ -521,7 +628,7 @@ switch ($action) {
     default:
         echo json_encode(['success' => false, 'message' => '未知动作', 'available_actions' => [
             'login_local', 'register_local', 'logout', 'me', 'change_password',
-            'send_code', 'bind_email', 'unbind_email', 'update_profile',
+            'send_register_code', 'send_code', 'bind_email', 'unbind_email', 'update_profile',
             'bind_qq', 'unbind_qq', 'bind_discord', 'unbind_discord',
             'qq_auth', 'discord_auth', 'oauth_config'
         ]]);

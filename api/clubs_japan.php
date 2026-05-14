@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 
     // 权限检查：仅 super_admin 或可管理该俱乐部者
     $clubId = (int)$input['id'];
-    if ($authUser['role'] !== 'super_admin' && !canManageClub($authUser, $clubId)) {
+    if ($authUser['role'] !== 'super_admin' && !canManageClubInCountry($authUser, $clubId, 'japan')) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => '无权修改此同好会']);
         exit();

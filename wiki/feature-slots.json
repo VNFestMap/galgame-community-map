@@ -1,0 +1,52 @@
+{
+  "slots": [
+    {
+      "key": "featured",
+      "title": "精选 Wiki",
+      "description": "用于展示资料完整、排版规范或近期重点维护的高校 Wiki 页面。",
+      "status": "reserved"
+    },
+    {
+      "key": "recent",
+      "title": "最近更新",
+      "description": "用于按更新时间聚合近期修改的学校页面和文档库条目。",
+      "status": "reserved"
+    },
+    {
+      "key": "todo",
+      "title": "待完善页面",
+      "description": "用于根据摘要、章节、图片、参考资料完整度生成维护队列。",
+      "status": "reserved"
+    },
+    {
+      "key": "contributors",
+      "title": "贡献者与修订记录",
+      "description": "用于后续接入编辑历史、审核记录、贡献统计与回滚能力。",
+      "status": "reserved"
+    },
+    {
+      "key": "templates",
+      "title": "模板中心",
+      "description": "用于维护学校介绍、活动记录、招新资料、运营文档等 Wiki 模板。",
+      "status": "reserved"
+    },
+    {
+      "key": "taxonomy",
+      "title": "分类与标签",
+      "description": "用于按国家、地区、学校类型、活动类型、作品方向组织内容。",
+      "status": "reserved"
+    },
+    {
+      "key": "review",
+      "title": "审核与发布流",
+      "description": "用于后续区分草稿、待审核、已发布、退回修改等内容状态。",
+      "status": "reserved"
+    },
+    {
+      "key": "assets",
+      "title": "媒体资源库",
+      "description": "用于统一管理 Wiki 图片、海报、标志和活动素材。",
+      "status": "reserved"
+    }
+  ]
+}

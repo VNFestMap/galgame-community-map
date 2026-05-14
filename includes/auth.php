@@ -89,6 +89,9 @@ function requireAdmin(): array {
         if ($user && in_array($user['role'], ['manager', 'representative', 'super_admin'])) {
             return $user;
         }
+        if ($user && hasAnyClubManagementRole($user)) {
+            return $user;
+        }
     }
 
     // Fallback to legacy token during transition
@@ -103,6 +106,23 @@ function requireAdmin(): array {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => '未授权访问']);
     exit();
+}
+
+function hasAnyClubManagementRole(array $user): bool {
+    $db = getDB();
+    try {
+        $stmt = $db->prepare(
+            "SELECT id FROM club_memberships
+             WHERE user_id = ?
+               AND role IN ('representative', 'manager')
+               AND status = 'active'
+             LIMIT 1"
+        );
+        $stmt->execute([$user['id']]);
+        return (bool)$stmt->fetch();
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
 function createSession(int $userId): void {
@@ -155,6 +175,27 @@ function canManageClub(array $user, int $clubId): bool {
     );
     $stmt->execute([$user['id'], $clubId]);
     return (bool)$stmt->fetch();
+}
+
+function canManageClubInCountry(array $user, int $clubId, string $country): bool {
+    if ($user['role'] === 'super_admin') {
+        return true;
+    }
+    $db = getDB();
+    try {
+        $stmt = $db->prepare(
+            "SELECT id FROM club_memberships
+             WHERE user_id = ?
+               AND club_id = ?
+               AND country = ?
+               AND role IN ('representative', 'manager')
+               AND status = 'active'"
+        );
+        $stmt->execute([$user['id'], $clubId, $country]);
+        return (bool)$stmt->fetch();
+    } catch (Exception $e) {
+        return canManageClub($user, $clubId);
+    }
 }
 
 function hasAuditPermission(array $user): bool {

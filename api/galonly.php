@@ -43,7 +43,7 @@ switch ($action) {
         // 如果用户已登录，查询其在每个活动的申请状态
         $currentUser = getCurrentUser();
         if ($currentUser) {
-            $stmt = $db->prepare("SELECT id, event_id, status FROM galonly_applications WHERE user_id = ?");
+            $stmt = $db->prepare("SELECT id, event_id, status FROM galonly_applications WHERE user_id = ? ORDER BY updated_at ASC, id ASC");
             $stmt->execute([$currentUser['id']]);
             $userApps = $stmt->fetchAll();
             $appMap = [];
@@ -195,7 +195,7 @@ switch ($action) {
             $stmt = $db->prepare("SELECT * FROM galonly_applications WHERE id = ? AND user_id = ?");
             $stmt->execute([$applicationId, $user['id']]);
         } elseif ($eventId) {
-            $stmt = $db->prepare("SELECT * FROM galonly_applications WHERE user_id = ? AND event_id = ?");
+            $stmt = $db->prepare("SELECT * FROM galonly_applications WHERE user_id = ? AND event_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1");
             $stmt->execute([$user['id'], $eventId]);
         } else {
             echo json_encode(['success' => false, 'message' => '缺少 event_id 或 application_id 参数'], JSON_UNESCAPED_UNICODE);

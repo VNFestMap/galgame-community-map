@@ -67,6 +67,33 @@ function generateCode(): string {
     return $code;
 }
 
+function ensureMembershipRedeemColumns(PDO $db): void {
+    $columns = [
+        'country' => "VARCHAR(20) DEFAULT 'china'",
+        'left_at' => 'DATETIME NULL',
+    ];
+
+    foreach ($columns as $column => $definition) {
+        $exists = false;
+        try {
+            $stmt = $db->query('PRAGMA table_info(club_memberships)');
+            $cols = $stmt->fetchAll(PDO::FETCH_COLUMN, 1);
+            $exists = in_array($column, $cols, true);
+        } catch (Exception $e) {
+            try {
+                $stmt = $db->query("SHOW COLUMNS FROM `club_memberships` LIKE '$column'");
+                $exists = (bool)$stmt->fetch();
+            } catch (Exception $e2) {}
+        }
+
+        if (!$exists) {
+            try {
+                $db->exec("ALTER TABLE `club_memberships` ADD COLUMN `$column` $definition");
+            } catch (Exception $e) {}
+        }
+    }
+}
+
 switch ($action) {
     // ===== 列出绑定码 =====
     case 'list':
@@ -85,6 +112,7 @@ switch ($action) {
         }
 
         $db = getDB();
+        ensureMembershipRedeemColumns($db);
         $stmt = $db->prepare(
             "SELECT id, club_id, code, created_by, max_uses, use_count, expires_at, is_active, created_at
              FROM club_verification_codes WHERE club_id = ? AND (country = ? OR country = '' OR country IS NULL)
@@ -229,6 +257,7 @@ switch ($action) {
         }
 
         $db = getDB();
+        ensureMembershipRedeemColumns($db);
 
         // 查找绑定码（仅凭 code 即可，不要求 club_id）
         $stmt = $db->prepare(
@@ -288,7 +317,7 @@ switch ($action) {
             }
             // 之前申请过但被拒绝/离开/踢出 — 重新激活
             $stmt = $db->prepare(
-                "UPDATE club_memberships SET status = 'active', role = 'member', joined_at = ? WHERE id = ?"
+                "UPDATE club_memberships SET status = 'active', role = 'member', joined_at = ?, left_at = NULL WHERE id = ?"
             );
             $stmt->execute([date('Y-m-d H:i:s'), $existing['id']]);
         } else {

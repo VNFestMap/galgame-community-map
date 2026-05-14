@@ -841,19 +841,24 @@ body {
             .then(function() {
                 if (userClubs.length === 0) return;
 
-                // If edit mode, load existing application data
-                if (isEditMode) {
-                    return fetch('../api/galonly.php?action=get_application&application_id=' + applicationId, { credentials: 'include' })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            if (data.success && data.application) {
-                                return data.application;
-                            }
+                // If edit mode, load existing application data; otherwise auto-detect an existing application for this event.
+                var appUrl = isEditMode
+                    ? '../api/galonly.php?action=get_application&application_id=' + applicationId
+                    : '../api/galonly.php?action=get_application&event_id=' + eventId;
+
+                return fetch(appUrl, { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success && data.application) {
+                            applicationId = parseInt(data.application.id, 10) || applicationId;
+                            isEditMode = applicationId > 0 && data.application.status !== 'approved';
+                            return data.application;
+                        }
+                        if (isEditMode) {
                             showError('加载申请数据失败');
-                            return null;
-                        });
-                }
-                return null;
+                        }
+                        return null;
+                    });
             })
             .then(function(appData) {
                 if (userClubs.length === 0) return;
@@ -881,7 +886,13 @@ body {
                         uploadedImagePaths = [appData.image_path.trim()];
                         renderImagePreviews();
                     }
-                    $('btn-submit').textContent = '保存修改';
+                    if (appData.status === 'approved') {
+                        $('btn-submit').textContent = '已通过，无法修改';
+                        $('btn-submit').disabled = true;
+                        showError('申请已通过，不能再修改。如需调整请联系审核员。');
+                    } else {
+                        $('btn-submit').textContent = '保存修改';
+                    }
                     $('header-title').textContent = '编辑摊位';
                     $('event-name-display').textContent = '修改申请信息';
                 }

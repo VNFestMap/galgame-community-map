@@ -278,12 +278,8 @@
         async function approveSubmission(id) {
             const index = submissions.findIndex(s => s.id === id);
             if (index !== -1) {
-                submissions[index].status = 'approved';
-                await saveSubmissions();
-                
                 // 同时添加到正式活动列表
                 const eventData = {
-                    id: submissions[index].id,
                     event: submissions[index].event,
                     date: submissions[index].date,
                     image: submissions[index].image || '',
@@ -294,11 +290,21 @@
                 };
                 
                 // 调用正式活动API（使用 action=add 追加，避免覆盖已有活动）
-                await fetch('../api/events.php?action=add', {
+                const response = await fetch('../api/events.php?action=add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(eventData)
                 });
+                const result = await response.json();
+                if (!result.success || !result.event) {
+                    alert('添加到日历失败：' + (result.message || '未知错误'));
+                    return;
+                }
+
+                submissions[index].status = 'approved';
+                submissions[index].approved_at = new Date().toISOString();
+                submissions[index].event_id = result.event.id;
+                await saveSubmissions();
                 
                 loadSubmissions();
             }

@@ -409,34 +409,18 @@
             };
             
             try {
-                // 先获取现有活动
-                const getResponse = await fetch(EVENTS_API);
-                const existing = await getResponse.json();
-                const events = existing.events || [];
-
-                // 生成新ID
-                const newId = events.length > 0 ? Math.max(...events.map(e => e.id || 0)) + 1 : 1;
-                const newEvent = {
-                    id: newId,
-                    ...eventData,
-                    created_at: new Date().toISOString()
-                };
-                events.push(newEvent);
-
-                // 保存到活动文件
-                const saveResponse = await fetch(EVENTS_API, {
+                const saveResponse = await fetch(EVENTS_API + '?action=add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ events: events })
+                    body: JSON.stringify(eventData)
                 });
                 
                 const result = await saveResponse.json();
                 
-                if (result.success) {
-                    // 更新提交状态
+                if (result.success && result.event) {
                     submissions[index].status = 'approved';
                     submissions[index].approved_at = new Date().toISOString();
-                    submissions[index].event_id = newId;
+                    submissions[index].event_id = result.event.id;
                     await saveSubmissions();
                     alert(`✅ 已通过：${submit.event}\n已添加到活动日历`);
                     loadSubmissions();

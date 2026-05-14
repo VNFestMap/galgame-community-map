@@ -92,6 +92,7 @@ switch ($action) {
         ensureColumnExists($db, 'club_memberships', 'apply_role', "VARCHAR(50) DEFAULT 'member'");
         ensureColumnExists($db, 'club_memberships', 'is_student', "INT DEFAULT 0");
         ensureColumnExists($db, 'club_memberships', 'country', "VARCHAR(20) DEFAULT 'china'");
+        ensureColumnExists($db, 'club_memberships', 'left_at', "DATETIME NULL");
 
         // 升级唯一约束为包含 country
         ensureUniqueConstraintIncludesCountry($db);
@@ -106,12 +107,45 @@ switch ($action) {
         if ($existing) {
             if ($existing['status'] === 'active') {
                 echo json_encode(['success' => false, 'message' => '你已绑定该同好会']);
+                exit();
             } elseif ($existing['status'] === 'pending') {
                 echo json_encode(['success' => false, 'message' => '绑定申请已提交，请等待审核']);
+                exit();
             } else {
-                echo json_encode(['success' => false, 'message' => '已存在绑定记录']);
+                $db->beginTransaction();
+                try {
+                    $stmt = $db->prepare(
+                        "UPDATE club_memberships
+                         SET role = ?, status = 'pending', qq_account = ?, apply_role = ?, is_student = ?,
+                             country = ?, joined_at = CURRENT_TIMESTAMP, left_at = NULL
+                         WHERE id = ?"
+                    );
+                    $stmt->execute([$applyRole, $qqAccount, $applyRole, $isStudent, $country, $existing['id']]);
+
+                    logAction('membership.reapply', 'club_membership', $existing['id'], [
+                        'club_id' => $clubId,
+                        'country' => $country,
+                        'previous_status' => $existing['status'],
+                        'apply_role' => $applyRole,
+                    ]);
+
+                    $db->commit();
+                } catch (Exception $e) {
+                    $db->rollBack();
+                    echo json_encode(['success' => false, 'message' => '操作失败：' . $e->getMessage()]);
+                    exit();
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => '绑定申请已重新提交，等待管理员审核',
+                    'membership' => [
+                        'id' => (int)$existing['id'],
+                        'status' => 'pending'
+                    ]
+                ]);
+                exit();
             }
-            exit();
         }
 
         // 创建申请（事务保证原子性）
@@ -286,7 +320,7 @@ switch ($action) {
         $db->beginTransaction();
         try {
             $stmt = $db->prepare(
-                "UPDATE club_memberships SET status = 'active' WHERE id = ? AND status = 'pending'"
+                "UPDATE club_memberships SET status = 'active', left_at = NULL WHERE id = ? AND status = 'pending'"
             );
             $stmt->execute([$membershipId]);
 
@@ -705,6 +739,7 @@ switch ($action) {
 /**
  * 检查用户是否有权限管理指定国家的俱乐部（解决中日 ID 重叠问题）
  */
+if (!function_exists('canManageClubInCountry')) {
 function canManageClubInCountry(array $user, int $clubId, string $country): bool {
     if ($user['role'] === 'super_admin') return true;
     $db = getDB();
@@ -718,6 +753,7 @@ function canManageClubInCountry(array $user, int $clubId, string $country): bool
         // country 列不存在时回退到不区分国家的检查
         return canManageClub($user, $clubId);
     }
+}
 }
 
 /**

@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同好会维基编辑</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f4f6f8;
+  color: #1f2933;
+  font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #172033;
+  color: #fff;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+.topbar a {
+  color: rgba(255,255,255,0.82);
+  text-decoration: none;
+  font-size: 13px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.panel {
+  background: #fff;
+  border: 1px solid #d9dee7;
+  border-radius: 10px;
+  padding: 18px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.field label {
+  font-size: 13px;
+  color: #52606d;
+  font-weight: 600;
+}
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid #cbd2d9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: #1f2933;
+  background: #fff;
+}
+input[type="file"] {
+  padding: 8px;
+}
+textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.6;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #2f80ed;
+  box-shadow: 0 0 0 3px rgba(47,128,237,0.14);
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.row-card {
+  border: 1px solid #e1e7ef;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfe;
+}
+.row-grid {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+.section-card textarea {
+  min-height: 132px;
+}
+.upload-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.image-control-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.tool-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  margin: 0 0 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.json-tools {
+  display: none;
+  margin: -6px 0 18px;
+  padding: 12px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+.json-tools textarea {
+  min-height: 160px;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 12px;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+button,
+.button-link {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: #e6eef8;
+  color: #174ea6;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+button.primary {
+  background: #1a73e8;
+  color: #fff;
+}
+button.danger {
+  background: #fde8e8;
+  color: #c81e1e;
+}
+button.secondary {
+  background: #eef2f7;
+  color: #334e68;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.status {
+  min-height: 22px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.side-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #52606d;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.club-meta {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: #52606d;
+}
+.club-meta strong {
+  color: #1f2933;
+}
+.draft-box {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #52606d;
+}
+.draft-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.preview-pane {
+  display: grid;
+  gap: 12px;
+  max-height: 540px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+}
+.preview-title {
+  margin: 0;
+  font-size: 18px;
+}
+.preview-summary {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.7;
+}
+.preview-infobox {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.preview-infobox th,
+.preview-infobox td {
+  border: 1px solid #e1e7ef;
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.preview-section h3 {
+  margin: 8px 0 6px;
+  font-size: 14px;
+}
+.preview-section p,
+.preview-reference {
+  margin: 4px 0;
+  color: #3e4c59;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.preview-image {
+  max-width: 100%;
+  border: 1px solid #e1e7ef;
+  border-radius: 8px;
+  padding: 8px;
+}
+.preview-image img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #eef2f7;
+}
+.preview-image.contain img {
+  object-fit: contain;
+}
+.preview-image figcaption {
+  margin-top: 6px;
+  color: #52606d;
+  font-size: 12px;
+}
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  .topbar {
+    padding: 14px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .row-grid {
+    grid-template-columns: 1fr;
+  }
+  .image-control-grid {
+    grid-template-columns: 1fr;
+  }
+  .preview-pane {
+    max-height: none;
+  }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>同好会维基编辑</h1>
+  <a href="../index.html">返回地图</a>
+</header>
+
+<main class="layout">
+  <section class="panel">
+    <h2>页面内容</h2>
+    <div class="field">
+      <label for="titleInput">标题</label>
+      <input id="titleInput" maxlength="120">
+    </div>
+    <div class="field">
+      <label for="summaryInput">摘要</label>
+      <textarea id="summaryInput" maxlength="1000"></textarea>
+    </div>
+    <div class="tool-strip">
+      <button type="button" id="insertTemplateBtn">插入基础模板</button>
+      <button type="button" id="exportJsonBtn" class="secondary">导出 JSON</button>
+      <button type="button" id="toggleImportBtn" class="secondary">导入 JSON</button>
+    </div>
+    <div class="json-tools" id="jsonTools">
+      <div class="field">
+        <label for="jsonToolsInput">内容 JSON</label>
+        <textarea id="jsonToolsInput" spellcheck="false"></textarea>
+      </div>
+      <div class="actions">
+        <button type="button" id="importJsonBtn">应用导入内容</button>
+        <button type="button" id="hideJsonToolsBtn" class="secondary">收起</button>
+      </div>
+    </div>
+
+    <h2>信息框</h2>
+    <div class="rows" id="infoboxRows"></div>
+    <div class="actions">
+      <button type="button" id="addInfoboxBtn">添加信息项</button>
+    </div>
+
+    <h2 style="margin-top:22px;">章节</h2>
+    <div class="rows" id="sectionRows"></div>
+    <div class="actions">
+      <button type="button" id="addSectionBtn">添加章节</button>
+    </div>
+
+    <h2 style="margin-top:22px;">图片</h2>
+    <div class="rows" id="imageRows"></div>
+    <div class="actions">
+      <button type="button" id="addImageBtn">添加图片</button>
+    </div>
+
+    <h2 style="margin-top:22px;">参考资料</h2>
+    <div class="rows" id="referenceRows"></div>
+    <div class="actions">
+      <button type="button" id="addReferenceBtn">添加参考资料</button>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="primary" id="saveBtn">保存并生成页面</button>
+      <a class="button-link" id="viewPageLink" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">查看生成页面</a>
+    </div>
+    <div class="status" id="statusText"></div>
+  </section>
+
+  <aside class="panel">
+    <h2>编辑对象</h2>
+    <div class="club-meta" id="clubMeta">加载中...</div>
+    <h2 style="margin-top:22px;">本地草稿</h2>
+    <div class="draft-box">
+      <div id="draftStatus">检查本地草稿中...</div>
+      <div class="draft-actions">
+        <button type="button" id="restoreDraftBtn" class="secondary">恢复草稿</button>
+        <button type="button" id="clearDraftBtn" class="secondary">清除草稿</button>
+      </div>
+    </div>
+    <h2 style="margin-top:22px;">实时预览</h2>
+    <div class="preview-pane" id="previewPane">加载后显示预览。</div>
+    <h2 style="margin-top:22px;">编辑说明</h2>
+    <ul class="side-list">
+      <li>正文每一行会生成一个段落。</li>
+      <li>图片支持上传、线上 URL 或站内相对路径，单张上限 10MB。</li>
+      <li>每张图片可单独设置宽度、对齐方式和裁切方式。</li>
+      <li>信息框适合放学校、地区、成立时间、状态。</li>
+      <li>保存后会同步更新独立 HTML 页面。</li>
+      <li>只有管理员或该同好会负责人/管理员可编辑。</li>
+    </ul>
+  </aside>
+</main>
+
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const clubKey = params.get('club_key') || '';
+  const statusText = document.getElementById('statusText');
+  const WIKI_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+  const draftKey = 'wikiEditorDraft:' + clubKey;
+  let loadedContent = null;
+  let loadedClub = {};
+  let loadedPageUrl = '';
+  let loadedExists = false;
+  let isRendering = false;
+  let isDirty = false;
+  let draftTimer = null;
+
+  function setStatus(text, ok) {
+    statusText.textContent = text || '';
+    statusText.style.color = ok ? '#188038' : '#c81e1e';
+  }
+
+  function escapeHTML(value) {
+    return String(value || '').replace(/[&<>"']/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+
+  function rowButton(label) {
+    return '<button type="button" class="danger" data-action="remove">' + label + '</button>';
+  }
+
+  function rowTools(removeLabel) {
+    return '<div class="actions">' +
+      '<button type="button" data-action="move-up">上移</button>' +
+      '<button type="button" data-action="move-down">下移</button>' +
+      '<button type="button" data-action="duplicate-row">复制</button>' +
+      rowButton(removeLabel) +
+      '</div>';
+  }
+
+  function toAdminPageUrl(pageUrl) {
+    if (!pageUrl) return '../wiki/pages/' + clubKey + '.html';
+    return '../' + String(pageUrl).replace(/^\.?\//, '');
+  }
+
+  function addInfoboxRow(key, value) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-card';
+    wrap.innerHTML = '<div class="row-grid">' +
+      '<input data-field="key" placeholder="字段名" value="' + escapeHTML(key) + '">' +
+      '<input data-field="value" placeholder="字段值" value="' + escapeHTML(value) + '">' +
+      rowTools('删除') +
+      '</div>';
+    document.getElementById('infoboxRows').appendChild(wrap);
+  }
+
+  function addSectionRow(heading, body) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-card section-card';
+    wrap.innerHTML = '<div class="field"><label>章节标题</label><input data-field="heading" value="' + escapeHTML(heading) + '"></div>' +
+      '<div class="field"><label>正文（一行一个段落）</label><textarea data-field="body">' + escapeHTML((body || []).join('\n')) + '</textarea></div>' +
+      rowTools('删除章节');
+    document.getElementById('sectionRows').appendChild(wrap);
+  }
+
+  function addReferenceRow(label, url) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-card';
+    wrap.innerHTML = '<div class="row-grid">' +
+      '<input data-field="label" placeholder="显示名称" value="' + escapeHTML(label) + '">' +
+      '<input data-field="url" placeholder="链接" value="' + escapeHTML(url) + '">' +
+      rowTools('删除') +
+      '</div>';
+    document.getElementById('referenceRows').appendChild(wrap);
+  }
+
+  function addImageRow(url, caption, alt, widthPercent, align, fit, aspectRatio) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-card';
+    wrap.innerHTML = '<div class="upload-line"><input type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-field="file"><button type="button" data-action="upload-image">上传图片</button></div>' +
+      '<div class="field"><label>图片 URL</label><input data-field="url" placeholder="https://... 或 ../images/..." value="' + escapeHTML(url) + '"></div>' +
+      '<div class="field"><label>说明文字</label><input data-field="caption" placeholder="图片说明" value="' + escapeHTML(caption) + '"></div>' +
+      '<div class="field"><label>替代文本</label><input data-field="alt" placeholder="用于无障碍和图片加载失败时显示" value="' + escapeHTML(alt) + '"></div>' +
+      '<div class="image-control-grid">' +
+        '<div class="field"><label>显示宽度</label><select data-field="width_percent">' +
+          '<option value="100">100%</option><option value="75">75%</option><option value="50">50%</option><option value="33">33%</option><option value="25">25%</option>' +
+        '</select></div>' +
+        '<div class="field"><label>宽高比</label><select data-field="aspect_ratio">' +
+          '<option value="16/10">16:10 宽屏</option><option value="16/9">16:9 横屏</option><option value="4/3">4:3 标准</option><option value="1/1">1:1 正方形</option><option value="3/4">3:4 竖屏</option><option value="auto">自由比例</option>' +
+        '</select></div>' +
+        '<div class="field"><label>对齐</label><select data-field="align">' +
+          '<option value="center">居中</option><option value="left">左对齐</option><option value="right">右对齐</option>' +
+        '</select></div>' +
+        '<div class="field"><label>显示方式</label><select data-field="fit">' +
+          '<option value="cover">裁切填充</option><option value="contain">完整显示</option>' +
+        '</select></div>' +
+      '</div>' +
+      rowTools('删除图片');
+    document.getElementById('imageRows').appendChild(wrap);
+    wrap.querySelector('[data-field="width_percent"]').value = String(widthPercent || 100);
+    wrap.querySelector('[data-field="aspect_ratio"]').value = aspectRatio || '16/10';
+    wrap.querySelector('[data-field="align"]').value = align || 'center';
+    wrap.querySelector('[data-field="fit"]').value = fit || 'cover';
+  }
+
+  function setControlValues(source, target) {
+    const sourceControls = source.querySelectorAll('input, textarea, select');
+    const targetControls = target.querySelectorAll('input, textarea, select');
+    sourceControls.forEach(function (control, index) {
+      if (!targetControls[index] || control.type === 'file') return;
+      targetControls[index].value = control.value;
+    });
+  }
+
+  function duplicateRow(row) {
+    const copy = row.cloneNode(true);
+    setControlValues(row, copy);
+    row.after(copy);
+  }
+
+  function formatTime(value) {
+    try {
+      return new Date(value).toLocaleString('zh-CN', { hour12: false });
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function getDraft() {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function updateDraftStatus() {
+    const status = document.getElementById('draftStatus');
+    const draft = getDraft();
+    if (draft && draft.saved_at) {
+      status.textContent = '发现本地草稿：' + formatTime(draft.saved_at);
+      document.getElementById('restoreDraftBtn').disabled = false;
+      document.getElementById('clearDraftBtn').disabled = false;
+      return;
+    }
+    status.textContent = '暂无本地草稿。编辑时会自动保存到当前浏览器。';
+    document.getElementById('restoreDraftBtn').disabled = true;
+    document.getElementById('clearDraftBtn').disabled = true;
+  }
+
+  function saveDraftNow() {
+    if (isRendering || !clubKey) return;
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({
+        saved_at: new Date().toISOString(),
+        content: collectContent(),
+      }));
+      updateDraftStatus();
+    } catch (error) {
+      document.getElementById('draftStatus').textContent = '本地草稿保存失败，可能是浏览器存储已满。';
+    }
+  }
+
+  function markDirty() {
+    if (isRendering) return;
+    isDirty = true;
+    window.clearTimeout(draftTimer);
+    draftTimer = window.setTimeout(saveDraftNow, 500);
+    renderPreview();
+  }
+
+  function clearDraft() {
+    try {
+      localStorage.removeItem(draftKey);
+    } catch (error) {}
+    updateDraftStatus();
+  }
+
+  async function uploadImage(row, button) {
+    const fileInput = row.querySelector('[data-field="file"]');
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    if (!file) {
+      setStatus('请先选择图片文件', false);
+      return;
+    }
+    if (file.size > WIKI_IMAGE_MAX_BYTES) {
+      setStatus('图片大小不能超过 10MB', false);
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.indexOf(file.type) === -1) {
+      setStatus('仅支持 JPEG、PNG、GIF、WebP 格式', false);
+      return;
+    }
+    const formData = new FormData();
+    formData.append('image', file);
+    button.disabled = true;
+    setStatus('图片上传中...', true);
+    try {
+      const resp = await fetch('../api/wiki.php?action=upload&club_key=' + encodeURIComponent(clubKey), {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: formData,
+      });
+      const data = await resp.json();
+      if (data.success && data.image_url) {
+        row.querySelector('[data-field="url"]').value = data.image_url;
+        if (!row.querySelector('[data-field="alt"]').value.trim()) {
+          row.querySelector('[data-field="alt"]').value = file.name.replace(/\.[^.]+$/, '');
+        }
+        markDirty();
+        setStatus(data.message || '图片上传成功，保存后会显示在维基页面', true);
+      } else {
+        setStatus(data.message || '图片上传失败', false);
+      }
+    } catch (error) {
+      setStatus('网络错误，图片上传失败', false);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function renderContent(content, club, pageUrl, exists) {
+    isRendering = true;
+    loadedContent = content;
+    loadedClub = club || {};
+    loadedPageUrl = pageUrl || '';
+    loadedExists = !!exists;
+    document.getElementById('titleInput').value = content.title || '';
+    document.getElementById('summaryInput').value = content.summary || '';
+    document.getElementById('infoboxRows').innerHTML = '';
+    document.getElementById('sectionRows').innerHTML = '';
+    document.getElementById('imageRows').innerHTML = '';
+    document.getElementById('referenceRows').innerHTML = '';
+
+    Object.entries(content.infobox || {}).forEach(function ([key, value]) {
+      addInfoboxRow(key, value);
+    });
+    (content.sections || []).forEach(function (section) {
+      addSectionRow(section.heading || '', section.body || []);
+    });
+    (content.images || []).forEach(function (image) {
+      addImageRow(image.url || '', image.caption || '', image.alt || '', image.width_percent || 100, image.align || 'center', image.fit || 'cover', image.aspect_ratio || '16/10');
+    });
+    (content.references || []).forEach(function (ref) {
+      addReferenceRow(ref.label || '', ref.url || '');
+    });
+
+    document.getElementById('clubMeta').innerHTML =
+      '<div><strong>Wiki Key</strong><br>' + escapeHTML(content.club_key || clubKey) + '</div>' +
+      '<div><strong>同好会</strong><br>' + escapeHTML(club.display_name || club.name || club.school || '') + '</div>' +
+      '<div><strong>学校</strong><br>' + escapeHTML(club.school || '') + '</div>' +
+      '<div><strong>地区</strong><br>' + escapeHTML(club.province || club.prefecture || '') + '</div>';
+
+    const link = document.getElementById('viewPageLink');
+    link.href = toAdminPageUrl(pageUrl);
+    link.style.display = exists ? '' : 'none';
+    isRendering = false;
+    renderPreview();
+  }
+
+  function collectContent() {
+    const infobox = {};
+    document.querySelectorAll('#infoboxRows .row-card').forEach(function (row) {
+      const key = row.querySelector('[data-field="key"]').value.trim();
+      const value = row.querySelector('[data-field="value"]').value.trim();
+      if (key && value) infobox[key] = value;
+    });
+
+    const sections = [];
+    document.querySelectorAll('#sectionRows .row-card').forEach(function (row) {
+      const heading = row.querySelector('[data-field="heading"]').value.trim();
+      const body = row.querySelector('[data-field="body"]').value.split(/\r?\n/).map(function (line) {
+        return line.trim();
+      }).filter(Boolean);
+      if (heading && body.length) sections.push({ heading, body });
+    });
+
+    const references = [];
+    document.querySelectorAll('#referenceRows .row-card').forEach(function (row) {
+      const label = row.querySelector('[data-field="label"]').value.trim();
+      const url = row.querySelector('[data-field="url"]').value.trim();
+      if (label || url) references.push({ label, url });
+    });
+
+    const images = [];
+    document.querySelectorAll('#imageRows .row-card').forEach(function (row) {
+      const url = row.querySelector('[data-field="url"]').value.trim();
+      const caption = row.querySelector('[data-field="caption"]').value.trim();
+      const alt = row.querySelector('[data-field="alt"]').value.trim();
+      const widthPercent = parseInt(row.querySelector('[data-field="width_percent"]').value, 10) || 100;
+      const aspectRatio = row.querySelector('[data-field="aspect_ratio"]').value || '16/10';
+      const align = row.querySelector('[data-field="align"]').value || 'center';
+      const fit = row.querySelector('[data-field="fit"]').value || 'cover';
+      if (url) images.push({ url, caption, alt, width_percent: widthPercent, aspect_ratio: aspectRatio, align, fit });
+    });
+
+    return {
+      club_key: clubKey,
+      title: document.getElementById('titleInput').value.trim(),
+      summary: document.getElementById('summaryInput').value.trim(),
+      infobox,
+      sections,
+      images,
+      references,
+    };
+  }
+
+  function previewParagraphs(lines) {
+    return (lines || []).map(function (line) {
+      return '<p>' + escapeHTML(line) + '</p>';
+    }).join('');
+  }
+
+  function renderPreview() {
+    const pane = document.getElementById('previewPane');
+    if (!pane) return;
+    const content = collectContent();
+    const title = content.title || '未命名维基页面';
+    const infoboxRows = Object.entries(content.infobox || {}).map(function ([key, value]) {
+      return '<tr><th>' + escapeHTML(key) + '</th><td>' + escapeHTML(value) + '</td></tr>';
+    }).join('');
+    const sections = (content.sections || []).map(function (section) {
+      return '<section class="preview-section"><h3>' + escapeHTML(section.heading) + '</h3>' +
+        previewParagraphs(section.body) + '</section>';
+    }).join('');
+    const images = (content.images || []).map(function (image) {
+      const width = Math.max(25, Math.min(100, parseInt(image.width_percent, 10) || 100));
+      const align = image.align === 'left' ? 'flex-start' : image.align === 'right' ? 'flex-end' : 'center';
+      const fitClass = image.fit === 'contain' ? ' contain' : '';
+      const ratio = image.aspect_ratio || '16/10';
+      const ratioStyle = ratio !== 'auto' ? 'aspect-ratio:' + ratio + ';' : '';
+      return '<figure class="preview-image' + fitClass + '" style="width:' + width + '%;justify-self:' + align + ';">' +
+        '<img src="' + escapeHTML(image.url) + '" alt="' + escapeHTML(image.alt || image.caption || title) + '" style="' + ratioStyle + '">' +
+        (image.caption ? '<figcaption>' + escapeHTML(image.caption) + '</figcaption>' : '') +
+        '</figure>';
+    }).join('');
+    const references = (content.references || []).map(function (ref, index) {
+      const label = ref.label || ref.url || ('参考资料 ' + (index + 1));
+      return '<div class="preview-reference">' + (index + 1) + '. ' + escapeHTML(label) + '</div>';
+    }).join('');
+
+    pane.innerHTML =
+      '<h2 class="preview-title">' + escapeHTML(title) + '</h2>' +
+      (content.summary ? '<p class="preview-summary">' + escapeHTML(content.summary) + '</p>' : '') +
+      (infoboxRows ? '<table class="preview-infobox"><tbody>' + infoboxRows + '</tbody></table>' : '') +
+      images +
+      sections +
+      (references ? '<section class="preview-section"><h3>参考资料</h3>' + references + '</section>' : '');
+  }
+
+  function insertTemplate() {
+    const existing = new Set();
+    document.querySelectorAll('#sectionRows [data-field="heading"]').forEach(function (input) {
+      existing.add(input.value.trim());
+    });
+    [
+      ['沿革', ['这里记录同好会成立、发展和重要节点。']],
+      ['主要活动', ['这里记录例会、展会、放映、创作、汉化、读书会等活动。']],
+      ['组织结构', ['这里记录负责人、部门分工或常设工作方式。']],
+      ['相关链接', ['这里记录官网、社交媒体、招新页或公开资料。']],
+    ].forEach(function (section) {
+      if (!existing.has(section[0])) addSectionRow(section[0], section[1]);
+    });
+    markDirty();
+  }
+
+  function showJsonTools(show) {
+    document.getElementById('jsonTools').style.display = show ? 'block' : 'none';
+  }
+
+  function exportJson() {
+    document.getElementById('jsonToolsInput').value = JSON.stringify(collectContent(), null, 2);
+    showJsonTools(true);
+  }
+
+  function importJson() {
+    try {
+      const content = JSON.parse(document.getElementById('jsonToolsInput').value);
+      content.club_key = clubKey;
+      renderContent(content, loadedClub, loadedPageUrl, loadedExists);
+      markDirty();
+      setStatus('JSON 内容已应用，请确认后保存。', true);
+    } catch (error) {
+      setStatus('JSON 格式不正确，无法导入。', false);
+    }
+  }
+
+  function restoreDraft() {
+    const draft = getDraft();
+    if (!draft || !draft.content) {
+      updateDraftStatus();
+      return;
+    }
+    renderContent(draft.content, loadedClub, loadedPageUrl, loadedExists);
+    markDirty();
+    setStatus('已恢复本地草稿，请确认后保存。', true);
+  }
+
+  async function load() {
+    if (!/^(china|japan)-\d+$/.test(clubKey)) {
+      setStatus('缺少或无效的 club_key', false);
+      return;
+    }
+    try {
+      const resp = await fetch('../api/wiki.php?action=get&club_key=' + encodeURIComponent(clubKey), {
+        credentials: 'same-origin',
+      });
+      const data = await resp.json();
+      if (!data.success) {
+        setStatus(data.message || '加载失败', false);
+        return;
+      }
+      renderContent(data.content, data.club || {}, data.page_url, data.exists);
+      isDirty = false;
+      updateDraftStatus();
+      setStatus(data.exists ? '已加载现有维基内容' : '已生成初始草稿，保存后创建页面', true);
+    } catch (error) {
+      setStatus('网络错误，加载失败', false);
+    }
+  }
+
+  document.addEventListener('click', async function (event) {
+    const action = event.target.dataset.action;
+    if (action === 'remove') {
+      event.target.closest('.row-card').remove();
+      markDirty();
+    }
+    if (action === 'move-up') {
+      const row = event.target.closest('.row-card');
+      if (row && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
+      markDirty();
+    }
+    if (action === 'move-down') {
+      const row = event.target.closest('.row-card');
+      if (row && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
+      markDirty();
+    }
+    if (action === 'duplicate-row') {
+      duplicateRow(event.target.closest('.row-card'));
+      markDirty();
+    }
+    if (action === 'upload-image') {
+      uploadImage(event.target.closest('.row-card'), event.target);
+    }
+    if (event.target.id === 'addInfoboxBtn') { addInfoboxRow('', ''); markDirty(); }
+    if (event.target.id === 'addSectionBtn') { addSectionRow('新章节', ['']); markDirty(); }
+    if (event.target.id === 'addImageBtn') { addImageRow('', '', ''); markDirty(); }
+    if (event.target.id === 'addReferenceBtn') { addReferenceRow('', ''); markDirty(); }
+    if (event.target.id === 'insertTemplateBtn') insertTemplate();
+    if (event.target.id === 'exportJsonBtn') exportJson();
+    if (event.target.id === 'toggleImportBtn') showJsonTools(true);
+    if (event.target.id === 'hideJsonToolsBtn') showJsonTools(false);
+    if (event.target.id === 'importJsonBtn') importJson();
+    if (event.target.id === 'restoreDraftBtn') restoreDraft();
+    if (event.target.id === 'clearDraftBtn') {
+      clearDraft();
+      setStatus('本地草稿已清除', true);
+    }
+    if (event.target.id === 'saveBtn') {
+      const btn = event.target;
+      btn.disabled = true;
+      setStatus('保存中...', true);
+      try {
+        const resp = await fetch('../api/wiki.php?action=save&club_key=' + encodeURIComponent(clubKey), {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectContent()),
+        });
+        const data = await resp.json();
+        if (data.success) {
+          loadedContent = data.content;
+          loadedPageUrl = data.page_url || loadedPageUrl;
+          loadedExists = true;
+          const link = document.getElementById('viewPageLink');
+          link.href = toAdminPageUrl(data.page_url);
+          link.style.display = '';
+          isDirty = false;
+          clearDraft();
+          renderPreview();
+          setStatus(data.message || '保存成功', true);
+        } else {
+          setStatus(data.message || '保存失败', false);
+        }
+      } catch (error) {
+        setStatus('网络错误，保存失败', false);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  });
+
+  document.addEventListener('input', function (event) {
+    if (event.target.closest('.panel')) markDirty();
+  });
+
+  document.addEventListener('change', function (event) {
+    if (event.target.closest('.panel') && event.target.type !== 'file') markDirty();
+  });
+
+  window.addEventListener('beforeunload', function (event) {
+    if (!isDirty) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  updateDraftStatus();
+  load();
+})();
+</script>
+</body>
+</html>

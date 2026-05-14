@@ -5,14 +5,6 @@
 // ==========================================
 // 1. 常量与全局状态管理
 // ==========================================
-const CONFIG = {
-  BASE_WIDTH: 960,
-  BASE_HEIGHT: 700,
-  API_URL: './data/clubs.json',
-  FALLBACK_URLS: ['./data/clubs.json'],
-  POLYMERIZATION_URL: ''
-};
-
 const State = {
   bandoriRows: [],
   provinceGroupsMap: new Map(),
@@ -42,6 +34,8 @@ const State = {
 
 let currentUser = null;
 let currentEditClubId = null;
+let wikiIndexCache = null;
+let wikiIndexPromise = null;
 
 // 顶层用户信息框元素引用
 function getTopEls() {
@@ -110,7 +104,7 @@ function updateUserUI() {
         // Update avatar
         if (top.avatar) {
             if (currentUser.user.avatar_url) {
-                top.avatar.innerHTML = '<img src="' + currentUser.user.avatar_url + '" alt="" />';
+                top.avatar.innerHTML = '<img src="' + Utils.escapeHTML(Utils.resolveMediaUrl(currentUser.user.avatar_url)) + '" alt="" />';
             } else {
                 top.avatar.textContent = (currentUser.user.nickname || currentUser.user.username || 'U')[0].toUpperCase();
                 top.avatar.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
@@ -296,20 +290,72 @@ document.addEventListener('click', async (e) => {
     }
 });
 
+let registerCodeTimer = null;
+
+document.addEventListener('click', async (e) => {
+    if (e.target.id === 'accRegSendCodeBtn') {
+        const email = document.getElementById('accRegEmail')?.value.trim();
+        const msgEl = document.getElementById('accRegMessage');
+        if (!email) {
+            if (msgEl) { msgEl.textContent = '请输入邮箱地址'; msgEl.style.color = '#e74c3c'; }
+            return;
+        }
+        const btn = document.getElementById('accRegSendCodeBtn');
+        btn.disabled = true;
+        btn.textContent = '发送中...';
+        if (msgEl) msgEl.textContent = '';
+        try {
+            const resp = await fetch('./api/auth.php?action=send_register_code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            const data = await resp.json();
+            if (data.success) {
+                if (msgEl) { msgEl.textContent = data.message || '验证码已发送'; msgEl.style.color = '#27ae60'; }
+                document.getElementById('accRegCode')?.focus();
+                let countdown = 60;
+                const tick = () => {
+                    btn.textContent = countdown + 's';
+                    if (--countdown <= 0) {
+                        btn.disabled = false;
+                        btn.textContent = '重新发送';
+                        if (registerCodeTimer) { clearInterval(registerCodeTimer); registerCodeTimer = null; }
+                    }
+                };
+                if (registerCodeTimer) clearInterval(registerCodeTimer);
+                registerCodeTimer = setInterval(tick, 1000);
+                tick();
+            } else {
+                if (msgEl) { msgEl.textContent = data.message || '发送失败'; msgEl.style.color = '#e74c3c'; }
+                btn.disabled = false;
+                btn.textContent = '重新发送';
+            }
+        } catch {
+            if (msgEl) { msgEl.textContent = '网络错误'; msgEl.style.color = '#e74c3c'; }
+            btn.disabled = false;
+            btn.textContent = '重新发送';
+        }
+    }
+});
+
 // 账号弹窗 — 注册
 document.addEventListener('click', async (e) => {
     if (e.target.id === 'accRegisterBtn') {
         const username = document.getElementById('accRegUsername')?.value.trim();
         const password = document.getElementById('accRegPassword')?.value;
+        const email = document.getElementById('accRegEmail')?.value.trim();
+        const code = document.getElementById('accRegCode')?.value.trim();
         const msgEl = document.getElementById('accRegMessage');
-        if (!username || !password) { if (msgEl) { msgEl.textContent = '请输入用户名和密码'; msgEl.style.color = '#e74c3c'; } return; }
+        if (!username || !password || !email || !code) { if (msgEl) { msgEl.textContent = '请填写用户名、密码、邮箱和验证码'; msgEl.style.color = '#e74c3c'; } return; }
         if (username.length < 2 || username.length > 20) { if (msgEl) { msgEl.textContent = '用户名需 2-20 个字符'; msgEl.style.color = '#e74c3c'; } return; }
         if (password.length < 6) { if (msgEl) { msgEl.textContent = '密码至少 6 位'; msgEl.style.color = '#e74c3c'; } return; }
+        if (!/^\d{6}$/.test(code)) { if (msgEl) { msgEl.textContent = '请输入 6 位邮箱验证码'; msgEl.style.color = '#e74c3c'; } return; }
         try {
             const resp = await fetch('./api/auth.php?action=register_local', {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, email, code })
             });
             const data = await resp.json();
             if (data.success) {
@@ -354,7 +400,7 @@ async function refreshProfile() {
 
     // 头像
     const avatar = document.getElementById('accUserAvatar');
-    if (avatar) avatar.src = user.avatar_url || '';
+    if (avatar) avatar.src = Utils.resolveMediaUrl(user.avatar_url || '');
 
     // 昵称
     const nicknameInput = document.getElementById('accNicknameInput');
@@ -486,7 +532,7 @@ function renderVNProfile() {
             frame.appendChild(fallback);
         }
         if (user.avatar_url) {
-            avatarEl.src = user.avatar_url;
+            avatarEl.src = Utils.resolveMediaUrl(user.avatar_url);
             avatarEl.style.display = '';
             fallback.textContent = '';
             frame.style.background = '';
@@ -536,7 +582,7 @@ function renderVNProfile() {
                 var club = allClubs.find(function(c) { return parseInt(c.id) === parseInt(m.club_id) && (c.country || 'china') === (m.country || 'china'); });
                 var clubName = club ? (club.display_name || club.name) : ('同好会 #' + m.club_id);
                 var avatarHtml = club && club.logo_url
-                    ? '<img src="' + escapeHtml(club.logo_url) + '" alt="" class="vn-club-avatar" loading="lazy">'
+                    ? '<img src="' + escapeHtml(Utils.resolveMediaUrl(club.logo_url)) + '" alt="" class="vn-club-avatar" loading="lazy">'
                     : '<span class="vn-club-avatar">' + (clubName[0] || '?') + '</span>';
                 var roleClass = roleClassMap[m.role] || 'vn-role-member';
                 var roleLabel = roleLabels[m.role] || m.role;
@@ -605,7 +651,7 @@ function renderCollection(type) {
             var clubName = club ? club.name : ('同好会 #' + m.club_id);
             var roleLabels = { member: __('memberRoleMember'), manager: __('memberRoleManager'), representative: __('memberRoleRep') };
             var iconHtml = club && club.logo_url
-                ? '<img src="' + escapeHtml(club.logo_url) + '" alt="" loading="lazy">'
+                ? '<img src="' + escapeHtml(Utils.resolveMediaUrl(club.logo_url)) + '" alt="" loading="lazy">'
                 : '🏫';
             return '<div class="vn-collection-card">' +
                 '<div class="vn-cc-icon">' + iconHtml + '</div>' +
@@ -956,6 +1002,7 @@ document.addEventListener('change', (e) => {
 // ====== 头像裁剪 ======
 let cropperInstance = null;
 let _clubAvatarCropClubId = null;
+let _clubAvatarCropCountry = 'china';
 
 function initCropper(img) {
     destroyCropper();
@@ -990,7 +1037,9 @@ document.addEventListener('click', (e) => {
         document.getElementById('avatarCropModal').style.display = 'none';
         destroyCropper();
         const clubId = _clubAvatarCropClubId;
+        const clubCountry = _clubAvatarCropCountry || 'china';
         _clubAvatarCropClubId = null;
+        _clubAvatarCropCountry = 'china';
         canvas.toBlob(async (blob) => {
             // 同好会头像上传
             if (clubId) {
@@ -998,12 +1047,13 @@ document.addEventListener('click', (e) => {
                 const fd = new FormData();
                 fd.append('image', blob, 'avatar.png');
                 fd.append('id', clubId);
+                fd.append('country', clubCountry);
                 if (statusEl) statusEl.textContent = '上传中...';
                 try {
                     const r = await fetch('./api/club_avatar.php?scope=club', { method: 'POST', credentials: 'same-origin', body: fd });
                     const j = await r.json();
                     if (j.success) {
-                        document.getElementById('editClubAvatar').src = j.image_url;
+                        document.getElementById('editClubAvatar').src = Utils.resolveMediaUrl(j.image_url);
                         document.getElementById('editClubAvatarUrl').value = j.image_url;
                         const rmBtn = document.getElementById('editClubAvatarRemoveBtn');
                         if (rmBtn) rmBtn.style.display = '';
@@ -1029,7 +1079,7 @@ document.addEventListener('click', (e) => {
                 const data = await resp.json();
                 if (data.success && currentUser?.user) {
                     currentUser.user.avatar_url = data.avatar_url;
-                    document.getElementById('accUserAvatar').src = data.avatar_url;
+                    document.getElementById('accUserAvatar').src = Utils.resolveMediaUrl(data.avatar_url);
                     renderVNProfile();
                     if (statusEl) { statusEl.textContent = '✅ 头像更新成功'; statusEl.style.color = '#27ae60'; }
                     setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
@@ -1045,6 +1095,7 @@ document.addEventListener('click', (e) => {
         document.getElementById('avatarCropModal').style.display = 'none';
         destroyCropper();
         _clubAvatarCropClubId = null;
+        _clubAvatarCropCountry = 'china';
         document.getElementById('accAvatarInput').value = '';
     }
 });
@@ -1403,7 +1454,7 @@ async function openMemberList(clubId, country) {
                 const showTransfer = !isSelf && myClubRole === 'representative' && m.role !== 'representative';
 
                 return '<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--md-surface-container); border-radius: 10px;">' +
-                    '<img src="' + (m.avatar_url || '') + '" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" onerror="this.style.display=\'none\'" />' +
+                    '<img src="' + Utils.escapeHTML(Utils.resolveMediaUrl(m.avatar_url || '')) + '" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" onerror="this.style.display=\'none\'" />' +
                     '<span style="flex: 1; font-weight: 500;">' + Utils.escapeHTML(m.username) + '</span>' +
                     '<span style="font-size: 12px; opacity: 0.7;">' + ({
                         member: __('memberRoleMember'), manager: __('memberRoleManager'), representative: __('memberRoleRep')
@@ -1419,42 +1470,6 @@ async function openMemberList(clubId, country) {
         content.innerHTML = '<p style="text-align: center; color: #e74c3c;">' + __('memberNetworkError') + '</p>';
     }
 }
-
-const Utils = {
-  isMobileViewport: () => window.matchMedia('(max-width: 720px)').matches,
-  extractUrl: (item) => {
-    const source = `${item?.name || ''} ${item?.raw_text || ''} ${item?.info || ''}`;
-    const match = source.match(/https?:\/\/[^\s]+|discord\.gg\/[^\s]+|discord\.com\/invite\/[^\s]+/i);
-    if (!match) return null;
-    const raw = match[0];
-    return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-  },
-  normalizeProvinceName: (name) => {
-    if (!name) return '';
-    return String(name).trim().replace(/(壮族自治区|回族自治区|维吾尔自治区|特别行政区|自治区|省|市)$/g, '');
-  },
-  groupTypeText: (type) => {
-    const map = { school: 'typeSchool', region: 'typeRegion', vnfest: 'typeVnfest' };
-    return __(map[type] || 'typeSchool');
-  },
-  typeFilterValue: (type) => ({ school: 'school', region: 'region', 'vnfest': 'vnfest' }[type] || 'other'),
-  formatCreatedAt: (value) => {
-    if (!value) return __('detailUnknownDate');
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  },
-  escapeHTML: (value) => String(value || '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
-  debounce: (fn, delay) => {
-    let timer;
-    return (...args) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => fn.apply(this, args), delay);
-    };
-  }
-};
 
 function showToast(message, duration = 2000) {
     let toast = document.getElementById('mobileToast');
@@ -1641,6 +1656,7 @@ const translations = {
         detailSectionExt: '对外平台',
         detailSectionContact: '联系方式',
         detailSectionActions: '操作',
+        detailSectionWiki: '同好会维基',
         detailContactLockedLogin: '联系方式仅对绑定成员公开\n请先登录后申请绑定同好会',
         detailContactLocked: '联系方式仅对绑定成员公开',
         detailContactPending: '⏳ 绑定申请已提交，等待管理员审核',
@@ -1651,6 +1667,8 @@ const translations = {
         detailBtnApplyClub: '📝 申请绑定同好会',
         detailBtnEdit: '✏️ 编辑同好会信息',
         detailBtnMembers: '👥 成员名单',
+        detailBtnWiki: '📖 查看维基页面',
+        detailBtnEditWiki: '✏️ 编辑维基内容',
         detailBtnTransfer: '🔄 转让负责人',
         detailBtnLeave: '🚪 退出同好会',
         detailBtnApply: '📝 申请绑定',
@@ -1909,6 +1927,7 @@ const translations = {
         detailSectionExt: '外部プラットフォーム',
         detailSectionContact: '連絡先',
         detailSectionActions: '操作',
+        detailSectionWiki: '同好会维基',
         detailContactLockedLogin: '連絡先はメンバーのみ公開されています\nログインしてから申請してください',
         detailContactLocked: '連絡先はメンバーのみ公開されています',
         detailContactPending: '⏳ 申請中です。管理者の承認をお待ちください',
@@ -1919,6 +1938,8 @@ const translations = {
         detailBtnApplyClub: '📝 サークルに参加申請',
         detailBtnEdit: '✏️ サークル情報を編集',
         detailBtnMembers: '👥 メンバー一覧',
+        detailBtnWiki: '📖 Wikiページを見る',
+        detailBtnEditWiki: '✏️ Wiki内容を編集',
         detailBtnTransfer: '🔄 代表者を譲渡',
         detailBtnLeave: '🚪 サークルを退出',
         detailBtnApply: '📝 申請する',
@@ -2051,6 +2072,7 @@ Object.assign(translations.zh, {
     listAnnouncements: '公告',
     listProvinceHeader: '地区索引',
     listProvinceHint: '按收录数量排序',
+    listAllRegions: '全部',
     listToolbarAll: '全部同好会',
     listToolbarSubtitle: '选择地区后查看同好会，也可以按名称、群号或类型快速筛选。',
     listSearchPlaceholder: '搜索组织名 / 群号',
@@ -2125,6 +2147,7 @@ Object.assign(translations.ja, {
     detailSectionExt: '外部リンク',
     detailSectionContact: '連絡先',
     detailSectionActions: 'アクション',
+    detailSectionWiki: 'サークルWiki',
     detailContactLockedLogin: '連絡先は参加メンバーのみに公開されています。\nログイン後、同好会への参加申請を送ってください。',
     detailContactLocked: '連絡先は参加メンバーのみに公開されています。',
     detailContactPending: '⏳ 参加申請を送信済みです。管理者の承認をお待ちください。',
@@ -2134,6 +2157,8 @@ Object.assign(translations.ja, {
     detailBtnApplyClub: '📝 参加申請を送る',
     detailBtnEdit: '✏️ 同好会情報を編集',
     detailBtnMembers: '👥 メンバー一覧',
+    detailBtnWiki: '📖 Wikiページを見る',
+    detailBtnEditWiki: '✏️ Wiki内容を編集',
     detailBtnTransfer: '🔄 代表者を引き継ぐ',
     detailBtnLeave: '🚪 同好会を退会',
     detailBtnApply: '📝 申請する',
@@ -2180,6 +2205,7 @@ Object.assign(translations.ja, {
     listAnnouncements: 'お知らせ',
     listProvinceHeader: '地域インデックス',
     listProvinceHint: '掲載数の多い順',
+    listAllRegions: 'すべて',
     listToolbarAll: 'すべての同好会',
     listToolbarSubtitle: '地域を選ぶと同好会を表示します。名称、グループID、種別でも絞り込めます。',
     listSearchPlaceholder: '同好会名 / グループID',
@@ -3183,6 +3209,8 @@ function normalizeProvince(name) {
   return name.replace(/[省市]$/, '');
 }
 
+const LIST_ALL_REGION_KEY = '__all_regions__';
+
 function renderListView() {
   const provinceIndexList = document.getElementById('provinceIndexList');
   const clubGrid = document.getElementById('clubGrid');
@@ -3222,12 +3250,20 @@ function renderListView() {
     provinces.get(p).push(club);
   });
 
-  const sortedProvinces = Array.from(provinces.entries()).sort((a, b) => b[1].length - a[1].length);
+  provinces.set(LIST_ALL_REGION_KEY, allClubs);
+  const sortedProvinces = [
+    [LIST_ALL_REGION_KEY, allClubs],
+    ...Array.from(provinces.entries())
+      .filter(([province]) => province !== LIST_ALL_REGION_KEY)
+      .sort((a, b) => b[1].length - a[1].length)
+  ];
+
+  const getProvinceLabel = (province) => province === LIST_ALL_REGION_KEY ? __('listAllRegions') : province;
 
   // 渲染省份索引
   provinceIndexList.innerHTML = sortedProvinces.map(([province, rows]) =>
     `<div class="province-index-item" data-province="${Utils.escapeHTML(province)}">
-      <span>${Utils.escapeHTML(province)}</span>
+      <span>${Utils.escapeHTML(getProvinceLabel(province))}</span>
       <span class="province-index-count">${rows.length}</span>
     </div>`
   ).join('');
@@ -3242,7 +3278,7 @@ function renderListView() {
       renderClubCards(rows);
       // 让新卡片可见（直接可见，无入场动画）
       document.querySelectorAll('.club-card').forEach(card => card.classList.add('visible'));
-      if (toolbarTitle) toolbarTitle.textContent = province;
+      if (toolbarTitle) toolbarTitle.textContent = getProvinceLabel(province);
       if (toolbarCount) toolbarCount.textContent = rows.length + ' ' + __('listCountSuffix');
     });
   });
@@ -3255,7 +3291,7 @@ function renderListView() {
       renderClubCards(sortedProvinces[0][1]);
       // 新卡片直接可见（无入场动画）
       document.querySelectorAll('.club-card').forEach(function(c) { c.classList.add('visible'); });
-      if (toolbarTitle) toolbarTitle.textContent = sortedProvinces[0][0];
+      if (toolbarTitle) toolbarTitle.textContent = getProvinceLabel(sortedProvinces[0][0]);
       if (toolbarCount) toolbarCount.textContent = sortedProvinces[0][1].length + ' ' + __('listCountSuffix');
     }
   }
@@ -3303,7 +3339,7 @@ function renderClubCards(rows) {
     const contactInfo = Utils.escapeHTML(item.info || '');
     const schoolInfo = Utils.escapeHTML(item.school || item.remark || __('listNoRemark'));
     const verified = item.verified;
-    const logoUrl = item.logo_url || '';
+    const logoUrl = Utils.resolveMediaUrl(item.logo_url || '');
     const initial = name.charAt(0);
 
     // 基于名称生成稳定头像色，避免列表刷新时视觉跳动
@@ -3432,7 +3468,7 @@ function renderGroupList(rows) {
     const province = Utils.escapeHTML(normalizeProvince(item.province || item.prefecture || ''));
 
     const avatarHtml = item.logo_url
-        ? `<img src="${Utils.escapeHTML(item.logo_url)}" alt="" class="club-avatar" loading="lazy">`
+        ? `<img src="${Utils.escapeHTML(Utils.resolveMediaUrl(item.logo_url))}" alt="" class="club-avatar" loading="lazy">`
         : `<div class="club-avatar club-avatar-fallback">🏫</div>`;
 
     return `
@@ -3493,6 +3529,71 @@ function renderGroupList(rows) {
   });
 }
 
+function getClubWikiKey(club) {
+  const country = club.country || State.currentCountry || 'china';
+  return country + '-' + club.id;
+}
+
+async function loadWikiIndex() {
+  if (wikiIndexCache) return wikiIndexCache;
+  if (!wikiIndexPromise) {
+    wikiIndexPromise = fetch('./wiki/index.json', { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) return {};
+        return r.json();
+      })
+      .catch(function () {
+        return {};
+      })
+      .then(function (data) {
+        wikiIndexCache = data || {};
+        return wikiIndexCache;
+      });
+  }
+  return wikiIndexPromise;
+}
+
+async function hydrateClubWikiLink(club) {
+  const wrap = document.getElementById('clubWikiActionWrap');
+  if (!wrap) return;
+  const index = await loadWikiIndex();
+  const wikiKey = getClubWikiKey(club);
+  const item = index[wikiKey];
+  const clubId = parseInt(club.id);
+  const clubCountry = club.country || State.currentCountry || 'china';
+  const canEditWiki = canManageClub(clubId, clubCountry) || hasRole('super_admin');
+  if ((!item || !item.url) && !canEditWiki) return;
+
+  const links = [];
+  if (item && item.url) {
+    const cleanUrl = String(item.url).replace(/^\.?\//, '');
+    links.push('<a class="club-detail-btn primary full" href="./wiki/' +
+      Utils.escapeHTML(cleanUrl) +
+      '" style="margin-bottom:4px" target="_blank" rel="noopener noreferrer">' +
+      Utils.escapeHTML(__('detailBtnWiki')) +
+      '</a>');
+  }
+  if (canEditWiki) {
+    const editPath = 'admin/wiki_editor.html?club_key=' + encodeURIComponent(wikiKey);
+    const isBundledClient = window.location.protocol === 'file:' ||
+      window.location.protocol === 'capacitor:' ||
+      window.location.protocol === 'ionic:' ||
+      window.location.protocol === 'app:' ||
+      Boolean(window.Capacitor);
+    const editUrl = isBundledClient
+      ? CONFIG.PUBLIC_BASE_URL.replace(/\/$/, '') + '/' + editPath
+      : './' + editPath;
+    links.push('<a class="club-detail-btn secondary full" href="' +
+      Utils.escapeHTML(editUrl) +
+      '" style="margin-bottom:4px" target="_blank" rel="noopener noreferrer">' +
+      Utils.escapeHTML(__('detailBtnEditWiki')) +
+      '</a>');
+  }
+  wrap.innerHTML = links.join('');
+  const section = document.getElementById('clubWikiSection');
+  if (section) section.style.display = '';
+}
+
 function showClubDetail(club) {
   const modal = document.getElementById('clubDetailModal');
   const content = document.getElementById('clubDetailContent');
@@ -3512,7 +3613,7 @@ function showClubDetail(club) {
 
   // ——— Header ———
   const avatarHtml = club.logo_url
-    ? `<img src="${esc(club.logo_url)}" alt="" class="club-detail-avatar">`
+    ? `<img src="${esc(Utils.resolveMediaUrl(club.logo_url))}" alt="" class="club-detail-avatar">`
     : `<div class="club-detail-avatar club-detail-avatar-fallback">🏫</div>`;
   const rawType = club.rawType || club.type;
   const typeLabel = rawType === 'region' ? __('detailTypeRegion') : rawType === 'vnfest' ? __('detailTypeVnfest') : __('detailTypeSchool');
@@ -3687,8 +3788,13 @@ function showClubDetail(club) {
     actionBtns.push(`<button data-action="leave-club" class="club-detail-btn secondary full" style="margin-bottom:4px">🚪 退出同好会</button>`);
   }
 
+  const wikiActionHtml = `<div class="club-detail-section" id="clubWikiSection" style="display:none">
+    <div class="club-detail-section-title">${__('detailSectionWiki')}</div>
+    <div class="club-detail-actions" id="clubWikiActionWrap"></div>
+  </div>`;
+
   const actionHtml = actionBtns.length
-    ? `<div class="club-detail-section"><div class="club-detail-section-title">${__('detailSectionActions')}</div><div class="club-detail-actions">${actionBtns.join('')}</div></div>`
+    ? `<div class="club-detail-section"><div class="club-detail-section-title">${__('detailSectionActions')}</div><div class="club-detail-actions club-detail-action-buttons">${actionBtns.join('')}</div></div>`
     : '';
 
   // ——— 底部元信息 ———
@@ -3705,6 +3811,7 @@ function showClubDetail(club) {
       ${descHtml}
       ${extHtml}
       ${contactHtml}
+      ${wikiActionHtml}
       ${actionHtml}
       ${footerHtml}
     </div>
@@ -3736,7 +3843,8 @@ function showClubDetail(club) {
   content.innerHTML = leftHtml + rightHtml;
 
   // ——— 操作按钮事件绑定 ———
-  const actionsContainer = content.querySelector('.club-detail-actions');
+  const actionsContainer = content.querySelector('.club-detail-action-buttons');
+  hydrateClubWikiLink(club);
   if (actionsContainer) {
     actionsContainer.querySelector('[data-action="apply-club"]')?.addEventListener('click', () => openMembershipApplyModal(club));
     actionsContainer.querySelector('[data-action="edit-club"]')?.addEventListener('click', () => openEditPanel(club));
@@ -4210,7 +4318,7 @@ function renderGroupListWithLocation(rows) {
         }));
 
         const avatarHtml = item.logo_url
-            ? `<img src="${Utils.escapeHTML(item.logo_url)}" alt="" class="club-avatar" loading="lazy">`
+            ? `<img src="${Utils.escapeHTML(Utils.resolveMediaUrl(item.logo_url))}" alt="" class="club-avatar" loading="lazy">`
             : `<div class="club-avatar club-avatar-fallback">🏫</div>`;
 
         const statusBadge = isBound
@@ -5441,7 +5549,7 @@ function openEditPanel(club = null, isNew = false) {
     const avatarRemoveBtn = document.getElementById('editClubAvatarRemoveBtn');
     if (avatarImg && avatarUrlField) {
       if (club.logo_url) {
-        avatarImg.src = club.logo_url;
+        avatarImg.src = Utils.resolveMediaUrl(club.logo_url);
         avatarUrlField.value = club.logo_url;
         if (avatarRemoveBtn) avatarRemoveBtn.style.display = '';
       } else {
@@ -5473,6 +5581,22 @@ function closeAdminPanel() {
   const adminPanel = document.getElementById('adminPanel');
   if (adminPanel) adminPanel.classList.remove('open');
   currentEditClubId = null;
+}
+
+function openClubEditFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const editClubId = parseInt(params.get('edit_club') || '', 10);
+  if (!editClubId) return;
+
+  const country = params.get('country') === 'japan' ? 'japan' : 'china';
+  const list = country === 'japan' ? State.japanRows : State.bandoriRows;
+  const club = (list || []).find(item => parseInt(item.id, 10) === editClubId);
+  if (!club) {
+    alert('未找到要编辑的同好会');
+    return;
+  }
+  club.country = country;
+  openEditPanel(club, false);
 }
 
 async function saveClub() {
@@ -5577,16 +5701,23 @@ async function saveClub() {
 
 async function deleteClub() {
     if (!confirm(__('confirmDeleteClub'))) return;
+    const country = document.getElementById('editCountry')?.value || 'china';
+    const apiUrl = country === 'japan' ? './api/clubs_japan.php' : './api/clubs.php';
     try {
-        const response = await fetch('./api/clubs.php', {
+        const response = await fetch(apiUrl, {
             method: 'DELETE',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: currentEditClubId })
         });
         const result = await response.json();
         if (result.success) {
             alert('✅ 删除成功！');
-            await reloadBandoriData();
+            if (country === 'japan') {
+                await loadJapanData();
+            } else {
+                await reloadBandoriData();
+            }
             closeAdminPanel();
         } else {
             alert('删除失败：' + (result.message || '未知错误'));
@@ -5787,6 +5918,7 @@ function initAdminEvents() {
 	      document.getElementById('avatarCropModal').style.display = 'flex';
 	      initCropper(cropImg);
 	      _clubAvatarCropClubId = cid;
+	      _clubAvatarCropCountry = document.getElementById("editCountry")?.value || "china";
 	      if (editClubAvatarSt) editClubAvatarSt.textContent = '';
 	    };
 	    cropImg.src = URL.createObjectURL(file);
@@ -5884,7 +6016,7 @@ function renderPublicationList() {
     const clubIds = pub.club_ids || [];
     const firstClub = clubIds.length > 0 ? getClubInfo(clubIds[0].id, clubIds[0].country) : null;
     const avatarHtml = firstClub && firstClub.logo_url
-      ? `<img src="${Utils.escapeHTML(firstClub.logo_url)}" alt="" class="pub-list-avatar-img">`
+      ? `<img src="${Utils.escapeHTML(Utils.resolveMediaUrl(firstClub.logo_url))}" alt="" class="pub-list-avatar-img">`
       : `<span class="pub-list-avatar-text">${(firstClub ? firstClub.name[0] : (pub.clubName || '?')[0])}</span>`;
     const clubDisplay = firstClub ? Utils.escapeHTML(firstClub.name) : Utils.escapeHTML(pub.clubName || '未知同好会');
 
@@ -6087,7 +6219,7 @@ function initPubClubSelector() {
         return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border-radius:6px;${already ? 'opacity:0.4;' : ''}"
           onclick="${already ? '' : 'addPubClub(' + m.id + ',\'' + m.country + '\')'}">
           <span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0;overflow:hidden;">
-            ${m.logo_url ? '<img src="' + Utils.escapeHTML(m.logo_url) + '" style="width:100%;height:100%;object-fit:cover;">' : (m.name[0] || '?')}
+            ${m.logo_url ? '<img src="' + Utils.escapeHTML(Utils.resolveMediaUrl(m.logo_url)) + '" style="width:100%;height:100%;object-fit:cover;">' : (m.name[0] || '?')}
           </span>
           <span style="font-size:13px;">${Utils.escapeHTML(m.name)}</span>
           <span style="font-size:10px;color:#999;">${m.country === 'japan' ? '🇯🇵' : '🇨🇳'}</span>
@@ -6250,7 +6382,7 @@ function openPublicationDetail(pub) {
     clubs.innerHTML = clubIds.map(c => {
       const info = getClubInfo(c.id, c.country);
       const avatar = info.logo_url
-        ? `<img src="${Utils.escapeHTML(info.logo_url)}" alt="">`
+        ? `<img src="${Utils.escapeHTML(Utils.resolveMediaUrl(info.logo_url))}" alt="">`
         : `<span>${Utils.escapeHTML(info.name[0] || '?')}</span>`;
       return `<span class="pub-detail-club-tag">
         <span class="cdt-avatar">${avatar}</span>
@@ -6745,6 +6877,7 @@ async function init() {
 }
     // 其他初始化...
     initAdminEvents();
+    openClubEditFromUrl();
     initPublicationEvents();
     initTopUserBar();
     initMobileDrawer();

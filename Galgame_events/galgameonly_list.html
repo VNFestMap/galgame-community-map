@@ -264,7 +264,11 @@ body {
         var status = event.user_application_status;
         var regOpen = event.registration_open;
 
-        // If already applied, show edit and delete buttons
+        if (status === 'approved') {
+            return '<button class="btn-apply" disabled>已通过</button>';
+        }
+
+        // If already applied and still editable, show edit and delete buttons
         if (status && status !== null) {
             var appId = event.user_application_id || '';
             return '<div class="btn-group">' +

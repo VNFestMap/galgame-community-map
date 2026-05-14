@@ -94,6 +94,20 @@ data/event_images/*
 data/submissions*.json
 data/qq_members.json
 
+# --- 核心同好会数据（含联系方式） ---
+data/clubs.json
+data/clubs_japan.json
+
+# --- 运行时验证码 ---
+data/register_email_codes.json
+
+# --- 用户反馈数据 ---
+data/feedback.json
+
+# --- Wiki 用户上传图片 ---
+wiki/uploads/*
+!wiki/uploads/.gitkeep
+
 # --- 服务器配置 ---
 .user.ini
 
