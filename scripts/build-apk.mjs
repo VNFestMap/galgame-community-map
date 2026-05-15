@@ -11,7 +11,7 @@
  */
 
 import { execSync } from 'child_process';
-import { copyFileSync, readdirSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { copyFileSync, readdirSync, mkdirSync, existsSync, rmSync, readFileSync, writeFileSync } from 'fs';
 import { join, extname, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { rewriteFrontendPaths } from './frontend-paths.mjs';
@@ -19,6 +19,7 @@ import { rewriteFrontendPaths } from './frontend-paths.mjs';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = join(__dirname, '..');
 const WWW = join(ROOT, 'www');
+const ANDROID_DIR = join(ROOT, 'android');
 
 console.log('Generating wiki pages...');
 execSync('node scripts/generate-wiki-pages.mjs', { cwd: ROOT, stdio: 'inherit' });
@@ -90,7 +91,55 @@ console.log(`Replaced ${replacedCount} file(s).`);
 console.log('API path replacement done.');
 
 // ============================================================
-// Step 4: Run Capacitor sync
+// Step 4: Sync native Android metadata
+// ============================================================
+console.log('Syncing Android version and launcher icons...');
+
+function getPackageVersion() {
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  return pkg.version || '1.0.0';
+}
+
+function versionToCode(version) {
+  const [major = 0, minor = 0, patch = 0] = version
+    .split(/[.-]/)
+    .slice(0, 3)
+    .map((part) => Number.parseInt(part, 10) || 0);
+  return major * 10000 + minor * 100 + patch;
+}
+
+function syncAndroidVersion() {
+  const versionName = getPackageVersion();
+  const versionCode = versionToCode(versionName);
+  const gradlePath = join(ANDROID_DIR, 'app', 'build.gradle');
+  let gradle = readFileSync(gradlePath, 'utf8');
+  gradle = gradle
+    .replace(/versionCode\s+\d+/, `versionCode ${versionCode}`)
+    .replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);
+  writeFileSync(gradlePath, gradle);
+  console.log(`Android versionName=${versionName}, versionCode=${versionCode}`);
+}
+
+function syncAndroidIcons() {
+  const iconSource = join(ROOT, 'images', 'logo.png');
+  const mipmapDirs = ['mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi'];
+  const iconNames = ['ic_launcher.png', 'ic_launcher_round.png', 'ic_launcher_foreground.png'];
+
+  for (const dir of mipmapDirs) {
+    const destDir = join(ANDROID_DIR, 'app', 'src', 'main', 'res', dir);
+    mkdirSync(destDir, { recursive: true });
+    for (const iconName of iconNames) {
+      copyFileSync(iconSource, join(destDir, iconName));
+    }
+  }
+}
+
+syncAndroidVersion();
+syncAndroidIcons();
+console.log('Android native metadata synced.');
+
+// ============================================================
+// Step 5: Run Capacitor sync
 // ============================================================
 console.log('Running capacitor sync...');
 execSync('npx cap copy', { cwd: ROOT, stdio: 'inherit' });
@@ -98,10 +147,9 @@ execSync('npx cap sync', { cwd: ROOT, stdio: 'inherit' });
 console.log('Capacitor sync done.');
 
 // ============================================================
-// Step 5: Build APK
+// Step 6: Build APK
 // ============================================================
 console.log('Building APK...');
-const ANDROID_DIR = join(ROOT, 'android');
 const env = { ...process.env, ANDROID_HOME: process.env.ANDROID_HOME || 'C:/Android' };
 
 // Auto-detect JDK 17 (required for Gradle 7.x compatibility)

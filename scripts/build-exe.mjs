@@ -9,7 +9,7 @@
  */
 
 import { execSync } from 'child_process';
-import { copyFileSync, readdirSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { copyFileSync, readdirSync, mkdirSync, existsSync, rmSync, readFileSync } from 'fs';
 import { join, extname, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { rewriteFrontendPaths } from './frontend-paths.mjs';
@@ -18,6 +18,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = join(__dirname, '..');
 const WWW = join(ROOT, 'www');
 const DIST = join(ROOT, 'dist');
+const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 
 console.log('Generating wiki pages...');
 execSync('node scripts/generate-wiki-pages.mjs', { cwd: ROOT, stdio: 'inherit' });
@@ -112,6 +113,8 @@ execSync(
   'npx electron-packager . "Galgame同好会地图" ' +
   '--platform=win32 --arch=x64 ' +
   '--out=dist --overwrite ' +
+  '--icon=images/logo.ico ' +
+  `--app-version=${pkg.version} ` +
   '--electron-version=33.4.11 ' +
   '--ignore="node_modules|api|admin|includes|data|uploads|scripts|docs|android|.git|dist|capacitor.config.ts|.capacitorignore"',
   { cwd: ROOT, stdio: 'inherit' }

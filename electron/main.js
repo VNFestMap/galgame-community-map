@@ -10,7 +10,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: '全国 Galgame 同好会地图 — VNFest',
-    icon: path.join(__dirname, '..', 'www', 'images', 'favicon.ico'),
+    icon: path.join(__dirname, '..', 'www', 'images', 'logo.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
