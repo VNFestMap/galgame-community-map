@@ -6,6 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'www',
   bundledWebRuntime: false,
   server: {
+    url: 'https://www.map.vnfest.top/index.html',
     androidScheme: 'https',
     allowNavigation: [
       'www.map.vnfest.top'
