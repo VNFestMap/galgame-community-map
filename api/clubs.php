@@ -14,6 +14,25 @@ $dataFile = __DIR__ . '/../data/clubs.json';
 // 加载配置
 require_once __DIR__ . '/../config.php';
 
+function normalizeClubProvinces(array $input): array {
+    $values = [];
+    if (isset($input['provinces']) && is_array($input['provinces'])) {
+        $values = $input['provinces'];
+    } elseif (isset($input['province'])) {
+        $values = preg_split('/[+＋\/／、,，;；|｜]/u', (string)$input['province']);
+    }
+    $seen = [];
+    $result = [];
+    foreach ($values as $value) {
+        $value = trim((string)$value);
+        if ($value === '') continue;
+        if (isset($seen[$value])) continue;
+        $seen[$value] = true;
+        $result[] = $value;
+    }
+    return $result;
+}
+
 // GET - 读取数据
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     require_once __DIR__ . '/../includes/auth.php';
@@ -86,8 +105,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     $input = json_decode(file_get_contents('php://input'), true);
-    if (!$input || !isset($input['name']) || !isset($input['province']) || !isset($input['info'])) {
+    if (!$input || !isset($input['name']) || (!isset($input['province']) && !isset($input['provinces'])) || !isset($input['info'])) {
         echo json_encode(['success' => false, 'message' => '缺少必填字段']);
+        exit();
+    }
+    $provinces = normalizeClubProvinces($input);
+    if (!$provinces) {
+        echo json_encode(['success' => false, 'message' => '请选择至少一个省份']);
         exit();
     }
     
@@ -101,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $newItem = [
         'id' => $maxId + 1,
-        'province' => $input['province'],
+        'province' => $provinces[0],
+        'provinces' => $provinces,
         'school' => $input['school'] ?? '',
         'name' => $input['name'],
         'display_name' => $input['name'],
@@ -150,7 +175,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     
     foreach ($rows as $i => $item) {
         if ($item['id'] == $input['id']) {
-            $rows[$i]['province'] = $input['province'] ?? $item['province'];
+            $provinces = normalizeClubProvinces($input);
+            if ($provinces) {
+                $rows[$i]['province'] = $provinces[0];
+                $rows[$i]['provinces'] = $provinces;
+            } elseif (isset($input['province'])) {
+                $rows[$i]['province'] = $input['province'];
+                unset($rows[$i]['provinces']);
+            }
             $rows[$i]['school'] = $input['school'] ?? $item['school'];
             $rows[$i]['name'] = $input['name'] ?? $item['name'];
             $rows[$i]['display_name'] = $input['name'] ?? $item['name'];

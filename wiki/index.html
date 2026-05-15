@@ -45,6 +45,10 @@
         <a href="#country-japan">日本</a>
         <a href="#wiki-library">文档库</a>
       </nav>
+      <nav class="wiki-language-switch" id="wikiIndexLangSwitch" aria-label="Language">
+        <a href="?lang=zh" data-wiki-index-lang="zh">中文</a>
+        <a href="?lang=ja" data-wiki-index-lang="ja">日本語</a>
+      </nav>
     </section>
 
     <!-- Notice -->
@@ -60,7 +64,7 @@
         <span id="statExt">- 个扩展位</span>
       </div>
       <div class="wiki-extension-grid" id="extensionsGrid">
-        <p class="wiki-index-empty">加载中…</p>
+        <p class="wiki-index-empty">加载中...</p>
       </div>
     </section>
 
@@ -99,9 +103,9 @@
   <script>
   (function () {
     var DATA = {
-      index: null,        // from index.json
-      features: null,     // from feature-slots.json
-      library: null       // from library/index.json
+      index: null,
+      features: null,
+      library: null
     };
 
     var elSearch = document.getElementById('wikiIndexSearch');
@@ -112,8 +116,22 @@
     var elStatExt = document.getElementById('statExt');
     var elExtensions = document.getElementById('extensionsGrid');
     var elEmpty = document.getElementById('emptySearch');
+    var currentWikiLang = (new URLSearchParams(window.location.search).get('lang') || localStorage.getItem('language') || 'zh') === 'ja' ? 'ja' : 'zh';
 
     var COUNTRIES = { china: '中国', japan: '日本' };
+    document.documentElement.lang = currentWikiLang === 'ja' ? 'ja' : 'zh-CN';
+
+    function localizedItem(item) {
+      if (currentWikiLang !== 'ja') return item;
+      var ja = item && item.i18n && item.i18n.ja ? item.i18n.ja : null;
+      if (!ja) return item;
+      var copy = {};
+      Object.keys(item).forEach(function (key) { copy[key] = item[key]; });
+      copy.title = ja.title || item.title;
+      copy.summary = ja.summary || item.summary;
+      copy.region = ja.region || item.region;
+      return copy;
+    }
 
     function esc(s) {
       var d = document.createElement('div');
@@ -121,9 +139,8 @@
       return d.innerHTML;
     }
 
-    /* ── Render helpers ── */
-
     function renderCard(item) {
+      item = localizedItem(item);
       return '<article class="wiki-index-card" data-search="' +
         esc([item.title, item.club_name, item.school, item.region, item.summary].join(' ').toLowerCase()) +
         '"><div class="wiki-index-card-meta">' +
@@ -156,17 +173,14 @@
         '</p><a href="' + esc(doc.url) + '">查看文档</a></article>';
     }
 
-    /* ── Country builder ── */
-
     function buildCountries(index) {
       if (!index || !Object.keys(index).length) {
         return '<p class="wiki-index-empty">暂无已生成的高校 Wiki 页面。</p>';
       }
 
-      // Group: country → region → items
       var groups = {};
       Object.keys(index).forEach(function (key) {
-        var item = index[key];
+        var item = localizedItem(index[key]);
         var country = item.country || '';
         var region = item.region || '未标注地区';
         if (!groups[country]) groups[country] = {};
@@ -174,7 +188,6 @@
         groups[country][region].push(item);
       });
 
-      // Sort regions within each country
       Object.keys(groups).forEach(function (c) {
         var sorted = {};
         Object.keys(groups[c]).sort().forEach(function (r) {
@@ -212,8 +225,6 @@
       return html;
     }
 
-    /* ── Stats ── */
-
     function updateStats() {
       if (DATA.index) {
         elStatWiki.textContent = Object.keys(DATA.index).length;
@@ -226,19 +237,15 @@
       }
     }
 
-    /* ── Search ── */
-
     function onSearch() {
       var keyword = (elSearch.value || '').trim().toLowerCase();
       var allCards = document.querySelectorAll('.wiki-index-card, .wiki-library-card');
 
-      // Filter cards
       allCards.forEach(function (card) {
         var visible = !keyword || (card.getAttribute('data-search') || '').indexOf(keyword) !== -1;
         card.style.display = visible ? '' : 'none';
       });
 
-      // Hide empty region sections
       var regions = document.querySelectorAll('.wiki-index-region');
       regions.forEach(function (region) {
         var hasVisible = Array.prototype.some.call(
@@ -248,7 +255,6 @@
         region.classList.toggle('is-hidden', !hasVisible);
       });
 
-      // Hide empty country sections
       var countries = document.querySelectorAll('.wiki-index-country');
       var anyVisibleCountry = false;
       countries.forEach(function (country) {
@@ -260,7 +266,6 @@
         if (hasVisible) anyVisibleCountry = true;
       });
 
-      // Library section
       if (elLibrary) {
         var libHasVisible = Array.prototype.some.call(
           elLibrary.querySelectorAll('.wiki-library-card'),
@@ -269,11 +274,8 @@
         elLibrary.style.display = (!keyword || libHasVisible) ? '' : 'none';
       }
 
-      // Empty state
       elEmpty.classList.toggle('is-visible', keyword && !anyVisibleCountry);
     }
-
-    /* ── Init ── */
 
     function initSearch() {
       if (!elSearch) return;
@@ -281,6 +283,9 @@
     }
 
     function initNav() {
+      document.querySelectorAll('[data-wiki-index-lang]').forEach(function (link) {
+        link.classList.toggle('active', link.getAttribute('data-wiki-index-lang') === currentWikiLang);
+      });
       var navLinks = document.querySelectorAll('.wiki-nav a');
       navLinks.forEach(function (a) {
         a.addEventListener('click', function (e) {
@@ -296,12 +301,10 @@
     function loadAll() {
       var base = './';
 
-      // Try fetch — on success, replace static content with live data.
-      // On failure, static HTML (already in #wikiCountries / #wikiLibrary) stays visible.
       fetch(base + 'index.json')
         .then(function (r) { return r.json(); })
         .then(function (data) { DATA.index = data; })
-        .catch(function () { /* fetch failed, static content stays */ })
+        .catch(function () {})
         .then(function () {
           return fetch(base + 'feature-slots.json')
             .then(function (r) { return r.json(); })
@@ -317,19 +320,15 @@
           DATA.library = data ? (data.docs || []) : [];
         })
         .then(function () {
-          // Extensions — always replace the "加载中…" placeholder
           if (DATA.features && DATA.features.length) {
             elExtensions.innerHTML = DATA.features.map(renderExtension).join('');
           } else {
             elExtensions.innerHTML = '<p class="wiki-index-empty">暂无扩展预留。</p>';
           }
 
-          // Only replace static content if we got live index data
           if (DATA.index && Object.keys(DATA.index).length) {
             elCountries.innerHTML = buildCountries(DATA.index);
-          }
-          // If fetch failed, static content in #wikiCountries remains — update stats from it
-          else if (!DATA.index) {
+          } else if (!DATA.index) {
             var staticCards = elCountries.querySelectorAll('.wiki-index-card');
             if (staticCards.length) {
               elStatWiki.textContent = staticCards.length;

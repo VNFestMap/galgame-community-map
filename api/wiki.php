@@ -67,6 +67,10 @@ function wikiImageOption($value, array $allowed, string $fallback): string {
     return in_array($value, $allowed, true) ? $value : $fallback;
 }
 
+function wikiSectionHeadingLevel($value): int {
+    return (int)$value === 3 ? 3 : 2;
+}
+
 function wikiPageName(string $clubKey): string {
     [$country, $id] = wikiParseClubKey($clubKey);
     return $country . '-' . $id . '.html';
@@ -80,8 +84,16 @@ function wikiDisplayName(array $club): string {
     return (string)($club['display_name'] ?? $club['name'] ?? $club['school'] ?? '');
 }
 
+function wikiNormalizeRegionName(string $value, string $country = 'china'): string {
+    $value = trim($value);
+    if ($value === '') return '';
+    if ($country === 'japan') return $value;
+    return preg_replace('/(壮族自治区|回族自治区|维吾尔自治区|特别行政区|自治区|省|市)$/u', '', $value) ?? $value;
+}
+
 function wikiRegionForClub(array $club, array $content): string {
-    return (string)($club['province'] ?? $club['prefecture'] ?? ($content['infobox']['地区'] ?? '') ?? '');
+    $country = (string)($club['country'] ?? explode('-', (string)($content['club_key'] ?? 'china'))[0] ?? 'china');
+    return wikiNormalizeRegionName((string)($club['province'] ?? $club['prefecture'] ?? ($content['infobox']['地区'] ?? '') ?? ''), $country);
 }
 
 function wikiGetClub(string $country, int $clubId): array {
@@ -113,6 +125,7 @@ function wikiDefaultContent(string $clubKey, array $club): array {
         'sections' => [
             [
                 'heading' => '概要',
+                'level' => 2,
                 'body' => ['本页面用于整理该同好会的公开资料、发展历史、活动记录和对外链接。'],
             ],
         ],
@@ -122,6 +135,52 @@ function wikiDefaultContent(string $clubKey, array $club): array {
         ],
         'updated_at' => date('Y-m-d'),
     ];
+}
+
+function wikiNormalizeLocalizedContent(array $input): array {
+    $title = trim((string)($input['title'] ?? ''));
+    $summary = trim((string)($input['summary'] ?? ''));
+
+    $infobox = [];
+    if (isset($input['infobox']) && is_array($input['infobox'])) {
+        foreach ($input['infobox'] as $key => $value) {
+            $key = trim((string)$key);
+            $value = trim((string)$value);
+            if ($key !== '' && $value !== '') $infobox[$key] = $value;
+        }
+    }
+
+    $sections = [];
+    foreach (($input['sections'] ?? []) as $section) {
+        if (!is_array($section)) continue;
+        $heading = trim((string)($section['heading'] ?? ''));
+        $bodyText = $section['body'] ?? [];
+        if (is_string($bodyText)) {
+            $bodyText = preg_split('/\r\n|\r|\n/', $bodyText);
+        }
+        $body = [];
+        foreach ((array)$bodyText as $paragraph) {
+            $paragraph = trim((string)$paragraph);
+            if ($paragraph !== '') $body[] = $paragraph;
+        }
+        if ($heading !== '' && $body) {
+            $sections[] = [
+                'heading' => $heading,
+                'level' => wikiSectionHeadingLevel($section['level'] ?? 2),
+                'body' => $body,
+            ];
+        }
+    }
+
+    $hasContent = $title !== '' || $summary !== '' || !empty($infobox) || !empty($sections);
+    if (!$hasContent) return [];
+
+    $content = [];
+    if ($title !== '') $content['title'] = $title;
+    if ($summary !== '') $content['summary'] = $summary;
+    if (!empty($infobox)) $content['infobox'] = $infobox;
+    if (!empty($sections)) $content['sections'] = $sections;
+    return $content;
 }
 
 function wikiNormalizeContent(array $input, string $clubKey, array $club): array {
@@ -156,7 +215,11 @@ function wikiNormalizeContent(array $input, string $clubKey, array $club): array
             if ($paragraph !== '') $body[] = $paragraph;
         }
         if ($heading !== '' && $body) {
-            $sections[] = ['heading' => $heading, 'body' => $body];
+            $sections[] = [
+                'heading' => $heading,
+                'level' => wikiSectionHeadingLevel($section['level'] ?? 2),
+                'body' => $body,
+            ];
         }
     }
     if (!$sections) {
@@ -192,6 +255,12 @@ function wikiNormalizeContent(array $input, string $clubKey, array $club): array
         }
     }
 
+    $i18n = [];
+    if (isset($input['i18n']['ja']) && is_array($input['i18n']['ja'])) {
+        $ja = wikiNormalizeLocalizedContent($input['i18n']['ja']);
+        if (!empty($ja)) $i18n['ja'] = $ja;
+    }
+
     return [
         'club_key' => $clubKey,
         'title' => $title,
@@ -200,6 +269,7 @@ function wikiNormalizeContent(array $input, string $clubKey, array $club): array
         'sections' => $sections,
         'images' => $images,
         'references' => $references,
+        'i18n' => $i18n,
         'updated_at' => date('Y-m-d'),
     ];
 }
@@ -234,7 +304,21 @@ function wikiRenderImages(array $images): string {
     return '<section class="wiki-image-gallery" aria-label="图片">' . $items . '</section>';
 }
 
-function wikiRenderPage(array $content, array $club): string {
+function wikiLocalizedContent(array $content, string $lang): array {
+    $localized = $lang === 'ja' && isset($content['i18n']['ja']) && is_array($content['i18n']['ja'])
+        ? $content['i18n']['ja']
+        : [];
+    return array_merge($content, [
+        'title' => (string)($localized['title'] ?? $content['title'] ?? ''),
+        'summary' => (string)($localized['summary'] ?? $content['summary'] ?? ''),
+        'infobox' => !empty($localized['infobox']) && is_array($localized['infobox']) ? $localized['infobox'] : ($content['infobox'] ?? []),
+        'sections' => !empty($localized['sections']) && is_array($localized['sections']) ? $localized['sections'] : ($content['sections'] ?? []),
+        'images' => !empty($localized['images']) && is_array($localized['images']) ? $localized['images'] : ($content['images'] ?? []),
+        'references' => !empty($localized['references']) && is_array($localized['references']) ? $localized['references'] : ($content['references'] ?? []),
+    ]);
+}
+
+function wikiRenderArticle(array $content, array $club, string $lang): string {
     $rows = $content['infobox'] ?? [];
     $infoboxRows = '';
     foreach ($rows as $key => $value) {
@@ -249,8 +333,9 @@ function wikiRenderPage(array $content, array $club): string {
 
     $sections = '';
     foreach (($content['sections'] ?? []) as $i => $section) {
+        $level = wikiSectionHeadingLevel($section['level'] ?? 2);
         $sections .= '<section class="wiki-section" id="section-' . ($i + 1) . "\">\n";
-        $sections .= '<h2>' . wikiEscape((string)$section['heading']) . "</h2>\n";
+        $sections .= '<h' . $level . '>' . wikiEscape((string)$section['heading']) . '</h' . $level . ">\n";
         $sections .= wikiRenderParagraphs($section['body'] ?? []);
         $sections .= "\n</section>\n";
     }
@@ -268,6 +353,26 @@ function wikiRenderPage(array $content, array $club): string {
     $updated = wikiEscape((string)($content['updated_at'] ?? '未记录'));
     $images = wikiRenderImages($content['images'] ?? []);
 
+    return '<article class="wiki-article" data-wiki-lang="' . wikiEscape($lang) . '">
+      <h1>' . $title . '</h1>
+      <aside class="wiki-infobox">
+        <div class="wiki-infobox-title">' . $title . '</div>
+        <table>' . $infoboxRows . '</table>
+      </aside>
+      <p class="wiki-summary">' . $summary . '</p>
+      ' . $images . '
+      <nav class="wiki-toc" aria-label="目录"><div class="wiki-toc-title">目录</div><ol>' . $toc . '</ol></nav>
+      ' . $sections . '
+      ' . $references . '
+      <footer class="wiki-footer">最后更新：' . $updated . '</footer>
+    </article>';
+}
+
+function wikiRenderPage(array $content, array $club): string {
+    $zhArticle = wikiRenderArticle(wikiLocalizedContent($content, 'zh'), $club, 'zh');
+    $jaArticle = wikiRenderArticle(wikiLocalizedContent($content, 'ja'), $club, 'ja');
+    $title = wikiEscape((string)$content['title']);
+
     return '<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -283,20 +388,11 @@ function wikiRenderPage(array $content, array $club): string {
     <span>同好会维基</span>
   </header>
   <main class="wiki-page">
-    <article class="wiki-article">
-      <h1>' . $title . '</h1>
-      <aside class="wiki-infobox">
-        <div class="wiki-infobox-title">' . $title . '</div>
-        <table>' . $infoboxRows . '</table>
-      </aside>
-      <p class="wiki-summary">' . $summary . '</p>
-      ' . $images . '
-      <nav class="wiki-toc" aria-label="目录"><div class="wiki-toc-title">目录</div><ol>' . $toc . '</ol></nav>
-      ' . $sections . '
-      ' . $references . '
-      <footer class="wiki-footer">最后更新：' . $updated . '</footer>
-    </article>
+    <nav class="wiki-language-switch" id="wikiLanguageSwitch" aria-label="Language"><a href="?lang=zh" data-wiki-switch-lang="zh">中文</a><a href="?lang=ja" data-wiki-switch-lang="ja">日本語</a></nav>
+    ' . $zhArticle . '
+    ' . $jaArticle . '
   </main>
+  <script>(function(){var p=new URLSearchParams(window.location.search);var lang=p.get("lang")||localStorage.getItem("language")||"zh";lang=lang==="ja"?"ja":"zh";document.documentElement.lang=lang==="ja"?"ja":"zh-CN";document.querySelectorAll("[data-wiki-lang]").forEach(function(n){n.hidden=n.getAttribute("data-wiki-lang")!==lang;});document.querySelectorAll("[data-wiki-switch-lang]").forEach(function(n){n.classList.toggle("active",n.getAttribute("data-wiki-switch-lang")===lang);});})();</script>
 </body>
 </html>
 ';
@@ -431,7 +527,7 @@ function wikiGeneratePageAndIndex(string $clubKey, array $content, array $club, 
             $name = wikiPageName((string)$row['club_key']);
             [$rowCountry, $rowId] = wikiParseClubKey((string)$row['club_key']);
             $rowClub = wikiGetClub($rowCountry, $rowId);
-            $manifest[$row['club_key']] = [
+            $rowManifest = [
                 'title' => (string)$row['title'],
                 'url' => './pages/' . $name,
                 'country' => $rowCountry,
@@ -442,10 +538,22 @@ function wikiGeneratePageAndIndex(string $clubKey, array $content, array $club, 
                 'summary' => (string)($row['summary'] ?? ''),
                 'updated_at' => (string)($row['updated_at'] ?? ''),
             ];
+            if (!empty($row['i18n']['ja']) && is_array($row['i18n']['ja'])) {
+                $rowManifest['i18n'] = [
+                    'ja' => [
+                        'title' => (string)($row['i18n']['ja']['title'] ?? $row['title'] ?? ''),
+                        'summary' => (string)($row['i18n']['ja']['summary'] ?? $row['summary'] ?? ''),
+                        'region' => (string)($row['i18n']['ja']['region'] ?? ($row['i18n']['ja']['infobox']['Region'] ?? ($row['i18n']['ja']['infobox']['地域'] ?? ''))),
+                    ],
+                ];
+            }
+            $manifest[$row['club_key']] = $rowManifest;
         }
     }
     wikiWriteJson($indexFile, $manifest);
-    file_put_contents($homeFile, wikiRenderIndexHome($manifest, wikiReadLibraryDocs($rootDir), wikiReadFeatureSlots($rootDir)), LOCK_EX);
+    if (!file_exists($homeFile)) {
+        file_put_contents($homeFile, wikiRenderIndexHome($manifest, wikiReadLibraryDocs($rootDir), wikiReadFeatureSlots($rootDir)), LOCK_EX);
+    }
 
     return ['page_url' => './wiki/pages/' . $pageName, 'manifest' => $manifest];
 }

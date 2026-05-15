@@ -24,5 +24,7 @@ assert.doesNotMatch(
   /const actionsContainer = content\.querySelector\(['"]\.club-detail-actions['"]\)/,
   'main action binding must not grab the wiki action wrapper'
 );
+assert.match(source, /wikiLangParam/, 'wiki links should carry the current UI language');
+assert.match(source, /lang=ja/, 'Japanese UI should open wiki in Japanese mode');
 
 console.log('club detail action tests passed');

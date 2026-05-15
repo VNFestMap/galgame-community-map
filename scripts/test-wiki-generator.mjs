@@ -24,6 +24,28 @@ writeFileSync(join(fixture, 'data/clubs.json'), JSON.stringify({
       type: 'school',
       verified: 1,
       created_at: '2022-05-10'
+    },
+    {
+      id: 3,
+      country: 'china',
+      school: 'Incomplete Test University',
+      province: 'Shanghai',
+      name: 'Incomplete Wiki Test Club',
+      display_name: 'Incomplete Wiki Test Club',
+      type: 'school',
+      verified: 1,
+      created_at: '2024-01-01'
+    },
+    {
+      id: 4,
+      country: 'china',
+      school: 'Province Alias Test University',
+      province: '四川省',
+      name: 'Province Alias Test Club',
+      display_name: 'Province Alias Test Club',
+      type: 'school',
+      verified: 1,
+      created_at: '2024-01-02'
     }
   ]
 }, null, 2), 'utf8');
@@ -37,16 +59,56 @@ writeFileSync(join(fixture, 'wiki/content/china-2.json'), JSON.stringify({
   club_key: 'china-2',
   title: '安理二次元同好交流圈',
   summary: '公开资料页 <script>alert(1)</script>',
+  i18n: {
+    ja: {
+      title: 'Anri VN Circle JP',
+      summary: 'Japanese summary for the wiki page.',
+      infobox: {
+        Region: 'JP Region'
+      },
+      sections: [
+        { heading: 'JP Overview', level: 2, body: ['Japanese paragraph.'] }
+      ]
+    }
+  },
   images: [
     { url: '../images/sample.png', caption: '示例图片', alt: '示例', width_percent: 50, align: 'right', fit: 'contain' }
   ],
   sections: [
-    { heading: '概要', body: ['第一段', '第二段'] }
+    { heading: '概要', level: 2, body: ['第一段', '第二段'] },
+    { heading: '活动形式', level: 3, body: ['每月组织一次交流会'] }
   ],
   references: [
     { label: '登记资料', url: '../index.html' }
   ],
   updated_at: '2026-05-14'
+}, null, 2), 'utf8');
+
+writeFileSync(join(fixture, 'wiki/content/china-3.json'), JSON.stringify({
+  club_key: 'china-3',
+  title: 'Incomplete Wiki Test Club',
+  summary: 'Only a basic summary exists.',
+  images: [],
+  sections: [
+    { heading: 'Overview', level: 2, body: ['Needs a fuller club introduction.'] }
+  ],
+  references: [],
+  updated_at: '2026-05-12'
+}, null, 2), 'utf8');
+
+writeFileSync(join(fixture, 'wiki/content/china-4.json'), JSON.stringify({
+  club_key: 'china-4',
+  title: 'Province Alias Test Club',
+  summary: 'Province aliases should be merged into one wiki region.',
+  infobox: {
+    地区: '四川省'
+  },
+  images: [],
+  sections: [
+    { heading: 'Overview', level: 2, body: ['This page checks province suffix normalization.'] }
+  ],
+  references: [],
+  updated_at: '2026-05-13'
 }, null, 2), 'utf8');
 
 writeFileSync(join(fixture, 'wiki/library/index.json'), JSON.stringify({
@@ -70,8 +132,8 @@ if (pageNameForClubKey('china-2') !== 'china-2.html') {
 }
 
 const result = generateWikiPages({ rootDir: fixture });
-if (result.count !== 1) {
-  throw new Error(`Expected 1 page, got ${result.count}`);
+if (result.count !== 3) {
+  throw new Error(`Expected 3 pages, got ${result.count}`);
 }
 
 const pagePath = join(fixture, 'wiki/pages/china-2.html');
@@ -89,11 +151,20 @@ if (html.includes('<script>alert(1)</script>')) {
 if (!html.includes('&lt;script&gt;alert(1)&lt;/script&gt;')) {
   throw new Error('Generated page should preserve escaped text content');
 }
+if (!html.includes('<h2>概要</h2>') || !html.includes('<h3>活动形式</h3>')) {
+  throw new Error('Generated page should render section heading levels');
+}
 if (!html.includes('wiki-image-gallery') || !html.includes('../images/sample.png')) {
   throw new Error('Generated page should render wiki images');
 }
 if (!html.includes('wiki-image-align-right') || !html.includes('wiki-image-fit-contain') || !html.includes('--wiki-image-width:50%')) {
   throw new Error('Generated page should render image display controls');
+}
+if (!html.includes('data-wiki-lang="zh"') || !html.includes('data-wiki-lang="ja"') || !html.includes('Anri VN Circle JP')) {
+  throw new Error('Generated page should render Chinese and Japanese wiki bodies');
+}
+if (!html.includes('wikiLanguageSwitch') || !html.includes('?lang=ja')) {
+  throw new Error('Generated page should expose a language switcher');
 }
 
 const manifest = JSON.parse(readFileSync(join(fixture, 'wiki/index.json'), 'utf8'));
@@ -102,6 +173,12 @@ if (manifest['china-2'].url !== './pages/china-2.html') {
 }
 if (manifest['china-2'].country !== 'china' || manifest['china-2'].region !== '安徽') {
   throw new Error('Manifest should include country and region metadata');
+}
+if (manifest['china-4'].region !== '四川') {
+  throw new Error('Manifest should normalize Chinese province suffixes for wiki grouping');
+}
+if (manifest['china-2'].i18n?.ja?.title !== 'Anri VN Circle JP' || manifest['china-2'].i18n?.ja?.summary !== 'Japanese summary for the wiki page.') {
+  throw new Error('Manifest should include Japanese wiki index metadata');
 }
 
 const homePath = join(fixture, 'wiki/index.html');
@@ -117,6 +194,28 @@ if (!home.includes('文档库') || !home.includes('编写说明')) {
 }
 if (!home.includes('后续功能预留') || !home.includes('精选 Wiki')) {
   throw new Error('Wiki index should render reserved feature slots');
+}
+
+if (!home.includes('wiki-recent-updates') || !home.includes('最近更新')) {
+  throw new Error('Wiki index should render the real recent updates module');
+}
+if (!home.includes('wikiIndexLangSwitch') || !home.includes('lang=ja')) {
+  throw new Error('Wiki index should expose a Chinese/Japanese language switch');
+}
+if (!home.includes('wiki-maintenance-queue') || !home.includes('待完善页面')) {
+  throw new Error('Wiki index should render the real maintenance queue module');
+}
+if (!home.includes('Incomplete Wiki Test Club') || !home.includes('完整度')) {
+  throw new Error('Maintenance queue should include incomplete wiki pages with completeness hints');
+}
+if (home.indexOf('缂栧啓璇存槑') > home.indexOf('瀹夌悊浜屾鍏冨悓濂戒氦娴佸湀')) {
+  throw new Error('Recent updates should sort library and wiki entries by updated_at descending');
+}
+
+writeFileSync(homePath, '<!doctype html><title>Custom wiki shell</title>', 'utf8');
+generateWikiPages({ rootDir: fixture });
+if (readFileSync(homePath, 'utf8') !== '<!doctype html><title>Custom wiki shell</title>') {
+  throw new Error('Generator should preserve an existing wiki homepage shell');
 }
 
 rmSync(fixture, { recursive: true, force: true });

@@ -197,11 +197,17 @@ switch ($action) {
         }
 
         $db = getDB();
+        ensureColumnExists($db, 'club_memberships', 'qq_account', "VARCHAR(255) DEFAULT ''");
+        ensureColumnExists($db, 'club_memberships', 'apply_role', "VARCHAR(50) DEFAULT 'member'");
+        ensureColumnExists($db, 'club_memberships', 'is_student', "INT DEFAULT 0");
+        ensureColumnExists($db, 'club_memberships', 'country', "VARCHAR(20) DEFAULT 'china'");
+
         // 兼容 country 列尚未创建的情况
         try {
             $stmt = $db->prepare(
                 "SELECT cm.id, cm.user_id, cm.role, cm.status, cm.joined_at,
-                        u.username, u.avatar_url
+                        cm.qq_account, cm.apply_role, cm.is_student,
+                        u.username, u.nickname, u.email, u.avatar_url
                  FROM club_memberships cm
                  JOIN users u ON u.id = cm.user_id
                  WHERE cm.club_id = ? AND cm.country = ? AND cm.status = 'active'
@@ -209,15 +215,28 @@ switch ($action) {
             );
             $stmt->execute([$clubId, $country]);
         } catch (Exception $e) {
-            $stmt = $db->prepare(
-                "SELECT cm.id, cm.user_id, cm.role, cm.status, cm.joined_at,
-                        u.username, u.avatar_url
-                 FROM club_memberships cm
-                 JOIN users u ON u.id = cm.user_id
-                 WHERE cm.club_id = ? AND cm.status = 'active'
-                 ORDER BY cm.joined_at ASC"
-            );
-            $stmt->execute([$clubId]);
+            try {
+                $stmt = $db->prepare(
+                    "SELECT cm.id, cm.user_id, cm.role, cm.status, cm.joined_at,
+                            cm.qq_account, cm.apply_role, cm.is_student,
+                            u.username, u.nickname, u.email, u.avatar_url
+                     FROM club_memberships cm
+                     JOIN users u ON u.id = cm.user_id
+                     WHERE cm.club_id = ? AND cm.status = 'active'
+                     ORDER BY cm.joined_at ASC"
+                );
+                $stmt->execute([$clubId]);
+            } catch (Exception $e2) {
+                $stmt = $db->prepare(
+                    "SELECT cm.id, cm.user_id, cm.role, cm.status, cm.joined_at,
+                            u.username, u.avatar_url
+                     FROM club_memberships cm
+                     JOIN users u ON u.id = cm.user_id
+                     WHERE cm.club_id = ? AND cm.status = 'active'
+                     ORDER BY cm.joined_at ASC"
+                );
+                $stmt->execute([$clubId]);
+            }
         }
         $members = $stmt->fetchAll();
 
@@ -225,6 +244,10 @@ switch ($action) {
         foreach ($members as &$m) {
             $m['id'] = (int)$m['id'];
             $m['user_id'] = (int)$m['user_id'];
+            $m['is_student'] = isset($m['is_student']) ? (int)$m['is_student'] : 0;
+            if ($currentUser['role'] !== 'super_admin') {
+                unset($m['qq_account'], $m['apply_role'], $m['is_student'], $m['email']);
+            }
         }
 
         echo json_encode(['success' => true, 'members' => $members]);

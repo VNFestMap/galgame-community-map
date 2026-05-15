@@ -1,0 +1,22 @@
+import fs from 'fs';
+import assert from 'assert/strict';
+
+const authApi = fs.readFileSync('api/auth.php', 'utf8');
+const authInclude = fs.readFileSync('includes/auth.php', 'utf8');
+const appJs = fs.readFileSync('js/app.js', 'utf8');
+
+assert.match(authInclude, /session\.cookie_samesite/, 'sessions should set a SameSite cookie policy');
+assert.match(authInclude, /session_regenerate_id\s*\(\s*true\s*\)/, 'login should regenerate the PHP session id');
+assert.doesNotMatch(authInclude, /\$_REQUEST\s*\[\s*['"]admin_token['"]\s*\]/, 'legacy admin token must not be accepted from query/body params');
+
+assert.match(authApi, /function\s+publicAuthUser\s*\(/, 'auth API should centralize public user serialization');
+assert.doesNotMatch(authApi, /['"]debug_code['"]\s*=>/, 'email verification codes must never be returned by API responses');
+assert.doesNotMatch(authApi, /['"]qq_openid['"]\s*=>/, 'QQ OpenID must not be serialized to frontend responses');
+assert.doesNotMatch(authApi, /['"]discord_id['"]\s*=>/, 'Discord ID must not be serialized to frontend responses');
+assert.match(authApi, /['"]qq_bound['"]\s*=>/, 'frontend should receive only QQ bind state');
+assert.match(authApi, /['"]discord_bound['"]\s*=>/, 'frontend should receive only Discord bind state');
+
+assert.match(appJs, /qq_bound/, 'frontend should read QQ bind state without raw OpenID');
+assert.match(appJs, /discord_bound/, 'frontend should read Discord bind state without raw Discord ID');
+
+console.log('Backend privacy contract checks passed');

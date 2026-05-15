@@ -203,7 +203,8 @@ body {
 }
 
 .wiki-index-grid,
-.wiki-extension-grid {
+.wiki-extension-grid,
+.wiki-module-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
@@ -211,7 +212,8 @@ body {
 
 .wiki-index-card,
 .wiki-library-card,
-.wiki-extension-card {
+.wiki-extension-card,
+.wiki-module-card {
   min-height: 168px;
   padding: 14px;
   border: 1px solid var(--wiki-border-soft);
@@ -220,7 +222,8 @@ body {
 
 .wiki-index-card h3,
 .wiki-library-card h3,
-.wiki-extension-card h3 {
+.wiki-extension-card h3,
+.wiki-module-card h3 {
   margin: 8px 0;
   font-size: 17px;
   line-height: 1.4;
@@ -228,7 +231,8 @@ body {
 
 .wiki-index-card p,
 .wiki-library-card p,
-.wiki-extension-card p {
+.wiki-extension-card p,
+.wiki-module-card p {
   margin: 0 0 12px;
   color: var(--wiki-muted);
   font-size: 13px;
@@ -247,6 +251,38 @@ body {
 .wiki-extension-card.is-disabled a {
   color: var(--wiki-muted);
   pointer-events: none;
+}
+
+.wiki-recent-updates,
+.wiki-maintenance-queue {
+  padding: 18px;
+  border: 1px solid var(--wiki-border-soft);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wiki-recent-card {
+  border-left: 4px solid var(--wiki-link);
+}
+
+.wiki-maintenance-card {
+  border-left: 4px solid #d97706;
+}
+
+.wiki-completeness-bar {
+  height: 8px;
+  margin: 12px 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf0f5;
+}
+
+.wiki-completeness-bar span {
+  display: block;
+  width: var(--wiki-completeness, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d97706, #2563eb);
 }
 
 .wiki-article {
@@ -275,6 +311,14 @@ body {
   font-family: Georgia, "Times New Roman", "Noto Serif SC", "Noto Serif JP", serif;
   font-size: 22px;
   font-weight: 400;
+  letter-spacing: 0;
+}
+
+.wiki-article h3 {
+  clear: left;
+  margin: 22px 0 10px;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -400,6 +444,30 @@ body {
 .wiki-toc a:hover,
 .wiki-references a:hover {
   text-decoration: underline;
+}
+
+.wiki-language-switch {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.wiki-language-switch a {
+  border: 1px solid var(--wiki-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: var(--wiki-text);
+  text-decoration: none;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wiki-language-switch a.active {
+  border-color: var(--wiki-link);
+  background: #eaf2ff;
+  color: var(--wiki-link);
 }
 
 .wiki-section p {

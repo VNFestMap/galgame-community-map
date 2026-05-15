@@ -1809,6 +1809,691 @@ body::after {
     padding-right: 18px;
   }
 }
+
+/* ===== Admin Console Redesign v2: quieter, denser, task-first ===== */
+:root {
+  --bg-gradient: #0b0d12;
+  --card-bg: #12161f;
+  --card-border: rgba(148, 163, 184, 0.18);
+  --card-hover-border: rgba(45, 212, 191, 0.46);
+  --glass-blur: none;
+  --text-primary: #f4f7fb;
+  --text-secondary: #aab4c3;
+  --text-muted: #6f7d8f;
+  --accent-pink: #fb7185;
+  --accent-purple: #a78bfa;
+  --accent-gold: #f4c95d;
+  --accent-green: #34d399;
+  --accent-orange: #f59e0b;
+  --accent-blue: #38bdf8;
+  --vn-bg-0: #0b0d12;
+  --vn-bg-1: #10141d;
+  --vn-panel: #12161f;
+  --vn-panel-strong: #171c27;
+  --vn-line: rgba(148, 163, 184, 0.18);
+  --vn-line-strong: rgba(148, 163, 184, 0.26);
+  --vn-text: #f4f7fb;
+  --vn-muted: #aab4c3;
+  --vn-faint: #6f7d8f;
+  --vn-pink: #fb7185;
+  --vn-cyan: #2dd4bf;
+  --vn-gold: #f4c95d;
+  --vn-red: #ef4444;
+  --vn-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  --vn-glow: none;
+  --shadow-card: 0 14px 34px rgba(0,0,0,0.22);
+  --radius-card: 10px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+:root[data-theme='light'] {
+  --bg-gradient: #f4f6f9;
+  --card-bg: #ffffff;
+  --card-border: rgba(15, 23, 42, 0.12);
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #7c8797;
+  --vn-bg-0: #f4f6f9;
+  --vn-bg-1: #eef2f7;
+  --vn-panel: #ffffff;
+  --vn-panel-strong: #ffffff;
+  --vn-line: rgba(15, 23, 42, 0.12);
+  --vn-line-strong: rgba(15, 23, 42, 0.16);
+  --vn-text: #111827;
+  --vn-muted: #4b5563;
+  --vn-faint: #7c8797;
+  --vn-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+  --shadow-card: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+html {
+  background: var(--bg-gradient);
+}
+
+body {
+  background:
+    linear-gradient(180deg, rgba(45, 212, 191, 0.05), transparent 240px),
+    var(--bg-gradient);
+  color: var(--text-primary);
+}
+
+body::before,
+body::after {
+  display: none;
+}
+
+.container {
+  width: min(1360px, calc(100vw - 48px));
+  max-width: none;
+  padding: 24px 0 42px;
+}
+
+@media (min-width: 960px) {
+  .container {
+    display: grid;
+    grid-template-columns: 284px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 16px 18px;
+  }
+
+  .header {
+    grid-column: 1 / -1;
+  }
+
+  .admin-sidebar {
+    grid-column: 1;
+  }
+
+  .admin-content {
+    grid-column: 2;
+  }
+}
+
+.header {
+  min-height: 76px;
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: var(--vn-panel-strong);
+  border: 1px solid var(--vn-line-strong);
+  box-shadow: var(--vn-shadow);
+}
+
+.header::before,
+.header::after {
+  display: none;
+}
+
+.header h1 {
+  font-size: 22px;
+  line-height: 1.15;
+  color: var(--vn-text);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: none;
+}
+
+.header h1::after {
+  content: '同好会资料、成员、绑定码与推荐榜管理';
+  margin-top: 6px;
+  color: var(--vn-faint);
+  -webkit-text-fill-color: currentColor;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.header-actions {
+  gap: 10px;
+}
+
+.header-link {
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: #0f131b;
+  border: 1px solid var(--vn-line);
+  color: var(--vn-muted);
+  box-shadow: none;
+}
+
+:root[data-theme='light'] .header-link {
+  background: #f8fafc;
+}
+
+.header-link:hover {
+  color: var(--vn-text);
+  background: rgba(45, 212, 191, 0.12);
+  border-color: rgba(45, 212, 191, 0.42);
+  box-shadow: none;
+}
+
+.admin-sidebar {
+  gap: 12px;
+}
+
+.club-selector {
+  position: sticky;
+  top: 14px;
+  z-index: 5;
+}
+
+.club-selector select,
+.tabs,
+.stat-card,
+.card,
+.empty,
+.section-card,
+.user-card,
+.modal,
+.toast {
+  background: var(--vn-panel);
+  border: 1px solid var(--vn-line);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.club-selector select {
+  min-height: 42px;
+  padding: 9px 36px 9px 12px;
+  border-radius: 8px;
+  color: var(--vn-text);
+  font-size: 13px;
+}
+
+.club-selector select:hover,
+.club-selector select:focus {
+  border-color: rgba(45, 212, 191, 0.55);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.10);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.stat-card::before {
+  display: none;
+}
+
+.stat-card:hover {
+  transform: none;
+  border-color: var(--card-hover-border);
+}
+
+.stat-card .num {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--vn-text);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+.stat-card .label {
+  margin-top: 5px;
+  color: var(--vn-faint);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tabs {
+  position: sticky;
+  top: 70px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px;
+  border-radius: 10px;
+  overflow: visible;
+}
+
+.tab-btn {
+  min-height: 38px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  color: var(--vn-muted);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.tab-btn::before {
+  display: none;
+}
+
+.tab-btn:hover {
+  color: var(--vn-text);
+  background: rgba(148, 163, 184, 0.10);
+}
+
+.tab-btn.active {
+  padding-left: 10px;
+  color: #061013;
+  background: var(--vn-cyan);
+  box-shadow: none;
+}
+
+.admin-content {
+  gap: 12px;
+  min-width: 0;
+}
+
+.toolbar {
+  min-height: 42px;
+  margin: 0;
+  padding: 8px 10px;
+  justify-content: space-between;
+  border: 1px solid var(--vn-line);
+  border-radius: 10px;
+  background: var(--vn-panel);
+}
+
+.toolbar::before {
+  content: '当前工作区';
+  color: var(--vn-faint);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.btn,
+.page-btn,
+.act-btn {
+  min-height: 34px;
+  border-radius: 7px;
+  background: #161b25;
+  border: 1px solid var(--vn-line);
+  color: var(--vn-text);
+  box-shadow: none;
+}
+
+:root[data-theme='light'] .btn,
+:root[data-theme='light'] .page-btn,
+:root[data-theme='light'] .act-btn {
+  background: #f8fafc;
+}
+
+.btn:hover,
+.page-btn:hover,
+.act-btn:hover {
+  transform: none;
+  border-color: rgba(45, 212, 191, 0.46);
+  box-shadow: none;
+}
+
+.btn-primary,
+.btn-pink,
+.btn-approve {
+  background: #0f766e;
+  border-color: #14b8a6;
+  color: #f8ffff;
+}
+
+.btn-reject {
+  background: #7f1d1d;
+  border-color: #ef4444;
+  color: #fff5f5;
+}
+
+.list {
+  gap: 8px;
+  margin: 0;
+}
+
+.card,
+.empty,
+.section-card,
+.user-card {
+  border-radius: 10px;
+}
+
+.card,
+.section-card,
+.user-card {
+  padding: 14px;
+}
+
+.card::before {
+  display: none;
+}
+
+.card:hover,
+.section-card:hover,
+.user-card:hover {
+  transform: none;
+  border-color: rgba(45, 212, 191, 0.38);
+}
+
+.card-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--vn-line);
+}
+
+.card-title,
+.section-title,
+.modal-title {
+  color: var(--vn-text);
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.card-body {
+  padding-top: 8px;
+}
+
+.card-body .row {
+  min-height: 24px;
+  padding: 3px 0;
+  color: var(--vn-muted);
+}
+
+.card-body .row .label {
+  color: var(--vn-faint);
+}
+
+.badge,
+.badge-role,
+.badge-status,
+.club-tag {
+  border-radius: 7px;
+  backdrop-filter: none;
+}
+
+.member-item {
+  gap: 12px;
+}
+
+.member-avatar {
+  width: 34px;
+  height: 34px;
+}
+
+.member-info .name {
+  color: var(--vn-text);
+}
+
+.member-info .detail {
+  color: var(--vn-faint);
+}
+
+.user-search-bar {
+  gap: 8px;
+}
+
+.form-input,
+.user-search-bar .search-input,
+.membership-card .mc-actions select {
+  min-height: 36px;
+  border-radius: 7px;
+  background: #0f131b;
+  border-color: var(--vn-line);
+  color: var(--vn-text);
+}
+
+:root[data-theme='light'] .form-input,
+:root[data-theme='light'] .user-search-bar .search-input,
+:root[data-theme='light'] .membership-card .mc-actions select {
+  background: #f8fafc;
+}
+
+.form-input:focus,
+.user-search-bar .search-input:focus {
+  border-color: rgba(45, 212, 191, 0.60);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.10);
+}
+
+.item-row,
+.search-item,
+.membership-card,
+.rec-card {
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.06);
+  border-color: var(--vn-line);
+}
+
+.item-row:hover,
+.search-item:hover {
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.modal-overlay {
+  background: rgba(5, 8, 13, 0.70);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.modal {
+  border-radius: 10px;
+  background: var(--vn-panel-strong);
+}
+
+.toast {
+  border-radius: 8px;
+}
+
+@media (max-width: 959px) {
+  .container {
+    width: min(100vw - 24px, 820px);
+    display: block;
+    padding-top: 14px;
+  }
+
+  .header {
+    min-height: 0;
+  }
+
+  .admin-sidebar,
+  .admin-content {
+    margin-top: 12px;
+  }
+
+  .club-selector,
+  .tabs {
+    position: static;
+  }
+
+  .tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: calc(100vw - 18px);
+    padding: 9px 0 28px;
+  }
+
+  .header {
+    padding: 14px;
+    border-radius: 9px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-link {
+    flex: 1;
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(4, minmax(72px, 1fr));
+    overflow-x: auto;
+  }
+
+  .stat-card {
+    min-width: 72px;
+  }
+
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .toolbar .btn {
+    width: auto;
+  }
+}
+
+/* Light mode pass: crisp neutral admin surface */
+:root[data-theme='light'] body {
+  background:
+    linear-gradient(180deg, rgba(20, 184, 166, 0.08), transparent 230px),
+    #f4f6f9;
+  color: var(--vn-text);
+}
+
+:root[data-theme='light'] .header,
+:root[data-theme='light'] .club-selector select,
+:root[data-theme='light'] .tabs,
+:root[data-theme='light'] .toolbar,
+:root[data-theme='light'] .stat-card,
+:root[data-theme='light'] .card,
+:root[data-theme='light'] .empty,
+:root[data-theme='light'] .section-card,
+:root[data-theme='light'] .user-card,
+:root[data-theme='light'] .modal,
+:root[data-theme='light'] .toast {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.11);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .header {
+  background:
+    linear-gradient(90deg, rgba(20, 184, 166, 0.08), transparent 40%),
+    #ffffff;
+}
+
+:root[data-theme='light'] .header-link,
+:root[data-theme='light'] .btn,
+:root[data-theme='light'] .page-btn,
+:root[data-theme='light'] .act-btn,
+:root[data-theme='light'] .form-input,
+:root[data-theme='light'] .user-search-bar .search-input,
+:root[data-theme='light'] .membership-card .mc-actions select {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #1f2937;
+}
+
+:root[data-theme='light'] .header-link:hover,
+:root[data-theme='light'] .btn:hover,
+:root[data-theme='light'] .page-btn:hover,
+:root[data-theme='light'] .act-btn:hover {
+  background: #eefcf9;
+  border-color: rgba(13, 148, 136, 0.38);
+  color: #0f766e;
+}
+
+:root[data-theme='light'] .tab-btn {
+  color: #5b6675;
+}
+
+:root[data-theme='light'] .tab-btn:hover {
+  background: #f1f5f9;
+  color: #111827;
+}
+
+:root[data-theme='light'] .tab-btn.active {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+:root[data-theme='light'] .stat-card .num,
+:root[data-theme='light'] .card-title,
+:root[data-theme='light'] .section-title,
+:root[data-theme='light'] .modal-title,
+:root[data-theme='light'] .member-info .name {
+  color: #111827;
+}
+
+:root[data-theme='light'] .stat-card .label,
+:root[data-theme='light'] .toolbar::before,
+:root[data-theme='light'] .member-info .detail,
+:root[data-theme='light'] .card-body .row .label {
+  color: #697586;
+}
+
+:root[data-theme='light'] .card-body .row {
+  color: #374151;
+}
+
+:root[data-theme='light'] .card-header {
+  border-bottom-color: rgba(15, 23, 42, 0.10);
+}
+
+:root[data-theme='light'] .item-row,
+:root[data-theme='light'] .search-item,
+:root[data-theme='light'] .membership-card,
+:root[data-theme='light'] .rec-card {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.10);
+}
+
+:root[data-theme='light'] .item-row:hover,
+:root[data-theme='light'] .search-item:hover {
+  background: #eefcf9;
+}
+
+:root[data-theme='light'] .badge-role.visitor,
+:root[data-theme='light'] .badge-status,
+:root[data-theme='light'] .club-tag {
+  background: #f1f5f9;
+  border-color: rgba(15, 23, 42, 0.10);
+  color: #475569;
+}
+
+:root[data-theme='light'] .btn-primary,
+:root[data-theme='light'] .btn-pink,
+:root[data-theme='light'] .btn-approve {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #ffffff;
+}
+
+:root[data-theme='light'] .btn-reject {
+  background: #fff1f2;
+  border-color: rgba(225, 29, 72, 0.28);
+  color: #be123c;
+}
+
+:root[data-theme='light'] .btn-reject:hover {
+  background: #ffe4e6;
+  border-color: rgba(225, 29, 72, 0.45);
+  color: #9f1239;
+}
+
+:root[data-theme='light'] .modal-overlay {
+  background: rgba(15, 23, 42, 0.34);
+}
 </style>
 </head>
 <body>
@@ -2039,6 +2724,15 @@ function getEffectiveLevel(user) {
   return level;
 }
 
+function isSuperAdminUser() {
+  return currentUser?.user?.role === 'super_admin';
+}
+
+function updateSuperAdminTabs() {
+  const usersTabBtn = document.getElementById('usersTabBtn');
+  if (usersTabBtn) usersTabBtn.style.display = isSuperAdminUser() ? '' : 'none';
+}
+
 // ====== Managed Clubs ======
 async function loadManagedClubs() {
   const sel = document.getElementById('clubSelector');
@@ -2087,10 +2781,8 @@ async function loadManagedClubs() {
     selectedClubId = -1;
   }
 
-  // 初始设置用户管理 tab 可见性
-  const usersTabBtn = document.getElementById('usersTabBtn');
-  const isSuperAdmin = currentUser?.user?.role === 'super_admin';
-  usersTabBtn.style.display = (selectedClubId === 0 && isSuperAdmin) ? '' : 'none';
+  // 超级管理员的全局用户/成员模块不依赖当前选择的同好会。
+  updateSuperAdminTabs();
 }
 
 function onClubChange() {
@@ -2100,11 +2792,10 @@ function onClubChange() {
   selectedCountry = parts[1] || 'china';
 
   // 显示/隐藏用户管理 tab
+  updateSuperAdminTabs();
   const usersTabBtn = document.getElementById('usersTabBtn');
-  const isSuperAdmin = currentUser?.user?.role === 'super_admin';
-  usersTabBtn.style.display = (selectedClubId === 0 && isSuperAdmin) ? '' : 'none';
   // 如果当前在用户管理 tab 且不再可见，切换到第一个 tab
-  if (currentTab === 'users' && usersTabBtn.style.display === 'none') {
+  if (currentTab === 'users' && usersTabBtn?.style.display === 'none') {
     switchTab('pending');
     return;
   }
@@ -2245,6 +2936,14 @@ function renderMembers() {
         const showRoleDown = canChangeRole && m.role === 'manager';
         // 转让负责人按钮：仅当前为负责人/super_admin，目标非自己、非负责人
         const showTransfer = !isSelf && (isSuperAdmin || myClubRole === 'representative') && m.role !== 'representative';
+        const memberDetails = [
+          m.nickname ? '昵称：' + escapeHtml(m.nickname) : '',
+          isSuperAdmin && m.email ? '邮箱：' + escapeHtml(m.email) : '',
+          isSuperAdmin && m.qq_account ? 'QQ：' + escapeHtml(m.qq_account) : '',
+          isSuperAdmin && m.apply_role ? '申请身份：' + applyRoleText(m.apply_role) : '',
+          isSuperAdmin && typeof m.is_student !== 'undefined' ? '学生：' + (parseInt(m.is_student) === 1 ? '是' : '否') : '',
+          '加入于 ' + formatDate(m.joined_at)
+        ].filter(Boolean).join(' · ');
 
         return `
         <div class="card">
@@ -2252,7 +2951,7 @@ function renderMembers() {
             <img class="member-avatar" src="${escapeHtml(m.avatar_url || '')}" alt="" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 32 32%22%3E%3Crect fill=%22rgba(255,255,255,0.1)%22 width=%2232%22 height=%2232%22 rx=%2216%22/%3E%3Ctext x=%2216%22 y=%2221%22 text-anchor=%22middle%22 fill=%22rgba(255,255,255,0.3)%22 font-size=%2214%22%3E${escapeHtml((m.username||'?')[0])}%3C/text%3E%3C/svg%3E'" />
             <div class="member-info">
               <div class="name">${escapeHtml(m.username || '未知')}</div>
-              <div class="detail">加入于 ${formatDate(m.joined_at)}</div>
+              <div class="detail">${memberDetails}</div>
             </div>
             <span class="badge badge-role ${m.role}">${ROLE_NAMES[m.role] || m.role}</span>
             <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
@@ -2311,9 +3010,9 @@ function openEventManage() {
 // ====== 用户管理（仅 super_admin，同好会 #0）======
 async function renderUsers() {
   const container = document.getElementById('listContainer');
-  const isSuperAdmin = currentUser?.user?.role === 'super_admin';
+  const isSuperAdmin = isSuperAdminUser();
 
-  if (!isSuperAdmin || selectedClubId !== 0) {
+  if (!isSuperAdmin) {
     container.innerHTML = '<div class="empty">⛔ 无权限访问</div>';
     return;
   }
@@ -3166,9 +3865,8 @@ async function removeRecommendation(id) {
 // ====== Tab ======
 function switchTab(tab) {
   if (tab === 'users') {
-    const isSuperAdmin = currentUser?.user?.role === 'super_admin';
-    if (selectedClubId !== 0 || !isSuperAdmin) {
-      showToast('请先选择 同好会 #0', 'error');
+    if (!isSuperAdminUser()) {
+      showToast('仅超级管理员可用', 'error');
       return;
     }
   }

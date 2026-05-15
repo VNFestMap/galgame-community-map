@@ -42,6 +42,34 @@ function normalizeEmail(string $email): string {
     return strtolower(trim($email));
 }
 
+function maskEmail(string $email): string {
+    $parts = explode('@', $email, 2);
+    if (count($parts) !== 2) {
+        return '';
+    }
+
+    $name = $parts[0];
+    $domain = $parts[1];
+    $first = mb_substr($name, 0, 1);
+    return $first . '***@' . $domain;
+}
+
+function publicAuthUser(array $user): array {
+    return [
+        'id' => (int)($user['id'] ?? 0),
+        'username' => $user['username'] ?? '',
+        'nickname' => $user['nickname'] ?? ($user['username'] ?? ''),
+        'avatar_url' => $user['avatar_url'] ?? '',
+        'role' => $user['role'] ?? 'visitor',
+        'email' => $user['email'] ?? '',
+        'email_verified' => !empty($user['email_verified_at']),
+        'qq_bound' => !empty($user['qq_openid']),
+        'discord_bound' => !empty($user['discord_id']),
+        'profile_bio' => $user['profile_bio'] ?? '',
+        'is_audit' => (int)($user['is_audit'] ?? 0),
+    ];
+}
+
 switch ($action) {
     case 'register_local':
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -126,17 +154,16 @@ switch ($action) {
         echo json_encode([
             'success' => true,
             'message' => '注册成功',
-            'user' => [
+            'user' => publicAuthUser([
                 'id' => (int)$userId,
                 'username' => $username,
                 'nickname' => $username,
                 'avatar_url' => '',
                 'role' => 'visitor',
                 'email' => $email,
-                'qq_openid' => '',
-                'discord_id' => '',
+                'email_verified_at' => date('Y-m-d H:i:s'),
                 'profile_bio' => '',
-            ]
+            ])
         ]);
         exit();
 
@@ -182,10 +209,14 @@ switch ($action) {
         $mailSent = sendMail($email, $subject, $message);
 
         logAction('user.send_register_code', 'user', null, ['email' => $email, 'mail_sent' => $mailSent]);
+        if (!$mailSent) {
+            echo json_encode(['success' => false, 'message' => '验证码发送失败，请稍后再试']);
+            exit();
+        }
+
         echo json_encode([
             'success' => true,
-            'message' => '验证码已发送至 ' . $email,
-            'debug_code' => $mailSent ? null : $code,
+            'message' => '验证码已发送至 ' . maskEmail($email),
         ]);
         exit();
 
@@ -237,18 +268,7 @@ switch ($action) {
         echo json_encode([
             'success' => true,
             'message' => '登录成功',
-            'user' => [
-                'id' => (int)$user['id'],
-                'username' => $user['username'],
-                'nickname' => $user['nickname'] ?? $user['username'],
-                'avatar_url' => $user['avatar_url'],
-                'role' => $user['role'],
-                'email' => $user['email'] ?? '',
-                'qq_openid' => $user['qq_openid'] ?? '',
-                'discord_id' => $user['discord_id'] ?? '',
-                'profile_bio' => $user['profile_bio'] ?? '',
-                'is_audit' => (int)($user['is_audit'] ?? 0),
-            ],
+            'user' => publicAuthUser($user),
             'memberships' => $stmt->fetchAll(),
         ]);
         exit();
@@ -285,18 +305,7 @@ switch ($action) {
 
             echo json_encode([
                 'logged_in' => true,
-                'user' => [
-                    'id' => (int)$user['id'],
-                    'username' => $user['username'],
-                    'nickname' => $user['nickname'] ?? $user['username'],
-                    'avatar_url' => $user['avatar_url'],
-                    'role' => $user['role'],
-                    'email' => $user['email'] ?? '',
-                    'qq_openid' => $user['qq_openid'] ?? '',
-                    'discord_id' => $user['discord_id'] ?? '',
-                    'profile_bio' => $user['profile_bio'] ?? '',
-                    'is_audit' => (int)($user['is_audit'] ?? 0),
-                ],
+                'user' => publicAuthUser($user),
                 'memberships' => $memberships,
             ]);
         } else {
@@ -391,11 +400,14 @@ switch ($action) {
 
         logAction('user.send_code', 'user', $user['id'], ['email' => $email, 'mail_sent' => $mailSent]);
 
-        // 即使邮件发送失败也返回 success（开发环境 mail() 可能不可用）
+        if (!$mailSent) {
+            echo json_encode(['success' => false, 'message' => '验证码发送失败，请稍后再试']);
+            exit();
+        }
+
         echo json_encode([
             'success' => true,
-            'message' => '验证码已发送至 ' . $email,
-            'debug_code' => $mailSent ? null : $code, // 开发调试用
+            'message' => '验证码已发送至 ' . maskEmail($email),
         ]);
         exit();
 

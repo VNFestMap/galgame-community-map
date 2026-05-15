@@ -38,4 +38,14 @@ if (bundledUrl !== 'https://www.map.vnfest.top/uploads/avatar.png') {
   throw new Error(`bundled media URL should become absolute, got ${bundledUrl}`);
 }
 
+const multiProvinceNames = core.Utils.getClubProvinceNames({ province: '四川省', provinces: ['四川省', '重庆市', '四川省'] });
+if (JSON.stringify(multiProvinceNames) !== JSON.stringify(['四川', '重庆'])) {
+  throw new Error(`multi province names should be normalized and deduped, got ${JSON.stringify(multiProvinceNames)}`);
+}
+
+const legacyProvinceNames = core.Utils.getClubProvinceNames({ province: '四川+重庆' });
+if (JSON.stringify(legacyProvinceNames) !== JSON.stringify(['四川', '重庆'])) {
+  throw new Error(`legacy compound province should split into multiple provinces, got ${JSON.stringify(legacyProvinceNames)}`);
+}
+
 console.log('app core tests passed');

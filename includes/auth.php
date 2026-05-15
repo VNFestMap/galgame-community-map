@@ -12,6 +12,8 @@ const ROLE_HIERARCHY = [
 function initSession(): void {
     if (session_status() === PHP_SESSION_NONE) {
         ini_set('session.cookie_httponly', '1');
+        ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.use_only_cookies', '1');
         ini_set('session.use_strict_mode', '1');
         if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
             ini_set('session.cookie_secure', '1');
@@ -29,7 +31,7 @@ function getCurrentUser(): ?array {
     $db = getDB();
     try {
         $stmt = $db->prepare(
-            'SELECT u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio
+            'SELECT u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio
              FROM users u
              WHERE u.id = ? AND u.status = \'active\''
         );
@@ -38,7 +40,7 @@ function getCurrentUser(): ?array {
     } catch (PDOException $e) {
         // profile_bio 列尚不存在（迁移未执行），回退到不带该列的查询
         $stmt = $db->prepare(
-            'SELECT u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.qq_openid, u.discord_id, u.is_audit
+            'SELECT u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.qq_openid, u.discord_id, u.is_audit
              FROM users u
              WHERE u.id = ? AND u.status = \'active\''
         );
@@ -96,8 +98,8 @@ function requireAdmin(): array {
 
     // Fallback to legacy token during transition
     if (defined('LEGACY_AUTH_ENABLED') && LEGACY_AUTH_ENABLED) {
-        $headers = getallheaders();
-        $token = $headers['X-Admin-Token'] ?? $_REQUEST['admin_token'] ?? '';
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $token = $headers['X-Admin-Token'] ?? $headers['x-admin-token'] ?? '';
         if ($token === ADMIN_TOKEN) {
             return ['id' => 0, 'username' => 'legacy_admin', 'role' => 'super_admin', 'avatar_url' => ''];
         }
@@ -127,6 +129,7 @@ function hasAnyClubManagementRole(array $user): bool {
 
 function createSession(int $userId): void {
     initSession();
+    session_regenerate_id(true);
     $_SESSION['user_id'] = $userId;
 
     $db = getDB();

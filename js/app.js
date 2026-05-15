@@ -708,7 +708,7 @@ function loadSocialBindStatus() {
     const discordUnbindBtn = document.getElementById('accDiscordUnbindBtn');
 
     if (qqStatus && qqBindBtn && qqUnbindBtn) {
-        const qqBound = user.qq_openid && user.qq_openid !== '';
+        const qqBound = !!user.qq_bound;
         qqStatus.textContent = qqBound ? '已绑定' : '未绑定';
         qqStatus.className = 'social-bind-status ' + (qqBound ? 'bound' : 'unbound');
         qqBindBtn.style.display = qqBound ? 'none' : '';
@@ -716,7 +716,7 @@ function loadSocialBindStatus() {
     }
 
     if (discordStatus && discordBindBtn && discordUnbindBtn) {
-        const dcBound = user.discord_id && user.discord_id !== '';
+        const dcBound = !!user.discord_bound;
         discordStatus.textContent = dcBound ? '已绑定' : '未绑定';
         discordStatus.className = 'social-bind-status ' + (dcBound ? 'bound' : 'unbound');
         discordBindBtn.style.display = dcBound ? 'none' : '';
@@ -764,7 +764,7 @@ async function unbindQQ() {
         });
         const data = await resp.json();
         if (data.success) {
-            currentUser.user.qq_openid = '';
+            currentUser.user.qq_bound = false;
             loadSocialBindStatus();
             alert('QQ 已解绑');
         } else {
@@ -781,7 +781,7 @@ async function unbindDiscord() {
         });
         const data = await resp.json();
         if (data.success) {
-            currentUser.user.discord_id = '';
+            currentUser.user.discord_bound = false;
             loadSocialBindStatus();
             alert('Discord 已解绑');
         } else {
@@ -3204,9 +3204,33 @@ function bindListModeControls() {
 }
 
 function normalizeProvince(name) {
-  if (!name) return '';
-  // 去除末尾的"省"/"市"（保持"海外"/"四川+重庆"/"内蒙古"等不变）
-  return name.replace(/[省市]$/, '');
+  return Utils.normalizeProvinceName(name);
+}
+
+function getClubProvinceNames(club) {
+  return Utils.getClubProvinceNames(club);
+}
+
+function getClubProvinceLabel(club) {
+  const names = getClubProvinceNames(club);
+  return names.length ? names.join('、') : normalizeProvince(club?.province || club?.prefecture || '');
+}
+
+function isJapanClub(club) {
+  return club?.country === 'japan' || Boolean(club?.prefecture);
+}
+
+function addClubToProvinceMap(map, item) {
+  if (item.type === 'non-regional') {
+    if (!map.has('__non_regional__')) map.set('__non_regional__', []);
+    map.get('__non_regional__').push(item);
+    return;
+  }
+  getClubProvinceNames(item).forEach(function(key) {
+    if (!key) return;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(item);
+  });
 }
 
 const LIST_ALL_REGION_KEY = '__all_regions__';
@@ -3232,9 +3256,9 @@ function renderListView() {
   if (filter === 'japan') {
     (State.japanRows || []).forEach(function(c) { allClubs.push(c); japanSet.add(c); });
   } else if (filter === 'overseas') {
-    (State.bandoriRows || []).forEach(function(c) { if (c.province === '海外') allClubs.push(c); });
+    (State.bandoriRows || []).forEach(function(c) { if (getClubProvinceNames(c).includes('海外')) allClubs.push(c); });
   } else if (filter === 'china') {
-    (State.bandoriRows || []).forEach(function(c) { if (c.province !== '海外') allClubs.push(c); });
+    (State.bandoriRows || []).forEach(function(c) { if (!getClubProvinceNames(c).includes('海外')) allClubs.push(c); });
   } else {
     (State.japanRows || []).forEach(function(c) { allClubs.push(c); japanSet.add(c); });
     (State.bandoriRows || []).forEach(function(c) { allClubs.push(c); });
@@ -3244,10 +3268,11 @@ function renderListView() {
   // 构建省份/都道府县索引（统一去掉"省""市"后缀防重复）
   const provinces = new Map();
   allClubs.forEach(club => {
-    const raw = japanSet.has(club) ? (club.prefecture || club.province || __('japanBtn')) : (club.province || __('listUnknownProvince'));
-    const p = normalizeProvince(raw);
-    if (!provinces.has(p)) provinces.set(p, []);
-    provinces.get(p).push(club);
+    const names = japanSet.has(club) ? [normalizeProvince(club.prefecture || club.province || __('japanBtn'))] : getClubProvinceNames(club);
+    (names.length ? names : [__('listUnknownProvince')]).forEach(function(p) {
+      if (!provinces.has(p)) provinces.set(p, []);
+      provinces.get(p).push(club);
+    });
   });
 
   provinces.set(LIST_ALL_REGION_KEY, allClubs);
@@ -3335,7 +3360,7 @@ function renderClubCards(rows) {
   grid.innerHTML = filtered.map((item, index) => {
     const name = Utils.escapeHTML(item.name || __('listNoName'));
     const type = Utils.escapeHTML(Utils.groupTypeText(item.type));
-    const province = Utils.escapeHTML(normalizeProvince(item.province || item.prefecture || ''));
+    const province = Utils.escapeHTML(isJapanClub(item) ? normalizeProvince(item.prefecture || item.province || '') : getClubProvinceLabel(item));
     const contactInfo = Utils.escapeHTML(item.info || '');
     const schoolInfo = Utils.escapeHTML(item.school || item.remark || __('listNoRemark'));
     const verified = item.verified;
@@ -3453,6 +3478,7 @@ function renderGroupList(rows) {
       rawType: item.type,
       verifyMeta: verifyMeta,
       province: item.province || '',
+      provinces: item.provinces || [],
       remark: item.remark || __('listNoRemark'),
       country: item.country || 'china',
       logo_url: item.logo_url || '',
@@ -3465,7 +3491,7 @@ function renderGroupList(rows) {
         ? `<button class="apply-mini-btn" data-club='${clubData}' type="button" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--md-primary);color:#fff;cursor:pointer;white-space:nowrap">${__('listApply')}</button>`
         : '';
 
-    const province = Utils.escapeHTML(normalizeProvince(item.province || item.prefecture || ''));
+    const province = Utils.escapeHTML(getClubProvinceLabel(item));
 
     const avatarHtml = item.logo_url
         ? `<img src="${Utils.escapeHTML(Utils.resolveMediaUrl(item.logo_url))}" alt="" class="club-avatar" loading="lazy">`
@@ -3565,16 +3591,18 @@ async function hydrateClubWikiLink(club) {
   if ((!item || !item.url) && !canEditWiki) return;
 
   const links = [];
+  const wikiLangParam = currentLang === 'ja' ? 'lang=ja' : 'lang=zh';
   if (item && item.url) {
     const cleanUrl = String(item.url).replace(/^\.?\//, '');
     links.push('<a class="club-detail-btn primary full" href="./wiki/' +
       Utils.escapeHTML(cleanUrl) +
+      '?' + wikiLangParam +
       '" style="margin-bottom:4px" target="_blank" rel="noopener noreferrer">' +
       Utils.escapeHTML(__('detailBtnWiki')) +
       '</a>');
   }
   if (canEditWiki) {
-    const editPath = 'admin/wiki_editor.html?club_key=' + encodeURIComponent(wikiKey);
+    const editPath = 'admin/wiki_editor.html?club_key=' + encodeURIComponent(wikiKey) + '&' + wikiLangParam;
     const isBundledClient = window.location.protocol === 'file:' ||
       window.location.protocol === 'capacitor:' ||
       window.location.protocol === 'ionic:' ||
@@ -3617,13 +3645,16 @@ function showClubDetail(club) {
     : `<div class="club-detail-avatar club-detail-avatar-fallback">🏫</div>`;
   const rawType = club.rawType || club.type;
   const typeLabel = rawType === 'region' ? __('detailTypeRegion') : rawType === 'vnfest' ? __('detailTypeVnfest') : __('detailTypeSchool');
+  const provinceLabel = club.country === 'japan'
+    ? (club.prefecture || club.province || __('detailUnfilled'))
+    : (getClubProvinceLabel(club) || __('detailUnfilled'));
   const headerHtml = `
     <div class="club-detail-header">
       ${avatarHtml}
       <div class="club-detail-header-info">
         <div class="club-detail-name">${esc(club.name)}</div>
         <div class="club-detail-meta-row">
-          <span class="club-detail-chip">${esc(club.province || __('detailUnfilled'))}</span>
+          <span class="club-detail-chip">${esc(provinceLabel)}</span>
           <span class="club-detail-chip primary">${esc(typeLabel)}</span>
           <span class="club-detail-chip verified">${__('detailRegistered')}</span>
         </div>
@@ -3847,7 +3878,7 @@ function showClubDetail(club) {
   hydrateClubWikiLink(club);
   if (actionsContainer) {
     actionsContainer.querySelector('[data-action="apply-club"]')?.addEventListener('click', () => openMembershipApplyModal(club));
-    actionsContainer.querySelector('[data-action="edit-club"]')?.addEventListener('click', () => openEditPanel(club));
+    actionsContainer.querySelector('[data-action="edit-club"]')?.addEventListener('click', () => openClubEditor(club));
     actionsContainer.querySelector('[data-action="member-list"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));
     actionsContainer.querySelector('[data-action="transfer"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));
     actionsContainer.querySelector('[data-action="leave-club"]')?.addEventListener('click', () => confirmLeaveClub(clubId, club.name, club.country));
@@ -4233,7 +4264,7 @@ function renderCurrentDetail() {
 
 function updateSummaryUI(source, animate = true) {
   const applySummary = () => {
-    const mainlandTotal = Array.from(State.provinceGroupsMap.keys()).reduce((sum, key) => key === '海外' ? sum : sum + (State.provinceGroupsMap.get(key)?.length || 0), 0);
+    const mainlandTotal = (State.bandoriRows || []).filter(item => !getClubProvinceNames(item).includes('海外')).length;
     document.getElementById('selectedTitle').textContent = __('renderTitleSummary');
     document.getElementById('selectedProvince').textContent = `${mainlandTotal} ` + __('clubCount');
     document.getElementById('selectedMeta').textContent = __('renderMetaDataSource', source);
@@ -4296,7 +4327,7 @@ function renderGroupListWithLocation(rows) {
         const verifyMeta = Utils.escapeHTML(item.verified ? __('listVerified') : __('listUnverified')) + __('listEstablished') + Utils.escapeHTML(Utils.formatCreatedAt(item.created_at));
 
         // 地区显示
-        let locationText = isJapan ? (item.prefecture || item.province || '') : (item.province || '');
+        let locationText = isJapan ? (item.prefecture || item.province || '') : getClubProvinceLabel(item);
 
         const clubData = encodeURIComponent(JSON.stringify({
             id: item.id,
@@ -4311,6 +4342,7 @@ function renderGroupListWithLocation(rows) {
             rawType: item.type,
             verifyMeta: verifyMeta,
             province: locationText,
+            provinces: item.provinces || [],
             remark: item.remark || __('listNoRemark'),
             country: isJapan ? 'japan' : 'china',
             logo_url: item.logo_url || '',
@@ -4397,7 +4429,7 @@ function showProvinceDetails(provinceName) {
         if (provinceName === '国内同好会') {
             State.currentDetailRows = State.provinceGroupsMap.get('__non_regional__') || [];
         } else if (provinceName === '海外') {
-            State.currentDetailRows = State.provinceGroupsMap.get('海外') || State.bandoriRows.filter(item => item.province === '海外') || [];
+            State.currentDetailRows = State.provinceGroupsMap.get('海外') || State.bandoriRows.filter(item => getClubProvinceNames(item).includes('海外')) || [];
         } else {
             State.currentDetailRows = State.provinceGroupsMap.get(key) || [];
         }
@@ -5109,7 +5141,7 @@ function switchToChinaMap() {
     animateMapCountrySwitch(renderChinaMap, () => {
         // 直接显示国内同好会列表
         State.currentDetailProvinceName = '国内同好会';
-        State.currentDetailRows = State.bandoriRows.filter(item => item.province !== '海外');
+        State.currentDetailRows = State.bandoriRows.filter(item => !getClubProvinceNames(item).includes('海外'));
         renderCurrentDetail();
     });
 }
@@ -5157,7 +5189,7 @@ function switchToOverseas() {
     // 显示海外同好会列表
     State.currentDetailProvinceName = '海外';
     State.selectedProvinceKey = '海外';
-    State.currentDetailRows = State.provinceGroupsMap.get('海外') || State.bandoriRows.filter(item => item.province === '海外') || [];
+    State.currentDetailRows = State.provinceGroupsMap.get('海外') || State.bandoriRows.filter(item => getClubProvinceNames(item).includes('海外')) || [];
     console.log('海外同好会列表:', State.currentDetailRows.length, '条');
 
     hideMapBubble();
@@ -5204,12 +5236,7 @@ async function reloadBandoriData() {
   State.currentDataSource = source;
   State.provinceGroupsMap = new Map();
   
-  rows.forEach(item => {
-    const key = item.type === 'non-regional' ? '__non_regional__' : Utils.normalizeProvinceName(item.province);
-    if (!key) return;
-    if (!State.provinceGroupsMap.has(key)) State.provinceGroupsMap.set(key, []);
-    State.provinceGroupsMap.get(key).push(item);
-  });
+  rows.forEach(item => addClubToProvinceMap(State.provinceGroupsMap, item));
 
   updateSummaryUI(source, false);
   renderChinaMap();
@@ -5452,6 +5479,166 @@ function getExternalLinksStr() {
   return pairs.join('\n');
 }
 
+const CHINA_PROVINCE_OPTIONS = [
+  '北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江',
+  '上海', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南',
+  '湖北', '湖南', '广东', '广西', '海南', '重庆', '四川', '贵州',
+  '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆',
+  '香港', '澳门', '台湾'
+];
+
+function parseProvinceInput(value) {
+  const seen = new Set();
+  return String(value || '')
+    .split(/[+＋/／、,，;；|｜\s]+/)
+    .map(item => item.trim())
+    .filter(item => {
+      if (!item || seen.has(item)) return false;
+      seen.add(item);
+      return true;
+    });
+}
+
+function formatProvinceInput(values) {
+  return (values || [])
+    .filter(Boolean)
+    .join('、');
+}
+
+function normalizeProvincePickerValues(values) {
+  const canonicalByKey = new Map(CHINA_PROVINCE_OPTIONS.map(name => [normalizeProvince(name), name]));
+  const seen = new Set();
+  return (values || [])
+    .map(value => {
+      const key = normalizeProvince(value);
+      return canonicalByKey.get(key) || key || String(value || '').trim();
+    })
+    .filter(value => {
+      const key = normalizeProvince(value);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function getProvincePickerSelection() {
+  return normalizeProvincePickerValues(parseProvinceInput(document.getElementById('editProvince')?.value || ''));
+}
+
+function setProvincePickerSelection(values) {
+  const editProvince = document.getElementById('editProvince');
+  if (!editProvince) return;
+  editProvince.value = formatProvinceInput(normalizeProvincePickerValues(values));
+  renderProvincePicker();
+}
+
+function renderProvincePicker() {
+  const buttonText = document.getElementById('provincePickerText');
+  const optionsWrap = document.getElementById('provincePickerOptions');
+  const searchInput = document.getElementById('provincePickerSearch');
+  const tagsWrap = document.getElementById('provincePickerTags');
+  if (!buttonText || !optionsWrap || !tagsWrap) return;
+
+  const selected = getProvincePickerSelection();
+  const selectedKeys = new Set(selected.map(normalizeProvince));
+  const query = normalizeProvince(searchInput?.value || '');
+  const filteredOptions = CHINA_PROVINCE_OPTIONS.filter(name => !query || normalizeProvince(name).includes(query));
+
+  buttonText.textContent = selected.length ? '已选 ' + selected.join('、') : '请选择省份';
+  tagsWrap.innerHTML = selected.map(name => (
+    `<button type="button" class="province-picker-tag" data-province="${Utils.escapeHTML(name)}">${Utils.escapeHTML(name)}<span>×</span></button>`
+  )).join('');
+  optionsWrap.innerHTML = filteredOptions.map(name => {
+    const selectedClass = selectedKeys.has(normalizeProvince(name)) ? ' selected' : '';
+    return `<button type="button" class="province-picker-option${selectedClass}" data-province="${Utils.escapeHTML(name)}">${Utils.escapeHTML(name)}</button>`;
+  }).join('');
+}
+
+function bindProvincePicker() {
+  const picker = document.getElementById('provincePicker');
+  if (!picker || picker.dataset.bound === '1') return;
+  picker.dataset.bound = '1';
+
+  const button = document.getElementById('provincePickerButton');
+  const menu = document.getElementById('provincePickerMenu');
+  const searchInput = document.getElementById('provincePickerSearch');
+  const optionsWrap = document.getElementById('provincePickerOptions');
+  const tagsWrap = document.getElementById('provincePickerTags');
+  const clearBtn = document.getElementById('provincePickerClear');
+
+  button?.addEventListener('click', () => {
+    if (!menu) return;
+    menu.hidden = !menu.hidden;
+    renderProvincePicker();
+    if (!menu.hidden) searchInput?.focus();
+  });
+  searchInput?.addEventListener('input', renderProvincePicker);
+  optionsWrap?.addEventListener('click', event => {
+    const option = event.target.closest('.province-picker-option');
+    if (!option) return;
+    const province = option.dataset.province || '';
+    const selected = getProvincePickerSelection();
+    const key = normalizeProvince(province);
+    const next = selected.some(item => normalizeProvince(item) === key)
+      ? selected.filter(item => normalizeProvince(item) !== key)
+      : selected.concat(province);
+    setProvincePickerSelection(next);
+  });
+  tagsWrap?.addEventListener('click', event => {
+    const tag = event.target.closest('.province-picker-tag');
+    if (!tag) return;
+    const key = normalizeProvince(tag.dataset.province || '');
+    setProvincePickerSelection(getProvincePickerSelection().filter(item => normalizeProvince(item) !== key));
+  });
+  clearBtn?.addEventListener('click', () => setProvincePickerSelection([]));
+  document.addEventListener('click', event => {
+    if (menu && !menu.hidden && !picker.contains(event.target)) menu.hidden = true;
+  });
+}
+
+function editableCountryForClub(club) {
+  if (club?.country === 'japan' || club?.prefecture) return 'japan';
+  if (club?.country === 'overseas' || club?.province === '海外' || club?.province === '娴峰') return 'overseas';
+  return 'china';
+}
+
+async function loadEditableClubSnapshot(club) {
+  const country = editableCountryForClub(club);
+  const clubId = parseInt(club?.id, 10);
+  if (!clubId) return { ...club, country };
+
+  try {
+    const response = country === 'japan'
+      ? await fetch('./data/clubs_japan.json', { cache: 'no-store' })
+      : await fetch('./data/clubs.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const rawClub = (payload.data || []).find(item => parseInt(item.id, 10) === clubId);
+    if (rawClub) {
+      const resolvedCountry = country === 'overseas' ? 'overseas' : (rawClub.country || country);
+      return {
+        ...club,
+        ...rawClub,
+        country: resolvedCountry,
+        originalInfo: rawClub.info ?? club.originalInfo ?? club.info ?? ''
+      };
+    }
+  } catch (err) {
+    console.warn('Failed to load editable club snapshot, falling back to current club data.', err);
+  }
+
+  return { ...club, country };
+}
+
+async function openClubEditor(club) {
+  if (!club) {
+    openEditPanel(null, true);
+    return;
+  }
+  const snapshot = await loadEditableClubSnapshot(club);
+  openEditPanel(snapshot, false);
+}
+
 function openEditPanel(club = null, isNew = false) {
   const adminPanel = document.getElementById('adminPanel');
   const adminPanelTitle = document.getElementById('adminPanelTitle');
@@ -5470,6 +5657,7 @@ function openEditPanel(club = null, isNew = false) {
   const prefectureGroup = document.getElementById('prefectureGroup');
   
   if (!adminPanel) return;
+  bindProvincePicker();
   
   function toggleRegionFields(country) {
     if (country === 'japan') {
@@ -5499,7 +5687,7 @@ function openEditPanel(club = null, isNew = false) {
       }
     }
   }
-  
+
   const privacyRadios = document.querySelectorAll('input[name="privacyLevel"]');
 
   if (isNew) {
@@ -5507,7 +5695,7 @@ function openEditPanel(club = null, isNew = false) {
     if (editId) editId.value = '';
     if (editCountry) editCountry.value = 'china';
     if (editName) editName.value = '';
-    if (editProvince) editProvince.value = '';
+    setProvincePickerSelection([]);
     if (editPrefecture) editPrefecture.value = '';
     if (editType) editType.value = 'school';
     if (editInfo) editInfo.value = '';
@@ -5528,7 +5716,7 @@ function openEditPanel(club = null, isNew = false) {
     const country = club.country || (club.prefecture ? 'japan' : (club.province === '海外' ? 'overseas' : 'china'));
     if (editCountry) editCountry.value = country;
     if (editName) editName.value = club.name || '';
-    if (club.province) setSelectValue(editProvince, club.province);
+    setProvincePickerSelection(club.provinces || (club.province ? [club.province] : []));
     if (club.prefecture) setSelectValue(editPrefecture, club.prefecture);
     if (editType) editType.value = club.rawType || club.type || 'school';
     if (editInfo) editInfo.value = club.originalInfo || club.info || '';
@@ -5573,7 +5761,6 @@ function openEditPanel(club = null, isNew = false) {
       toggleRegionFields(this.value);
     };
   }
-  
   adminPanel.classList.add('open');
 }
 
@@ -5583,7 +5770,7 @@ function closeAdminPanel() {
   currentEditClubId = null;
 }
 
-function openClubEditFromUrl() {
+async function openClubEditFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const editClubId = parseInt(params.get('edit_club') || '', 10);
   if (!editClubId) return;
@@ -5596,7 +5783,7 @@ function openClubEditFromUrl() {
     return;
   }
   club.country = country;
-  openEditPanel(club, false);
+  await openClubEditor(club);
 }
 
 async function saveClub() {
@@ -5638,12 +5825,13 @@ async function saveClub() {
   } else if (country === 'overseas') {
     clubData.province = '海外';
   } else {
-    const provinceSelect = editProvince;
-    clubData.province = provinceSelect?.options[provinceSelect.selectedIndex]?.text || '';
-    if (!clubData.province) {
-      alert('请选择省份');
+    const selectedProvinces = parseProvinceInput(editProvince?.value || '');
+    if (!selectedProvinces.length) {
+      alert('请填写至少一个省份');
       return;
     }
+    clubData.provinces = selectedProvinces;
+    clubData.province = selectedProvinces[0];
   }
   
   if (!clubData.name) {
@@ -6870,7 +7058,7 @@ async function init() {
     renderChinaMap();
     // 默认显示国内同好会列表
     State.currentDetailProvinceName = '国内同好会';
-    State.currentDetailRows = State.bandoriRows.filter(item => item.province !== '海外');
+    State.currentDetailRows = State.bandoriRows.filter(item => !getClubProvinceNames(item).includes('海外'));
     State.listSort = 'default';
     updateSortButtonView();
     renderCurrentDetail();
@@ -6923,12 +7111,7 @@ async function loadChinaData() {
                 
                 // 构建省份分组
                 State.provinceGroupsMap = new Map();
-                State.bandoriRows.forEach(item => {
-                    const key = item.type === 'non-regional' ? '__non_regional__' : Utils.normalizeProvinceName(item.province);
-                    if (!key) return;
-                    if (!State.provinceGroupsMap.has(key)) State.provinceGroupsMap.set(key, []);
-                    State.provinceGroupsMap.get(key).push(item);
-                });
+                State.bandoriRows.forEach(item => addClubToProvinceMap(State.provinceGroupsMap, item));
                 console.log('中国数据分组完成，省份数:', State.provinceGroupsMap.size);
                 return true;
             }
@@ -6956,12 +7139,7 @@ function useMockChinaData() {
 
     // 构建省份分组
     State.provinceGroupsMap = new Map();
-    State.bandoriRows.forEach(item => {
-        const key = item.type === 'non-regional' ? '__non_regional__' : Utils.normalizeProvinceName(item.province);
-        if (!key) return;
-        if (!State.provinceGroupsMap.has(key)) State.provinceGroupsMap.set(key, []);
-        State.provinceGroupsMap.get(key).push(item);
-    });
+    State.bandoriRows.forEach(item => addClubToProvinceMap(State.provinceGroupsMap, item));
     console.log('使用中国模拟数据，共', State.bandoriRows.length, '条');
 }
 

@@ -94,13 +94,20 @@ function renderToc(sections) {
   return `<nav class="wiki-toc" aria-label="目录"><div class="wiki-toc-title">目录</div><ol>${items}</ol></nav>`;
 }
 
+function sectionHeadingLevel(value) {
+  return Number.parseInt(value, 10) === 3 ? 3 : 2;
+}
+
 function renderSections(sections) {
-  return sections.map((section, index) => `
+  return sections.map((section, index) => {
+    const level = sectionHeadingLevel(section.level);
+    return `
     <section class="wiki-section" id="section-${index + 1}">
-      <h2>${escapeHtml(section.heading)}</h2>
+      <h${level}>${escapeHtml(section.heading)}</h${level}>
       ${renderParagraphs(section.body)}
     </section>
-  `).join('\n');
+  `;
+  }).join('\n');
 }
 
 function renderReferences(references) {
@@ -113,12 +120,63 @@ function renderReferences(references) {
   return `<section class="wiki-section wiki-references"><h2>参考资料</h2><ol>${items}</ol></section>`;
 }
 
+function localizedWikiContent(content, lang) {
+  const localized = lang === 'ja' ? (content.i18n?.ja || {}) : {};
+  const sections = Array.isArray(localized.sections) && localized.sections.length ? localized.sections : content.sections;
+  return {
+    ...content,
+    ...localized,
+    title: localized.title || content.title,
+    summary: localized.summary || content.summary,
+    infobox: localized.infobox && Object.keys(localized.infobox).length ? localized.infobox : (content.infobox || {}),
+    sections,
+    images: Array.isArray(localized.images) && localized.images.length ? localized.images : (content.images || []),
+    references: Array.isArray(localized.references) && localized.references.length ? localized.references : (content.references || []),
+    updated_at: content.updated_at,
+  };
+}
+
+function manifestJapaneseMetadata(content) {
+  const ja = content.i18n?.ja || {};
+  if (!ja || typeof ja !== 'object') return null;
+  const hasContent = String(ja.title || '').trim() || String(ja.summary || '').trim() ||
+    Object.keys(ja.infobox || {}).length || (Array.isArray(ja.sections) && ja.sections.length);
+  if (!hasContent) return null;
+  return {
+    title: String(ja.title || content.title || ''),
+    summary: String(ja.summary || content.summary || ''),
+    region: String(ja.region || ja.infobox?.Region || ja.infobox?.地域 || ''),
+  };
+}
+
+function renderWikiArticle(content, club, lang) {
+  const languageLabel = lang === 'ja' ? 'ja' : 'zh';
+  return `<article class="wiki-article" data-wiki-lang="${languageLabel}">
+      <h1>${escapeHtml(content.title)}</h1>
+      ${renderInfobox(content, club)}
+      <p class="wiki-summary">${escapeHtml(content.summary)}</p>
+      ${renderImages(content.images)}
+      ${renderToc(content.sections)}
+      ${renderSections(content.sections)}
+      ${renderReferences(content.references)}
+      <footer class="wiki-footer">最后更新：${escapeHtml(content.updated_at || '未记录')}</footer>
+    </article>`;
+}
+
 function countryLabel(country) {
   return country === 'japan' ? '日本' : '中国';
 }
 
+function normalizeRegionName(value, country = 'china') {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (country === 'japan') return text;
+  return text.replace(/(壮族自治区|回族自治区|维吾尔自治区|特别行政区|自治区|省|市)$/u, '');
+}
+
 function regionForClub(club, content) {
-  return club.province || club.prefecture || content.infobox?.地区 || content.infobox?.地域 || '';
+  const country = club.country || String(content.club_key || '').split('-')[0] || 'china';
+  return normalizeRegionName(club.province || club.prefecture || content.infobox?.地区 || content.infobox?.地域 || '', country);
 }
 
 function displayNameForClub(club) {
@@ -160,6 +218,8 @@ function renderImages(images) {
 }
 
 function renderPage(content, club) {
+  const zhContent = localizedWikiContent(content, 'zh');
+  const jaContent = localizedWikiContent(content, 'ja');
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -175,7 +235,13 @@ function renderPage(content, club) {
     <span>同好会维基</span>
   </header>
   <main class="wiki-page">
-    <article class="wiki-article">
+    <nav class="wiki-language-switch" id="wikiLanguageSwitch" aria-label="Language">
+      <a href="?lang=zh" data-wiki-switch-lang="zh">中文</a>
+      <a href="?lang=ja" data-wiki-switch-lang="ja">日本語</a>
+    </nav>
+    ${renderWikiArticle(zhContent, club, 'zh')}
+    ${renderWikiArticle(jaContent, club, 'ja')}
+    <article class="wiki-article" hidden>
       <h1>${escapeHtml(content.title)}</h1>
       ${renderInfobox(content, club)}
       <p class="wiki-summary">${escapeHtml(content.summary)}</p>
@@ -186,6 +252,20 @@ function renderPage(content, club) {
       <footer class="wiki-footer">最后更新：${escapeHtml(content.updated_at || '未记录')}</footer>
     </article>
   </main>
+  <script>
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var lang = params.get('lang') || localStorage.getItem('language') || 'zh';
+    lang = lang === 'ja' ? 'ja' : 'zh';
+    document.documentElement.lang = lang === 'ja' ? 'ja' : 'zh-CN';
+    document.querySelectorAll('[data-wiki-lang]').forEach(function (node) {
+      node.hidden = node.getAttribute('data-wiki-lang') !== lang;
+    });
+    document.querySelectorAll('[data-wiki-switch-lang]').forEach(function (node) {
+      node.classList.toggle('active', node.getAttribute('data-wiki-switch-lang') === lang);
+    });
+  })();
+  </script>
 </body>
 </html>
 `;
@@ -225,6 +305,121 @@ function readFeatureSlots(rootDir) {
     status: String(slot.status || 'reserved'),
     url: String(slot.url || ''),
   })).filter((slot) => slot.key && slot.title);
+}
+
+function dateValue(value) {
+  const time = Date.parse(String(value || ''));
+  return Number.isFinite(time) ? time : 0;
+}
+
+function wikiCompleteness(content) {
+  const missing = [];
+  let score = 0;
+  const infoboxCount = Object.values(content.infobox || {}).filter((value) => String(value || '').trim()).length;
+  const sectionCount = (content.sections || []).filter((section) =>
+    section.heading && Array.isArray(section.body) && section.body.some((line) => String(line || '').trim())
+  ).length;
+  const imageCount = (content.images || []).filter((image) => image.url).length;
+  const referenceCount = (content.references || []).filter((ref) => ref.url || ref.label).length;
+
+  if (String(content.summary || '').trim().length >= 20) score += 20;
+  else missing.push('补充摘要');
+
+  if (infoboxCount >= 3) score += 15;
+  else missing.push('完善信息框');
+
+  if (sectionCount >= 3) score += 25;
+  else if (sectionCount >= 2) score += 18;
+  else {
+    score += sectionCount * 8;
+    missing.push('增加章节');
+  }
+
+  if (imageCount > 0) score += 15;
+  else missing.push('添加图片');
+
+  if (referenceCount > 0) score += 15;
+  else missing.push('补充参考资料');
+
+  if (content.updated_at) score += 10;
+  else missing.push('记录更新时间');
+
+  return {
+    score: Math.min(100, score),
+    missing,
+  };
+}
+
+function renderRecentUpdates(entries, libraryDocs) {
+  const wikiItems = entries.map((item) => ({
+    title: item.title,
+    description: item.summary || item.club_name || item.school || '高校 Wiki 页面',
+    url: item.url,
+    kind: 'Wiki',
+    updated_at: item.updated_at || '',
+  }));
+  const docItems = libraryDocs.map((doc) => ({
+    title: doc.title,
+    description: doc.description || doc.category || '文档库条目',
+    url: doc.url,
+    kind: doc.category || '文档',
+    updated_at: doc.updated_at || '',
+  }));
+  const items = wikiItems.concat(docItems)
+    .filter((item) => item.title && item.url)
+    .sort((a, b) => dateValue(b.updated_at) - dateValue(a.updated_at) || String(a.title).localeCompare(String(b.title), 'zh-CN'))
+    .slice(0, 6);
+
+  const cards = items.map((item) => `<article class="wiki-module-card wiki-recent-card" data-search="${escapeHtml([
+    item.title,
+    item.description,
+    item.kind,
+  ].join(' ').toLowerCase())}">
+    <div class="wiki-index-card-meta">${escapeHtml(item.kind)} · ${escapeHtml(item.updated_at || '未记录更新')}</div>
+    <h3>${escapeHtml(item.title)}</h3>
+    <p>${escapeHtml(item.description)}</p>
+    <a href="${escapeHtml(item.url)}">查看更新</a>
+  </article>`).join('\n');
+
+  return `<section class="wiki-index-country wiki-recent-updates" id="wiki-recent-updates">
+    <div class="wiki-index-section-heading">
+      <h2>最近更新</h2>
+      <span>${items.length} 条动态</span>
+    </div>
+    <div class="wiki-module-grid">${cards || '<p class="wiki-index-empty">暂无最近更新。</p>'}</div>
+  </section>`;
+}
+
+function renderMaintenanceQueue(entries) {
+  const items = entries
+    .filter((item) => Number(item.completeness_score || 0) < 85)
+    .sort((a, b) => Number(a.completeness_score || 0) - Number(b.completeness_score || 0) || String(a.title).localeCompare(String(b.title), 'zh-CN'))
+    .slice(0, 6);
+
+  const cards = items.map((item) => {
+    const score = Number(item.completeness_score || 0);
+    const missing = (item.missing_fields || []).slice(0, 3).join('、') || '继续补充内容';
+    return `<article class="wiki-module-card wiki-maintenance-card" data-search="${escapeHtml([
+      item.title,
+      item.club_name,
+      item.school,
+      missing,
+    ].join(' ').toLowerCase())}">
+      <div class="wiki-index-card-meta">完整度 ${score}% · ${escapeHtml(item.updated_at || '未记录更新')}</div>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(missing)}</p>
+      <div class="wiki-completeness-bar" style="--wiki-completeness:${score}%"><span></span></div>
+      <a href="${escapeHtml(item.url)}">去完善</a>
+    </article>`;
+  }).join('\n');
+
+  return `<section class="wiki-index-country wiki-maintenance-queue" id="wiki-maintenance-queue">
+    <div class="wiki-index-section-heading">
+      <h2>待完善页面</h2>
+      <span>${items.length} 个维护项</span>
+    </div>
+    <div class="wiki-module-grid">${cards || '<p class="wiki-index-empty">当前没有明显待完善页面。</p>'}</div>
+  </section>`;
 }
 
 function renderWikiHome(manifest, libraryDocs, featureSlots) {
@@ -285,7 +480,8 @@ function renderWikiHome(manifest, libraryDocs, featureSlots) {
     <a href="${escapeHtml(doc.url)}">查看文档</a>
   </article>`).join('\n');
 
-  const extensionCards = featureSlots.map((slot) => {
+  const reservedFeatureSlots = featureSlots.filter((slot) => !['recent', 'todo'].includes(slot.key));
+  const extensionCards = reservedFeatureSlots.map((slot) => {
     const enabled = slot.status === 'active' && slot.url;
     return `<article class="wiki-extension-card${enabled ? '' : ' is-disabled'}">
       <div class="wiki-index-card-meta">${escapeHtml(enabled ? '已启用' : '预留模块')} · ${escapeHtml(slot.key)}</div>
@@ -326,7 +522,13 @@ function renderWikiHome(manifest, libraryDocs, featureSlots) {
       <nav>
         <a href="#country-china">中国</a>
         <a href="#country-japan">日本</a>
+        <a href="#wiki-recent-updates">最近更新</a>
+        <a href="#wiki-maintenance-queue">待完善</a>
         <a href="#wiki-library">文档库</a>
+      </nav>
+      <nav class="wiki-language-switch" id="wikiIndexLangSwitch" aria-label="Language">
+        <a href="?lang=zh" data-wiki-index-lang="zh">中文</a>
+        <a href="?lang=ja" data-wiki-index-lang="ja">日本語</a>
       </nav>
     </section>
 
@@ -338,10 +540,13 @@ function renderWikiHome(manifest, libraryDocs, featureSlots) {
     <section class="wiki-index-country" id="wiki-extensions">
       <div class="wiki-index-section-heading">
         <h2>后续功能预留</h2>
-        <span>${featureSlots.length} 个扩展位</span>
+        <span>${reservedFeatureSlots.length} 个扩展位</span>
       </div>
       <div class="wiki-extension-grid">${extensionCards}</div>
     </section>
+
+    ${renderRecentUpdates(entries, libraryDocs)}
+    ${renderMaintenanceQueue(entries)}
 
     ${countryBlocks}
 
@@ -358,7 +563,7 @@ function renderWikiHome(manifest, libraryDocs, featureSlots) {
   <script>
   (function () {
     var input = document.getElementById('wikiIndexSearch');
-    var cards = Array.prototype.slice.call(document.querySelectorAll('.wiki-index-card, .wiki-library-card'));
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.wiki-index-card, .wiki-library-card, .wiki-module-card'));
     if (!input) return;
     input.addEventListener('input', function () {
       var keyword = input.value.trim().toLowerCase();
@@ -391,6 +596,8 @@ export function generateWikiPages({ rootDir = DEFAULT_ROOT } = {}) {
     const pageName = pageNameForClubKey(content.club_key);
     const club = clubMap.get(content.club_key) || {};
     const html = renderPage(content, club);
+    const completeness = wikiCompleteness(content);
+    const jaManifest = manifestJapaneseMetadata(content);
     writeFileSync(join(pagesDir, pageName), html, 'utf8');
     manifest[content.club_key] = {
       title: content.title,
@@ -402,13 +609,18 @@ export function generateWikiPages({ rootDir = DEFAULT_ROOT } = {}) {
       region: regionForClub(club, content),
       summary: content.summary || '',
       updated_at: content.updated_at || '',
+      completeness_score: completeness.score,
+      missing_fields: completeness.missing,
+      ...(jaManifest ? { i18n: { ja: jaManifest } } : {}),
     };
   }
 
   const libraryDocs = readLibraryIndex(rootDir);
   const featureSlots = readFeatureSlots(rootDir);
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
-  writeFileSync(homePath, renderWikiHome(manifest, libraryDocs, featureSlots), 'utf8');
+  if (!existsSync(homePath)) {
+    writeFileSync(homePath, renderWikiHome(manifest, libraryDocs, featureSlots), 'utf8');
+  }
   return { count: contentFiles.length, manifest, libraryDocs, featureSlots };
 }
 

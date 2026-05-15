@@ -15,6 +15,11 @@ assert.match(apiSource, /10\s*\*\s*1024\s*\*\s*1024/, 'wiki upload should allow 
 assert.match(apiSource, /width_percent/, 'wiki API should preserve image display width');
 assert.match(apiSource, /align/, 'wiki API should preserve image alignment');
 assert.match(apiSource, /fit/, 'wiki API should preserve image fit mode');
+assert.match(apiSource, /function\s+wikiNormalizeRegionName\s*\(/, 'wiki API should normalize region aliases for index grouping');
+assert.match(apiSource, /壮族自治区\|回族自治区\|维吾尔自治区\|特别行政区\|自治区\|省\|市/, 'wiki API should merge Chinese province suffix aliases');
+assert.match(apiSource, /if\s*\(!file_exists\(\$homeFile\)\)/, 'wiki save should preserve an existing wiki homepage shell');
+assert.match(apiSource, /wikiNormalizeLocalizedContent/, 'wiki API should normalize localized wiki content');
+assert.match(apiSource, /i18n[\s\S]*ja/, 'wiki API should preserve Japanese wiki content');
 
 assert.match(editorSource, /type="file"/, 'wiki editor should include a file input');
 assert.match(editorSource, /FormData/, 'wiki editor should submit uploads with FormData');

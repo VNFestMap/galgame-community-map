@@ -21,6 +21,24 @@ var Utils = window.Utils || {
     if (!name) return '';
     return String(name).trim().replace(/(壮族自治区|回族自治区|维吾尔自治区|特别行政区|自治区|省|市)$/g, '');
   },
+  getClubProvinceNames: (club) => {
+    const values = [];
+    if (Array.isArray(club?.provinces)) {
+      values.push(...club.provinces);
+    } else if (club?.province) {
+      values.push(...String(club.province).split(/[+＋/／、,，;；|｜]/));
+    } else if (club?.prefecture) {
+      values.push(club.prefecture);
+    }
+    const seen = new Set();
+    return values
+      .map((value) => Utils.normalizeProvinceName(value))
+      .filter((value) => {
+        if (!value || seen.has(value)) return false;
+        seen.add(value);
+        return true;
+      });
+  },
   groupTypeText: (type) => {
     const map = { school: 'typeSchool', region: 'typeRegion', vnfest: 'typeVnfest' };
     return window.__ ? window.__(map[type] || 'typeSchool') : (map[type] || 'typeSchool');

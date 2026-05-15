@@ -130,6 +130,15 @@ select:focus {
   border-radius: 8px;
   background: #f8fafc;
 }
+.wiki-lang-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.wiki-lang-tabs button.active {
+  background: #1a73e8;
+  color: #fff;
+}
 .json-tools {
   display: none;
   margin: -6px 0 18px;
@@ -247,8 +256,14 @@ button:disabled {
   text-align: left;
   vertical-align: top;
 }
+.preview-section h2,
 .preview-section h3 {
   margin: 8px 0 6px;
+}
+.preview-section h2 {
+  font-size: 15px;
+}
+.preview-section h3 {
   font-size: 14px;
 }
 .preview-section p,
@@ -311,6 +326,10 @@ button:disabled {
 <main class="layout">
   <section class="panel">
     <h2>页面内容</h2>
+    <div class="wiki-lang-tabs" role="tablist" aria-label="Wiki content language">
+      <button type="button" id="wikiLangZhBtn" class="active" data-wiki-lang-tab="zh">中文内容</button>
+      <button type="button" id="wikiLangJaBtn" data-wiki-lang-tab="ja">日本語内容</button>
+    </div>
     <div class="field">
       <label for="titleInput">标题</label>
       <input id="titleInput" maxlength="120">
@@ -405,6 +424,8 @@ button:disabled {
   let isRendering = false;
   let isDirty = false;
   let draftTimer = null;
+  let activeWikiLang = 'zh';
+  let wikiLanguageContent = { zh: null, ja: null };
 
   function setStatus(text, ok) {
     statusText.textContent = text || '';
@@ -446,13 +467,17 @@ button:disabled {
     document.getElementById('infoboxRows').appendChild(wrap);
   }
 
-  function addSectionRow(heading, body) {
+  function addSectionRow(heading, body, level) {
     const wrap = document.createElement('div');
     wrap.className = 'row-card section-card';
-    wrap.innerHTML = '<div class="field"><label>章节标题</label><input data-field="heading" value="' + escapeHTML(heading) + '"></div>' +
+    wrap.innerHTML = '<div class="row-grid">' +
+      '<div class="field"><label>标题级别</label><select data-field="level"><option value="2">二级标题</option><option value="3">三级标题</option></select></div>' +
+      '<div class="field"><label>章节标题</label><input data-field="heading" value="' + escapeHTML(heading) + '"></div>' +
+      '</div>' +
       '<div class="field"><label>正文（一行一个段落）</label><textarea data-field="body">' + escapeHTML((body || []).join('\n')) + '</textarea></div>' +
       rowTools('删除章节');
     document.getElementById('sectionRows').appendChild(wrap);
+    wrap.querySelector('[data-field="level"]').value = String(level || 2);
   }
 
   function addReferenceRow(label, url) {
@@ -619,6 +644,18 @@ button:disabled {
     loadedClub = club || {};
     loadedPageUrl = pageUrl || '';
     loadedExists = !!exists;
+    activeWikiLang = 'zh';
+    wikiLanguageContent = {
+      zh: {
+        title: content.title || '',
+        summary: content.summary || '',
+        infobox: content.infobox || {},
+        sections: content.sections || [],
+      },
+      ja: content.i18n?.ja || {}
+    };
+    document.getElementById('wikiLangZhBtn')?.classList.add('active');
+    document.getElementById('wikiLangJaBtn')?.classList.remove('active');
     document.getElementById('titleInput').value = content.title || '';
     document.getElementById('summaryInput').value = content.summary || '';
     document.getElementById('infoboxRows').innerHTML = '';
@@ -630,7 +667,7 @@ button:disabled {
       addInfoboxRow(key, value);
     });
     (content.sections || []).forEach(function (section) {
-      addSectionRow(section.heading || '', section.body || []);
+      addSectionRow(section.heading || '', section.body || [], section.level || 2);
     });
     (content.images || []).forEach(function (image) {
       addImageRow(image.url || '', image.caption || '', image.alt || '', image.width_percent || 100, image.align || 'center', image.fit || 'cover', image.aspect_ratio || '16/10');
@@ -652,7 +689,7 @@ button:disabled {
     renderPreview();
   }
 
-  function collectContent() {
+  function collectLanguageFields() {
     const infobox = {};
     document.querySelectorAll('#infoboxRows .row-card').forEach(function (row) {
       const key = row.querySelector('[data-field="key"]').value.trim();
@@ -663,11 +700,49 @@ button:disabled {
     const sections = [];
     document.querySelectorAll('#sectionRows .row-card').forEach(function (row) {
       const heading = row.querySelector('[data-field="heading"]').value.trim();
+      const level = parseInt(row.querySelector('[data-field="level"]').value, 10) === 3 ? 3 : 2;
       const body = row.querySelector('[data-field="body"]').value.split(/\r?\n/).map(function (line) {
         return line.trim();
       }).filter(Boolean);
-      if (heading && body.length) sections.push({ heading, body });
+      if (heading && body.length) sections.push({ heading, level, body });
     });
+
+    return {
+      title: document.getElementById('titleInput').value.trim(),
+      summary: document.getElementById('summaryInput').value.trim(),
+      infobox,
+      sections,
+    };
+  }
+
+  function applyLanguageFields(content) {
+    const langContent = content || {};
+    document.getElementById('titleInput').value = langContent.title || '';
+    document.getElementById('summaryInput').value = langContent.summary || '';
+    document.getElementById('infoboxRows').innerHTML = '';
+    document.getElementById('sectionRows').innerHTML = '';
+    Object.entries(langContent.infobox || {}).forEach(function ([key, value]) {
+      addInfoboxRow(key, value);
+    });
+    (langContent.sections || []).forEach(function (section) {
+      addSectionRow(section.heading || '', section.body || [], section.level || 2);
+    });
+  }
+
+  function switchWikiLanguage(lang) {
+    if (lang !== 'zh' && lang !== 'ja') return;
+    wikiLanguageContent[activeWikiLang] = collectLanguageFields();
+    activeWikiLang = lang;
+    document.getElementById('wikiLangZhBtn')?.classList.toggle('active', lang === 'zh');
+    document.getElementById('wikiLangJaBtn')?.classList.toggle('active', lang === 'ja');
+    applyLanguageFields(wikiLanguageContent[lang] || {});
+    renderPreview();
+  }
+
+  function collectContent() {
+    const currentLanguageFields = collectLanguageFields();
+    const zhFields = activeWikiLang === 'zh' ? currentLanguageFields : (wikiLanguageContent.zh || {});
+    const jaFields = activeWikiLang === 'ja' ? currentLanguageFields : (wikiLanguageContent.ja || {});
 
     const references = [];
     document.querySelectorAll('#referenceRows .row-card').forEach(function (row) {
@@ -690,12 +765,13 @@ button:disabled {
 
     return {
       club_key: clubKey,
-      title: document.getElementById('titleInput').value.trim(),
-      summary: document.getElementById('summaryInput').value.trim(),
-      infobox,
-      sections,
+      title: zhFields.title || '',
+      summary: zhFields.summary || '',
+      infobox: zhFields.infobox || {},
+      sections: zhFields.sections || [],
       images,
       references,
+      i18n: { ja: jaFields || {} },
     };
   }
 
@@ -709,12 +785,16 @@ button:disabled {
     const pane = document.getElementById('previewPane');
     if (!pane) return;
     const content = collectContent();
+    if (activeWikiLang === 'ja') {
+      Object.assign(content, content.i18n?.ja || {});
+    }
     const title = content.title || '未命名维基页面';
     const infoboxRows = Object.entries(content.infobox || {}).map(function ([key, value]) {
       return '<tr><th>' + escapeHTML(key) + '</th><td>' + escapeHTML(value) + '</td></tr>';
     }).join('');
     const sections = (content.sections || []).map(function (section) {
-      return '<section class="preview-section"><h3>' + escapeHTML(section.heading) + '</h3>' +
+      const level = parseInt(section.level, 10) === 3 ? 3 : 2;
+      return '<section class="preview-section"><h' + level + '>' + escapeHTML(section.heading) + '</h' + level + '>' +
         previewParagraphs(section.body) + '</section>';
     }).join('');
     const images = (content.images || []).map(function (image) {
@@ -845,6 +925,8 @@ button:disabled {
     if (event.target.id === 'toggleImportBtn') showJsonTools(true);
     if (event.target.id === 'hideJsonToolsBtn') showJsonTools(false);
     if (event.target.id === 'importJsonBtn') importJson();
+    if (event.target.id === 'wikiLangZhBtn') switchWikiLanguage('zh');
+    if (event.target.id === 'wikiLangJaBtn') switchWikiLanguage('ja');
     if (event.target.id === 'restoreDraftBtn') restoreDraft();
     if (event.target.id === 'clearDraftBtn') {
       clearDraft();

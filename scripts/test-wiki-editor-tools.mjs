@@ -22,7 +22,13 @@ assertContains('insertTemplateBtn', 'basic section template action');
 assertContains('exportJsonBtn', 'JSON export action');
 assertContains('importJsonBtn', 'JSON import action');
 assertContains('data-action="duplicate-row"', 'duplicate row action');
+assertContains('data-field="level"', 'section heading level selector');
+assertContains('section.level || 2', 'existing sections default to level 2');
 assertContains('restoreDraftBtn', 'draft restore action');
 assertContains('clearDraftBtn', 'draft clear action');
+assertContains('wikiLangZhBtn', 'Chinese wiki content tab');
+assertContains('wikiLangJaBtn', 'Japanese wiki content tab');
+assertContains('activeWikiLang', 'active wiki language editor state');
+assertContains('i18n: { ja:', 'Japanese wiki content serialization');
 
 console.log('wiki editor tool contract ok');
