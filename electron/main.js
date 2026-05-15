@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 let mainWindow = null;
+const REMOTE_APP_URL = 'https://www.map.vnfest.top/index.html';
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,9 +20,16 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
-  // Load from bundled www/ directory (same as Android APK pattern)
+  // Prefer the live site so auth cookies stay same-origin in the desktop app.
+  // Fall back to bundled www/ if the network entry cannot be loaded.
   const indexPath = path.join(__dirname, '..', 'www', 'index.html');
-  mainWindow.loadFile(indexPath);
+  let didFallbackToLocal = false;
+  mainWindow.webContents.once('did-fail-load', () => {
+    if (didFallbackToLocal) return;
+    didFallbackToLocal = true;
+    mainWindow.loadFile(indexPath);
+  });
+  mainWindow.loadURL(REMOTE_APP_URL);
 
   // Open external links in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
